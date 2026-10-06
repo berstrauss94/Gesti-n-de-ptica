@@ -24,3 +24,7 @@ yarn-error.log*
 Thumbs.db
 .vscode/
 .idea/
+
+# Carpetas de trabajo de imágenes (las imágenes reales viven en el Volume/nube)
+lentes-recortados/
+lentes-transparentes/
