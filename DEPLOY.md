@@ -47,6 +47,15 @@ git push -u origin main
    ```
 
    > Cambiá la contraseña del admin por una propia. No dejes la de ejemplo en producción.
+   >
+   > La contraseña se puede cambiar de dos formas:
+   > 1. **Desde la app** (recomendado): iniciá sesión y usá el botón **Contraseña** en la barra superior (`POST /api/auth/cambiar-password`).
+   > 2. **Por SQL**: volvé a correr `seed_admin.sql` con otra contraseña, o ejecutá:
+   >    ```sql
+   >    UPDATE usuarios_sistema
+   >    SET password_hash = crypt('TU_NUEVA_PASSWORD', gen_salt('bf', 12))
+   >    WHERE usuario = 'Optica_2026';
+   >    ```
 
 ---
 

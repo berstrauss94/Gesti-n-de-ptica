@@ -3,11 +3,14 @@
 // Las vistas hijas se renderizan en <Outlet />.
 // =====================================================================
 
+import { useState } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import CambiarPasswordModal from './CambiarPasswordModal';
 
 export default function Layout() {
   const { usuario, logout } = useAuth();
+  const [cambiandoPass, setCambiandoPass] = useState(false);
 
   return (
     <div className="layout">
@@ -21,6 +24,9 @@ export default function Layout() {
         </nav>
         <div className="topbar__user">
           <span>{usuario?.usuario} · {usuario?.rol}</span>
+          <button type="button" onClick={() => setCambiandoPass(true)} className="btn btn--ghost">
+            Contraseña
+          </button>
           <button type="button" onClick={logout} className="btn btn--ghost">
             Salir
           </button>
@@ -29,6 +35,8 @@ export default function Layout() {
       <main className="content">
         <Outlet />
       </main>
+
+      {cambiandoPass && <CambiarPasswordModal onCerrar={() => setCambiandoPass(false)} />}
     </div>
   );
 }
