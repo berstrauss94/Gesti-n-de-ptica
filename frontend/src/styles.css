@@ -146,6 +146,7 @@ body {
 .alert { margin: 0; padding: 0.75rem 1rem; border-radius: var(--radio); font-size: 0.9rem; }
 .alert--error { background: #fef2f2; color: var(--rojo); border: 1px solid #fecaca; }
 .alert--ok { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+.ok-text { color: #15803d; font-weight: 600; }
 
 /* --- Barra de búsqueda --- */
 .searchbar { display: flex; gap: 0.5rem; flex-wrap: wrap; }
@@ -456,3 +457,49 @@ body {
 .grad-table-view thead th { font-size: 0.75rem; color: var(--texto-suave); text-transform: uppercase; }
 .grad-table-view tbody th { text-align: left; font-weight: 600; }
 .grad-item__meta { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.5rem; font-size: 0.85rem; }
+
+/* ===================================================================
+   Slots de fotos por ángulo (alta de cliente)
+   =================================================================== */
+
+.slots-title { display: block; margin-bottom: 0.75rem; font-size: 0.85rem; color: var(--texto-suave); }
+.slots-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+.slot {
+  border: 2px dashed var(--gris-borde);
+  border-radius: var(--radio);
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  transition: border-color 0.15s;
+}
+.slot--ok { border-style: solid; border-color: #15803d; }
+.slot__head { display: flex; align-items: center; gap: 0.6rem; }
+.slot__num {
+  width: 24px; height: 24px;
+  flex: 0 0 24px;
+  display: grid; place-items: center;
+  background: var(--azul); color: #fff;
+  border-radius: 50%;
+  font-size: 0.8rem; font-weight: 700;
+}
+.slot__head strong { display: block; font-size: 0.9rem; }
+.slot__head small { display: block; }
+.slot__preview {
+  aspect-ratio: 1;
+  border-radius: 8px;
+  background: var(--gris-fondo);
+  display: grid; place-items: center;
+  overflow: hidden;
+}
+.slot__preview img { width: 100%; height: 100%; object-fit: cover; }
+.slot__placeholder { color: var(--texto-suave); font-size: 0.85rem; }
+.slot input[type="file"] { font-size: 0.8rem; }
+
+@media (max-width: 640px) {
+  .slots-grid { grid-template-columns: 1fr; }
+}

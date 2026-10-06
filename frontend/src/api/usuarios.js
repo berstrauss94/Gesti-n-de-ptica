@@ -36,9 +36,24 @@ export async function listarFotos(usuarioId) {
 }
 
 // archivos: FileList o array de File (hasta 3)
+// Modo simple (completar fotos faltantes): sin ángulos, el backend ocupa
+// los órdenes libres.
 export async function subirFotos(usuarioId, archivos) {
   const form = new FormData();
   Array.from(archivos).forEach((file) => form.append('fotos', file));
+  const { data } = await api.post(`/api/usuarios/${usuarioId}/fotos`, form);
+  return data.fotos;
+}
+
+// Subida con ángulo explícito por foto.
+// items: [{ file, angulo }] donde angulo ∈ 'frontal' | '45deg' | 'perfil'.
+// Los campos "fotos" y "angulos" van en paralelo (mismo índice).
+export async function subirFotosConAngulo(usuarioId, items) {
+  const form = new FormData();
+  items.forEach(({ file, angulo }) => {
+    form.append('fotos', file);
+    form.append('angulos', angulo);
+  });
   const { data } = await api.post(`/api/usuarios/${usuarioId}/fotos`, form);
   return data.fotos;
 }

@@ -1,13 +1,23 @@
 // =====================================================================
-// Alta de cliente + subida opcional de las 3 fotos de seguimiento.
-// Flujo: 1) crear cliente -> obtener id, 2) si hay fotos, subirlas.
+// Alta de cliente + subida OBLIGATORIA de las 3 fotos de seguimiento,
+// cada una en su slot etiquetado por ángulo:
+//   Slot 1: Frontal   -> orden_foto 1
+//   Slot 2: 45° (semi) -> orden_foto 2
+//   Slot 3: Perfil 90° -> orden_foto 3
+// Esto garantiza la secuencia visual Frontal -> 45° -> Perfil en el carrusel.
+// Flujo: 1) validar 3 slots, 2) crear cliente, 3) subir fotos con ángulo.
 // =====================================================================
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { crearUsuario, subirFotos } from '../api/usuarios';
+import { crearUsuario, subirFotosConAngulo } from '../api/usuarios';
 
-const MAX_FOTOS = 3;
+// Definición de los 3 slots (orden visual Frontal -> 45° -> Perfil)
+const SLOTS = [
+  { key: 'frontal', label: 'Foto Frontal', hint: 'Vista de frente (0°)' },
+  { key: '45deg', label: 'Foto 45° (Semi-perfil)', hint: 'Rostro girado ~45°' },
+  { key: 'perfil', label: 'Foto Perfil (90°)', hint: 'Vista de costado' },
+];
 
 export default function ClienteNuevoPage() {
   const navigate = useNavigate();
@@ -18,7 +28,9 @@ export default function ClienteNuevoPage() {
     obra_social: '',
     edad: '',
   });
-  const [fotos, setFotos] = useState([]); // File[]
+  // fotos por slot: { frontal: File|null, '45deg': File|null, perfil: File|null }
+  const [fotos, setFotos] = useState({ frontal: null, '45deg': null, perfil: null });
+  const [previews, setPreviews] = useState({ frontal: '', '45deg': '', perfil: '' });
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
 
@@ -26,14 +38,28 @@ export default function ClienteNuevoPage() {
     setForm((f) => ({ ...f, [campo]: valor }));
   }
 
-  function handleFotos(e) {
-    const seleccionadas = Array.from(e.target.files).slice(0, MAX_FOTOS);
-    setFotos(seleccionadas);
+  function handleSlot(key, e) {
+    const file = e.target.files[0] || null;
+    setFotos((prev) => ({ ...prev, [key]: file }));
+    setPreviews((prev) => {
+      // Liberar la URL anterior para no fugar memoria
+      if (prev[key]) URL.revokeObjectURL(prev[key]);
+      return { ...prev, [key]: file ? URL.createObjectURL(file) : '' };
+    });
   }
+
+  const slotsCompletos = SLOTS.every((s) => fotos[s.key]);
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
+
+    if (!slotsCompletos) {
+      const faltantes = SLOTS.filter((s) => !fotos[s.key]).map((s) => s.label);
+      setError(`Faltan fotos obligatorias: ${faltantes.join(', ')}.`);
+      return;
+    }
+
     setGuardando(true);
     try {
       const payload = {
@@ -44,9 +70,9 @@ export default function ClienteNuevoPage() {
       };
       const cliente = await crearUsuario(payload);
 
-      if (fotos.length > 0) {
-        await subirFotos(cliente.id, fotos);
-      }
+      // Enviar las 3 fotos con su ángulo explícito (orden garantizado)
+      const items = SLOTS.map((s) => ({ file: fotos[s.key], angulo: s.key }));
+      await subirFotosConAngulo(cliente.id, items);
 
       navigate(`/clientes/${cliente.id}`, { replace: true });
     } catch (err) {
@@ -104,18 +130,37 @@ export default function ClienteNuevoPage() {
           />
         </label>
 
-        <label className="field field--full">
-          <span>Fotos de seguimiento (hasta {MAX_FOTOS})</span>
-          <input
-            type="file"
-            accept="image/png,image/jpeg,image/webp"
-            multiple
-            onChange={handleFotos}
-          />
-          {fotos.length > 0 && (
-            <small className="muted">{fotos.length} foto(s) seleccionada(s)</small>
-          )}
-        </label>
+        <div className="field--full">
+          <span className="slots-title">Fotos de seguimiento (3 obligatorias) *</span>
+          <div className="slots-grid">
+            {SLOTS.map((slot, i) => (
+              <div key={slot.key} className={`slot ${fotos[slot.key] ? 'slot--ok' : ''}`}>
+                <div className="slot__head">
+                  <span className="slot__num">{i + 1}</span>
+                  <div>
+                    <strong>{slot.label}</strong>
+                    <small className="muted">{slot.hint}</small>
+                  </div>
+                </div>
+
+                <div className="slot__preview">
+                  {previews[slot.key] ? (
+                    <img src={previews[slot.key]} alt={slot.label} />
+                  ) : (
+                    <span className="slot__placeholder">Sin foto</span>
+                  )}
+                </div>
+
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={(e) => handleSlot(slot.key, e)}
+                  required
+                />
+              </div>
+            ))}
+          </div>
+        </div>
 
         <div className="form-actions">
           <button
@@ -125,7 +170,11 @@ export default function ClienteNuevoPage() {
           >
             Cancelar
           </button>
-          <button type="submit" className="btn btn--primary btn--inline" disabled={guardando}>
+          <button
+            type="submit"
+            className="btn btn--primary btn--inline"
+            disabled={guardando || !slotsCompletos}
+          >
             {guardando ? 'Guardando…' : 'Guardar cliente'}
           </button>
         </div>
