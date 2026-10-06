@@ -9,7 +9,8 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { listarUsuarios, obtenerUsuario, listarFotos } from '../api/usuarios';
 import { listarMarcos } from '../api/marcos';
-import TryOnCanvas from '../components/tryon/TryOnCanvas';
+import TryOnCanvas, { imagenACanvas } from '../components/tryon/TryOnCanvas';
+import useFaceLandmarker from '../hooks/useFaceLandmarker';
 import FotosCarrusel from '../components/tryon/FotosCarrusel';
 import MarcosCarrusel from '../components/tryon/MarcosCarrusel';
 import ControlesMarco from '../components/tryon/ControlesMarco';
@@ -35,8 +36,13 @@ export default function TryOnPage() {
   const [marcoSel, setMarcoSel] = useState(null);
   const [qMarco, setQMarco] = useState('');
 
-  // Transformación del marco en el canvas
+  // Transformación del marco en el canvas (ajuste fino sobre el auto-ajuste)
   const [transform, setTransform] = useState(TRANSFORM_INICIAL);
+
+  // Ancla de auto-ajuste calculada por MediaPipe (centro/ancho/ángulo de ojos
+  // en coords del canvas). null = sin detección -> posicionamiento manual.
+  const [anchor, setAnchor] = useState(null);
+  const [autoAjuste, setAutoAjuste] = useState('idle'); // idle|detectando|ok|sin_rostro
 
   // Modales de edición
   const [editandoCliente, setEditandoCliente] = useState(false);
@@ -44,6 +50,44 @@ export default function TryOnPage() {
 
   const [error, setError] = useState('');
   const canvasRef = useRef(null);
+
+  const { listo: faceListo, detectar } = useFaceLandmarker();
+
+  // Cuando la foto queda cargada en el canvas, corremos la detección facial.
+  const handleFotoCargada = useCallback(
+    (img) => {
+      if (!faceListo) return;
+      setAutoAjuste('detectando');
+      // Pequeño defer para no bloquear el render
+      setTimeout(() => {
+        try {
+          const r = detectar(img);
+          if (!r) {
+            setAnchor(null);
+            setAutoAjuste('sin_rostro');
+            return;
+          }
+          // Mapear ojos (px de la imagen) a coords del canvas
+          const ci = imagenACanvas(r.centro, r.imgW, r.imgH);
+          const izq = imagenACanvas(r.ojoIzq, r.imgW, r.imgH);
+          const der = imagenACanvas(r.ojoDer, r.imgW, r.imgH);
+          const anchoOjosCanvas = Math.hypot(der.x - izq.x, der.y - izq.y);
+          setAnchor({
+            cx: ci.x,
+            cy: ci.y,
+            anchoOjos: anchoOjosCanvas,
+            anguloRad: Math.atan2(der.y - izq.y, der.x - izq.x),
+          });
+          setTransform(TRANSFORM_INICIAL); // el anteojo cae centrado en los ojos
+          setAutoAjuste('ok');
+        } catch {
+          setAnchor(null);
+          setAutoAjuste('sin_rostro');
+        }
+      }, 30);
+    },
+    [faceListo, detectar]
+  );
 
   // Cargar lista de clientes y catálogo de marcos al inicio
   useEffect(() => {
@@ -177,6 +221,8 @@ export default function TryOnPage() {
               marcoUrl={marcoUrl}
               transform={transform}
               onTransformChange={setTransform}
+              onFotoCargada={handleFotoCargada}
+              anchor={anchor}
             />
             <div className="tryon-side">
               <h2 className="section-title">Ajuste del marco</h2>
@@ -190,7 +236,16 @@ export default function TryOnPage() {
                     </button>
                   </div>
                   <ControlesMarco transform={transform} onChange={setTransform} onReset={handleReset} />
-                  <p className="muted small">Arrastrá el marco sobre la foto para posicionarlo.</p>
+                  {autoAjuste === 'ok' && (
+                    <p className="ok-text small">✔ Ajuste automático aplicado sobre los ojos.</p>
+                  )}
+                  {autoAjuste === 'detectando' && (
+                    <p className="muted small">Detectando rostro…</p>
+                  )}
+                  {autoAjuste === 'sin_rostro' && (
+                    <p className="muted small">No se detectó rostro; ajustá el marco manualmente.</p>
+                  )}
+                  <p className="muted small">Podés afinar arrastrando, con zoom y rotación.</p>
                 </>
               ) : (
                 <p className="muted">Seleccioná un marco del catálogo de abajo.</p>
