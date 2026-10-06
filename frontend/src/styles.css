@@ -1,0 +1,457 @@
+/* ===================================================================
+   Estilos base del Sistema Óptica (KIRO UI)
+   =================================================================== */
+
+:root {
+  --azul: #2563eb;
+  --azul-oscuro: #1e40af;
+  --gris-fondo: #f1f5f9;
+  --gris-borde: #e2e8f0;
+  --texto: #0f172a;
+  --texto-suave: #64748b;
+  --rojo: #dc2626;
+  --radio: 10px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: var(--texto);
+  background: var(--gris-fondo);
+}
+
+/* --- Botones --- */
+.btn {
+  border: none;
+  border-radius: var(--radio);
+  padding: 0.6rem 1.1rem;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+.btn--primary {
+  background: var(--azul);
+  color: #fff;
+  width: 100%;
+}
+.btn--primary:hover { background: var(--azul-oscuro); }
+.btn--primary:disabled { opacity: 0.6; cursor: default; }
+.btn--ghost {
+  background: transparent;
+  color: var(--texto-suave);
+  border: 1px solid var(--gris-borde);
+}
+.btn--ghost:hover { background: #fff; }
+
+/* --- Login --- */
+.login {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+.login__card {
+  width: 100%;
+  max-width: 360px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.login__title { margin: 0; font-size: 1.5rem; }
+.login__subtitle { margin: 0 0 0.5rem; color: var(--texto-suave); }
+.login__error {
+  margin: 0;
+  color: var(--rojo);
+  font-size: 0.9rem;
+}
+
+/* --- Campos de formulario --- */
+.field { display: flex; flex-direction: column; gap: 0.35rem; }
+.field span { font-size: 0.85rem; color: var(--texto-suave); }
+.field input {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--gris-borde);
+  border-radius: var(--radio);
+  font-size: 1rem;
+}
+.field input:focus {
+  outline: none;
+  border-color: var(--azul);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+/* --- Layout autenticado --- */
+.layout { min-height: 100vh; display: flex; flex-direction: column; }
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0.75rem 1.5rem;
+  background: #fff;
+  border-bottom: 1px solid var(--gris-borde);
+}
+.topbar__brand { font-weight: 700; color: var(--azul); }
+.topbar__nav { display: flex; gap: 1rem; flex: 1; }
+.topbar__nav a { color: var(--texto-suave); text-decoration: none; }
+.topbar__nav a.active { color: var(--azul); font-weight: 600; }
+.topbar__user { display: flex; align-items: center; gap: 0.75rem; font-size: 0.9rem; }
+.content { padding: 1.5rem; }
+
+/* --- Tarjetas --- */
+.card {
+  background: #fff;
+  border-radius: var(--radio);
+  padding: 1.5rem;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+}
+.roadmap { list-style: none; padding: 0; line-height: 1.9; color: var(--texto-suave); }
+
+/* ===================================================================
+   Fase 2 — Clientes y Marcos
+   =================================================================== */
+
+.stack { display: flex; flex-direction: column; gap: 1.25rem; }
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.page-header h1, .page-header h2 { margin: 0; }
+
+.back-link {
+  display: inline-block;
+  margin-bottom: 0.25rem;
+  color: var(--texto-suave);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+.back-link:hover { color: var(--azul); }
+
+.muted { color: var(--texto-suave); }
+
+/* --- Botones extra --- */
+.btn--inline { width: auto; display: inline-block; text-decoration: none; }
+.btn--danger { background: var(--rojo); color: #fff; }
+.btn--danger:hover { opacity: 0.9; }
+
+/* --- Alertas --- */
+.alert { margin: 0; padding: 0.75rem 1rem; border-radius: var(--radio); font-size: 0.9rem; }
+.alert--error { background: #fef2f2; color: var(--rojo); border: 1px solid #fecaca; }
+
+/* --- Barra de búsqueda --- */
+.searchbar { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.searchbar input[type="search"] {
+  flex: 1;
+  min-width: 200px;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--gris-borde);
+  border-radius: var(--radio);
+  font-size: 0.95rem;
+}
+.searchbar select {
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--gris-borde);
+  border-radius: var(--radio);
+}
+
+/* --- Tabla --- */
+.card.no-pad { padding: 0; overflow: hidden; }
+.table { width: 100%; border-collapse: collapse; }
+.table th, .table td { text-align: left; padding: 0.8rem 1rem; border-bottom: 1px solid var(--gris-borde); }
+.table th { font-size: 0.8rem; text-transform: uppercase; color: var(--texto-suave); letter-spacing: 0.03em; }
+.table tbody tr:last-child td { border-bottom: none; }
+.table tbody tr:hover { background: var(--gris-fondo); }
+.col-action a { color: var(--azul); text-decoration: none; }
+
+.empty { text-align: center; display: flex; flex-direction: column; gap: 1rem; align-items: center; }
+
+/* --- Formularios --- */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.field--full { grid-column: 1 / -1; }
+.form-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+/* --- Datos del cliente --- */
+.datos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 0; }
+.datos dt { font-size: 0.8rem; color: var(--texto-suave); text-transform: uppercase; }
+.datos dd { margin: 0.2rem 0 0; font-size: 1.05rem; }
+
+/* --- Fotos --- */
+.fotos-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem; }
+.foto-item { margin: 0; }
+.foto-item img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: var(--radio);
+  border: 1px solid var(--gris-borde);
+  background: var(--gris-fondo);
+}
+.foto-item figcaption { text-align: center; font-size: 0.85rem; color: var(--texto-suave); margin-top: 0.35rem; }
+.upload-slot { margin-top: 0.5rem; }
+
+/* --- Grilla de marcos --- */
+.marcos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+}
+.marco-card {
+  background: #fff;
+  border-radius: var(--radio);
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+}
+.marco-card__img {
+  aspect-ratio: 4 / 3;
+  display: grid;
+  place-items: center;
+  /* Patrón de ajedrez para visualizar transparencia del PNG */
+  background-image:
+    linear-gradient(45deg, #e5e7eb 25%, transparent 25%),
+    linear-gradient(-45deg, #e5e7eb 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #e5e7eb 75%),
+    linear-gradient(-45deg, transparent 75%, #e5e7eb 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+}
+.marco-card__img img { max-width: 90%; max-height: 90%; object-fit: contain; }
+.marco-card__body { padding: 0.75rem; display: flex; flex-direction: column; gap: 0.25rem; }
+.badge {
+  align-self: flex-start;
+  font-size: 0.75rem;
+  background: var(--gris-fondo);
+  border: 1px solid var(--gris-borde);
+  border-radius: 6px;
+  padding: 0.1rem 0.4rem;
+}
+.tag {
+  align-self: flex-start;
+  font-size: 0.72rem;
+  color: var(--azul);
+  background: rgba(37, 99, 235, 0.08);
+  border-radius: 6px;
+  padding: 0.1rem 0.4rem;
+}
+
+/* --- Vista previa PNG --- */
+.preview-png {
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  border: 1px dashed var(--gris-borde);
+  border-radius: var(--radio);
+}
+.preview-png img { max-height: 160px; object-fit: contain; }
+
+@media (max-width: 600px) {
+  .form-grid, .datos, .fotos-grid { grid-template-columns: 1fr; }
+}
+
+/* ===================================================================
+   Fase 3 — Virtual Try-On
+   =================================================================== */
+
+.section-title { margin: 0 0 0.75rem; font-size: 1rem; color: var(--texto-suave); }
+.small { font-size: 0.85rem; }
+
+.tryon-toolbar { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.tryon-toolbar select {
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--gris-borde);
+  border-radius: var(--radio);
+  min-width: 220px;
+}
+
+/* Layout principal: canvas + panel lateral */
+.tryon-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+/* --- Canvas --- */
+.tryon-canvas-wrap {
+  position: relative;
+  background: #0f172a;
+  border-radius: var(--radio);
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.15);
+}
+.tryon-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  touch-action: none;
+  cursor: grab;
+}
+.tryon-canvas:active { cursor: grabbing; }
+.tryon-canvas__hint {
+  position: absolute;
+  top: 0.5rem; left: 0.5rem;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+}
+
+/* --- Panel lateral de ajuste --- */
+.tryon-side {
+  background: #fff;
+  border-radius: var(--radio);
+  padding: 1rem;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+}
+.marco-activo { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.link-btn {
+  background: none; border: none; color: var(--azul);
+  cursor: pointer; padding: 0; font-size: 0.9rem; text-decoration: underline;
+}
+
+.controles { display: flex; flex-direction: column; gap: 1rem; }
+.control { display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.85rem; }
+.control input[type="range"] { width: 100%; }
+
+/* --- Carruseles --- */
+.carrusel {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+.carrusel--top .carrusel__item {
+  flex: 0 0 auto;
+  width: 110px; height: 110px;
+  border: 3px solid transparent;
+  border-radius: var(--radio);
+  padding: 0; background: var(--gris-fondo);
+  cursor: pointer; overflow: hidden;
+}
+.carrusel--top .carrusel__item img { width: 100%; height: 100%; object-fit: cover; }
+.carrusel__item.is-active { border-color: var(--azul); }
+
+/* Carrusel inferior de marcos: miniaturas a mitad de escala */
+.marcos-carrusel { display: flex; flex-direction: column; gap: 0.75rem; }
+.searchbar--compact input { width: 100%; }
+.carrusel--bottom { align-items: flex-start; }
+.marco-mini {
+  flex: 0 0 auto;
+  width: 100px;
+  margin: 0;
+  text-align: center;
+}
+.marco-mini__btn {
+  width: 100px; height: 70px;
+  border: 2px solid var(--gris-borde);
+  border-radius: var(--radio);
+  background-image:
+    linear-gradient(45deg, #e5e7eb 25%, transparent 25%),
+    linear-gradient(-45deg, #e5e7eb 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #e5e7eb 75%),
+    linear-gradient(-45deg, transparent 75%, #e5e7eb 75%);
+  background-size: 12px 12px;
+  background-position: 0 0, 0 6px, 6px -6px, -6px 0;
+  cursor: pointer;
+  display: grid; place-items: center;
+  padding: 4px;
+}
+.marco-mini__btn img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.marco-mini.is-active .marco-mini__btn { border-color: var(--azul); }
+.marco-mini figcaption { font-size: 0.75rem; color: var(--texto-suave); margin-top: 0.25rem; }
+
+/* --- Modales --- */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: grid; place-items: center;
+  padding: 1rem; z-index: 50;
+}
+.modal {
+  background: #fff;
+  border-radius: 14px;
+  width: 100%; max-width: 520px;
+  max-height: 90vh; overflow: auto;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
+}
+.modal__header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1rem 1.25rem; border-bottom: 1px solid var(--gris-borde);
+}
+.modal__header h2 { margin: 0; font-size: 1.1rem; }
+.modal__close { background: none; border: none; font-size: 1.5rem; line-height: 1; cursor: pointer; color: var(--texto-suave); }
+.modal__body { padding: 1.25rem; }
+
+@media (max-width: 820px) {
+  .tryon-main { grid-template-columns: 1fr; }
+}
+
+/* ===================================================================
+   Graduaciones (receta médica)
+   =================================================================== */
+
+.grad-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background: var(--gris-fondo);
+  border-radius: var(--radio);
+}
+.grad-form__row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+}
+
+.grad-table-input, .grad-table-view { width: 100%; border-collapse: collapse; }
+.grad-table-input th, .grad-table-input td { padding: 0.3rem; text-align: center; }
+.grad-table-input thead th { font-size: 0.78rem; color: var(--texto-suave); font-weight: 600; }
+.grad-table-input tbody th { text-align: left; font-size: 0.85rem; white-space: nowrap; }
+.grad-table-input input {
+  width: 100%;
+  min-width: 64px;
+  padding: 0.4rem;
+  border: 1px solid var(--gris-borde);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.grad-list { display: flex; flex-direction: column; gap: 0.75rem; }
+.grad-item {
+  border: 1px solid var(--gris-borde);
+  border-radius: var(--radio);
+  padding: 0.85rem 1rem;
+}
+.grad-item__head { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.5rem; }
+.grad-item__head .link-btn { margin-left: auto; color: var(--rojo); }
+
+.grad-table-view { max-width: 420px; }
+.grad-table-view th, .grad-table-view td {
+  padding: 0.3rem 0.6rem;
+  text-align: center;
+  border-bottom: 1px solid var(--gris-borde);
+  font-size: 0.9rem;
+}
+.grad-table-view thead th { font-size: 0.75rem; color: var(--texto-suave); text-transform: uppercase; }
+.grad-table-view tbody th { text-align: left; font-weight: 600; }
+.grad-item__meta { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.5rem; font-size: 0.85rem; }

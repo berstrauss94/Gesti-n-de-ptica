@@ -1,0 +1,22 @@
+{
+  "name": "optica-backend",
+  "version": "1.0.0",
+  "description": "Backend del Sistema Óptica (KIRO UI): autenticación JWT, gestión de clientes, fotos y catálogo de marcos.",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.4.0",
+    "pg": "^8.13.1"
+  }
+}
