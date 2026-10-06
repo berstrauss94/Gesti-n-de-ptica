@@ -28,3 +28,5 @@ Thumbs.db
 # Carpetas de trabajo de imágenes (las imágenes reales viven en el Volume/nube)
 lentes-recortados/
 lentes-transparentes/
+marco-3vistas/
+_preview_*.png

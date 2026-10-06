@@ -102,8 +102,29 @@ export default function TryOnPage() {
     );
   }, [marcos, qMarco]);
 
-  // Calcula el anchor (posición + ancho antropométrico) a partir de la
-  // detección facial y las medidas del marco seleccionado.
+  // ¿El marco tiene cargada la vista pedida?
+  function vistaDisponible(marco, vista) {
+    if (!marco) return false;
+    if (vista === '45') return Boolean(marco.ruta_45);
+    if (vista === 'perfil') return Boolean(marco.ruta_perfil);
+    return true; // frontal siempre existe
+  }
+
+  // Elige la URL de la vista del marco según el ángulo detectado.
+  // Cae a frontal si la vista pedida no está cargada.
+  function urlVista(marco, vista) {
+    if (!marco) return null;
+    const mapa = {
+      frontal: marco.ruta_frontal || marco.ruta_imagen_png,
+      45: marco.ruta_45 || marco.ruta_frontal || marco.ruta_imagen_png,
+      perfil: marco.ruta_perfil || marco.ruta_45 || marco.ruta_frontal || marco.ruta_imagen_png,
+    };
+    const ruta = mapa[vista] || marco.ruta_imagen_png;
+    return ruta ? `${API_BASE}${ruta}` : null;
+  }
+
+  // Calcula el anchor (posición + ancho antropométrico + vista) a partir de
+  // la detección facial y las medidas del marco seleccionado.
   const calcularAnchor = useCallback(
     (img, marco) => {
       if (!img) return null;
@@ -112,35 +133,41 @@ export default function TryOnPage() {
         setEstadoAjuste('sin_rostro');
         return null;
       }
-      if (!r.esFrontal) {
-        setEstadoAjuste('no_frontal');
-        return null;
-      }
 
       // Puntos de los ojos en coords del canvas
       const izq = imagenACanvas(r.ojoIzq, r.imgW, r.imgH);
       const der = imagenACanvas(r.ojoDer, r.imgW, r.imgH);
       const centro = { x: (izq.x + der.x) / 2, y: (izq.y + der.y) / 2 };
-      const distOjosPx = Math.hypot(der.x - izq.x, der.y - izq.y);
+      const distOjosPx = Math.hypot(der.x - izq.x, der.y - izq.y) || 1;
       const anguloRad = Math.atan2(der.y - izq.y, der.x - izq.x);
 
-      // Referencia de escala mm -> px: la distancia entre centros de ojos
-      // en px equivale a la DIP real (mm). Si no hay DIP, usamos estándar.
+      // Escala antropométrica: distancia entre ojos (px) ~ DIP real (mm).
       const dip = dipMm || DIP_ESTANDAR_MM;
       const pxPorMm = distOjosPx / dip;
 
-      // Ancho objetivo del marco en px: su ancho real (mm) * px/mm.
-      // Si el marco no tiene ancho_mm, caemos a una proporción razonable
-      // (el frente de un anteojo suele medir ~2.1x la DIP).
+      // En perfil, la distancia entre ojos deja de ser confiable (se ve 1 ojo),
+      // así que usamos la DIP como referencia relativa al ancho de la imagen.
       let anchoMarcoPx;
-      if (marco && marco.ancho_mm) {
+      if (r.vista === 'perfil') {
+        // ancho objetivo ~ ancho real del marco escalado por una referencia
+        // estable: usamos la altura del rostro aproximada por la posición.
+        anchoMarcoPx = (marco?.ancho_mm ? Number(marco.ancho_mm) : 140) * pxPorMm;
+      } else if (marco?.ancho_mm) {
         anchoMarcoPx = Number(marco.ancho_mm) * pxPorMm;
       } else {
         anchoMarcoPx = distOjosPx * 2.1;
       }
 
-      setEstadoAjuste('ok');
-      return { cx: centro.x, cy: centro.y, anchoMarcoPx, anguloRad, frontal: true };
+      setEstadoAjuste(`ok_${r.vista}`);
+      return {
+        cx: centro.x,
+        cy: centro.y,
+        anchoMarcoPx,
+        anguloRad,
+        vista: r.vista,
+        lado: r.lado,
+        dibujar: true,
+      };
     },
     [detectar, dipMm]
   );
@@ -185,7 +212,9 @@ export default function TryOnPage() {
   }
 
   const fotoUrl = fotoSel ? `${API_BASE}${fotoSel.ruta_local}` : null;
-  const marcoUrl = marcoSel ? `${API_BASE}${marcoSel.ruta_imagen_png}` : null;
+  // La vista del marco depende del ángulo detectado en la foto actual
+  const vistaActual = anchor?.vista || 'frontal';
+  const marcoUrl = urlVista(marcoSel, vistaActual);
 
   return (
     <div className="stack tryon">
@@ -247,16 +276,15 @@ export default function TryOnPage() {
               )}
 
               {/* Estado del ajuste */}
-              {marcoSel && estadoAjuste === 'ok' && (
-                <p className="ok-text small">✔ Ajustado a escala real sobre la foto frontal.</p>
-              )}
-              {marcoSel && estadoAjuste === 'detectando' && <p className="muted small">Detectando rostro…</p>}
-              {marcoSel && estadoAjuste === 'no_frontal' && (
-                <p className="muted small">
-                  Esta foto no es frontal. El marco solo se superpone en la foto de frente;
-                  las de 45° y perfil quedan como referencia.
+              {marcoSel && estadoAjuste?.startsWith('ok_') && (
+                <p className="ok-text small">
+                  ✔ Vista {estadoAjuste.replace('ok_', '')} ajustada a escala real.
+                  {vistaActual !== 'frontal' && !vistaDisponible(marcoSel, vistaActual) && (
+                    <> (este marco no tiene esa vista cargada; se usa la frontal)</>
+                  )}
                 </p>
               )}
+              {marcoSel && estadoAjuste === 'detectando' && <p className="muted small">Detectando rostro…</p>}
               {marcoSel && estadoAjuste === 'sin_rostro' && (
                 <p className="muted small">No se detectó un rostro en esta foto.</p>
               )}

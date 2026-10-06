@@ -75,8 +75,8 @@ const TryOnCanvas = forwardRef(function TryOnCanvas(
       return;
     }
 
-    // Marco: SOLO en foto frontal con anchor (centro de ojos + ancho objetivo)
-    if (marcoImg && anchor && anchor.frontal) {
+    // Marco: se dibuja si hay anchor con vista detectada (frontal/45/perfil)
+    if (marcoImg && anchor && anchor.dibujar) {
       const ratio = marcoImg.height / marcoImg.width;
       const w = anchor.anchoMarcoPx; // ancho objetivo ya calculado (antropométrico)
       const h = w * ratio;

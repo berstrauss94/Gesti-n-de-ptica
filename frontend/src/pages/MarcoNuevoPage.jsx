@@ -22,8 +22,9 @@ export default function MarcoNuevoPage() {
     alto_mm: '',
     patilla_mm: '',
   });
-  const [imagen, setImagen] = useState(null);
-  const [preview, setPreview] = useState('');
+  // 3 vistas del marco: frontal obligatoria, 45° y perfil opcionales
+  const [imgs, setImgs] = useState({ frontal: null, '45': null, perfil: null });
+  const [previews, setPreviews] = useState({ frontal: '', '45': '', perfil: '' });
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
 
@@ -31,30 +32,39 @@ export default function MarcoNuevoPage() {
     setForm((f) => ({ ...f, [campo]: valor }));
   }
 
-  function handleImagen(e) {
+  function handleImg(key, e) {
     const file = e.target.files[0] || null;
-    setImagen(file);
-    setPreview(file ? URL.createObjectURL(file) : '');
+    setImgs((prev) => ({ ...prev, [key]: file }));
+    setPreviews((prev) => {
+      if (prev[key]) URL.revokeObjectURL(prev[key]);
+      return { ...prev, [key]: file ? URL.createObjectURL(file) : '' };
+    });
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
 
-    if (!imagen) {
-      setError('La imagen PNG del marco es obligatoria');
+    if (!imgs.frontal) {
+      setError('La imagen frontal del marco es obligatoria');
       return;
     }
 
     setGuardando(true);
     try {
-      const marco = await crearMarco(form, imagen);
+      const marco = await crearMarco(form, imgs);
       navigate('/marcos', { replace: true, state: { creado: marco.id } });
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo registrar el marco');
       setGuardando(false);
     }
   }
+
+  const SLOTS = [
+    { key: 'frontal', label: 'Vista Frontal *', obligatoria: true },
+    { key: '45', label: 'Vista 45° (semi-perfil)', obligatoria: false },
+    { key: 'perfil', label: 'Vista Perfil (90°)', obligatoria: false },
+  ];
 
   return (
     <div className="stack">
@@ -116,16 +126,32 @@ export default function MarcoNuevoPage() {
             onChange={(e) => setCampo('patilla_mm', e.target.value)} placeholder="ej: 143" />
         </label>
 
-        <label className="field field--full">
-          <span>Imagen PNG transparente *</span>
-          <input type="file" accept="image/png" onChange={handleImagen} required />
-        </label>
-
-        {preview && (
-          <div className="field--full preview-png">
-            <img src={preview} alt="Vista previa del marco" />
+        <div className="field--full">
+          <span className="slots-title">Vistas del marco (PNG transparente) — frontal obligatoria</span>
+          <div className="slots-grid">
+            {SLOTS.map((slot, i) => (
+              <div key={slot.key} className={`slot ${imgs[slot.key] ? 'slot--ok' : ''}`}>
+                <div className="slot__head">
+                  <span className="slot__num">{i + 1}</span>
+                  <strong>{slot.label}</strong>
+                </div>
+                <div className="slot__preview preview-png--check">
+                  {previews[slot.key] ? (
+                    <img src={previews[slot.key]} alt={slot.label} />
+                  ) : (
+                    <span className="slot__placeholder">Sin imagen</span>
+                  )}
+                </div>
+                <input
+                  type="file"
+                  accept="image/png"
+                  onChange={(e) => handleImg(slot.key, e)}
+                  required={slot.obligatoria}
+                />
+              </div>
+            ))}
           </div>
-        )}
+        </div>
 
         <div className="form-actions">
           <button type="button" className="btn btn--ghost" onClick={() => navigate('/marcos')}>

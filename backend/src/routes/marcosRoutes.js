@@ -18,10 +18,18 @@ const router = express.Router();
 
 router.use(authRequired);
 
+// 3 vistas del marco por ángulo (+ 'imagen' legacy = frontal)
+const camposImagen = upload.fields([
+  { name: 'imagen_frontal', maxCount: 1 },
+  { name: 'imagen_45', maxCount: 1 },
+  { name: 'imagen_perfil', maxCount: 1 },
+  { name: 'imagen', maxCount: 1 },
+]);
+
 router.get('/', listar);
-router.post('/', upload.single('imagen'), crear);
+router.post('/', camposImagen, crear);
 router.get('/:id', obtener);
-router.put('/:id', upload.single('imagen'), actualizar);
+router.put('/:id', camposImagen, actualizar);
 router.delete('/:id', eliminar);
 
 module.exports = router;

@@ -83,15 +83,27 @@ export default function useFaceLandmarker() {
 
     // Estimación de yaw (giro horizontal de la cabeza):
     // comparamos la distancia de cada ojo a la punta de la nariz (landmark 1).
-    // De frente, ambas distancias son parecidas; de perfil, muy distintas.
     const nariz = px(pts[1]);
     const dIzq = Math.hypot(ojoIzq.x - nariz.x, ojoIzq.y - nariz.y);
     const dDer = Math.hypot(ojoDer.x - nariz.x, ojoDer.y - nariz.y);
     const asimetria = Math.abs(dIzq - dDer) / Math.max(dIzq, dDer); // 0=frontal, ~1=perfil
-    // Frontal si la asimetría es baja (umbral empírico)
-    const esFrontal = asimetria < 0.25;
 
-    return { ojoIzq, ojoDer, centro, anchoOjos, anguloRad, asimetria, esFrontal, imgW: W, imgH: H };
+    // Clasificación del ángulo de la foto en 3 categorías.
+    let vista;
+    if (asimetria < 0.22) vista = 'frontal';
+    else if (asimetria < 0.55) vista = '45';
+    else vista = 'perfil';
+
+    // Lado hacia el que mira (para espejar la vista 45/perfil si hace falta):
+    // si el ojo derecho está más lejos de la nariz, la cara mira a la izquierda.
+    const lado = dDer > dIzq ? 'izquierda' : 'derecha';
+
+    const esFrontal = vista === 'frontal';
+
+    return {
+      ojoIzq, ojoDer, centro, anchoOjos, anguloRad,
+      asimetria, vista, lado, esFrontal, imgW: W, imgH: H,
+    };
   }, []);
 
   return { listo, error, detectar };

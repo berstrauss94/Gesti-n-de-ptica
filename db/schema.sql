@@ -60,6 +60,10 @@ CREATE TABLE IF NOT EXISTS marcos (
 ALTER TABLE marcos ADD COLUMN IF NOT EXISTS ancho_mm NUMERIC(5,1);
 ALTER TABLE marcos ADD COLUMN IF NOT EXISTS alto_mm NUMERIC(5,1);
 ALTER TABLE marcos ADD COLUMN IF NOT EXISTS patilla_mm NUMERIC(5,1);
+-- Vistas por ángulo (Camino B). ruta_imagen_png queda como la frontal.
+ALTER TABLE marcos ADD COLUMN IF NOT EXISTS ruta_frontal VARCHAR(500);
+ALTER TABLE marcos ADD COLUMN IF NOT EXISTS ruta_45 VARCHAR(500);
+ALTER TABLE marcos ADD COLUMN IF NOT EXISTS ruta_perfil VARCHAR(500);
 
 -- 5. Prescripciones y Graduaciones (Con validación biométrica de DIP)
 CREATE TABLE IF NOT EXISTS graduaciones (
