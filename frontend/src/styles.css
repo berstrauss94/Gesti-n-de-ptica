@@ -503,3 +503,7 @@ body {
 @media (max-width: 640px) {
   .slots-grid { grid-template-columns: 1fr; }
 }
+
+/* Info de escala en el Try-On */
+.escala-info { margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.2rem; border-top: 1px solid var(--gris-borde); padding-top: 0.6rem; }
+.tryon-canvas--fijo { cursor: default; }

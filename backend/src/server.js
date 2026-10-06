@@ -5,9 +5,12 @@
 const app = require('./app');
 const { PORT } = require('./config/env');
 const { pool } = require('./config/db');
+const { ejecutarMigraciones } = require('./config/migrate');
 
 const server = app.listen(PORT, () => {
   console.log(`Servidor Óptica escuchando en el puerto ${PORT}`);
+  // Migraciones idempotentes al arrancar (agrega columnas si faltan)
+  ejecutarMigraciones().catch((e) => console.error('Error en migraciones:', e.message));
 });
 
 // Cierre ordenado

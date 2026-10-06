@@ -17,6 +17,9 @@ export default function EditarMarcoModal({ marco, onCerrar, onGuardado }) {
     material: marco.material || '',
     color: marco.color || '',
     estilo_forma: marco.estilo_forma || '',
+    ancho_mm: marco.ancho_mm ?? '',
+    alto_mm: marco.alto_mm ?? '',
+    patilla_mm: marco.patilla_mm ?? '',
   });
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
@@ -69,6 +72,19 @@ export default function EditarMarcoModal({ marco, onCerrar, onGuardado }) {
             <option value="">Sin especificar</option>
             {ESTILOS.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
+        </label>
+
+        <label className="field">
+          <span>Ancho frontal (mm)</span>
+          <input type="number" step="0.1" min="0" value={form.ancho_mm} onChange={(e) => setCampo('ancho_mm', e.target.value)} />
+        </label>
+        <label className="field">
+          <span>Alto de lente (mm)</span>
+          <input type="number" step="0.1" min="0" value={form.alto_mm} onChange={(e) => setCampo('alto_mm', e.target.value)} />
+        </label>
+        <label className="field">
+          <span>Largo de patilla (mm)</span>
+          <input type="number" step="0.1" min="0" value={form.patilla_mm} onChange={(e) => setCampo('patilla_mm', e.target.value)} />
         </label>
 
         <div className="form-actions">

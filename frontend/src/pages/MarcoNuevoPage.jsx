@@ -18,6 +18,9 @@ export default function MarcoNuevoPage() {
     material: '',
     color: '',
     estilo_forma: '',
+    ancho_mm: '',
+    alto_mm: '',
+    patilla_mm: '',
   });
   const [imagen, setImagen] = useState(null);
   const [preview, setPreview] = useState('');
@@ -93,6 +96,24 @@ export default function MarcoNuevoPage() {
             <option value="">Sin especificar</option>
             {ESTILOS.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
+        </label>
+
+        <label className="field">
+          <span>Ancho frontal (mm)</span>
+          <input type="number" step="0.1" min="0" value={form.ancho_mm}
+            onChange={(e) => setCampo('ancho_mm', e.target.value)} placeholder="ej: 140" />
+        </label>
+
+        <label className="field">
+          <span>Alto de lente (mm)</span>
+          <input type="number" step="0.1" min="0" value={form.alto_mm}
+            onChange={(e) => setCampo('alto_mm', e.target.value)} placeholder="ej: 43" />
+        </label>
+
+        <label className="field">
+          <span>Largo de patilla (mm)</span>
+          <input type="number" step="0.1" min="0" value={form.patilla_mm}
+            onChange={(e) => setCampo('patilla_mm', e.target.value)} placeholder="ej: 143" />
         </label>
 
         <label className="field field--full">

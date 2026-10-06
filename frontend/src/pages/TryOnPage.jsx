@@ -1,99 +1,62 @@
 // =====================================================================
-// Virtual Try-On (Fase 3).
-// Orquesta: selección de cliente -> fotos (carrusel superior) +
-// catálogo de marcos (carrusel inferior con búsqueda) -> Canvas 2D con
-// marco superpuesto (drag/zoom/rotación) -> exportación de la captura.
-// Edición rápida de cliente y marco vía modales (endpoints PUT).
+// Virtual Try-On (Camino A).
+// - Superposición del marco SOLO en la foto frontal.
+// - Escalado antropométrico: ancho real del marco (mm) + referencia de
+//   escala mm->px del rostro (DIP real del cliente si existe; si no, se
+//   asume una DIP estándar de 63 mm sobre la distancia de ojos detectada).
+// - Marco fijo (no manipulable). Perfil/45° quedan como referencia facial.
 // =====================================================================
 
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { listarUsuarios, obtenerUsuario, listarFotos } from '../api/usuarios';
 import { listarMarcos } from '../api/marcos';
+import { listarGraduaciones } from '../api/graduaciones';
 import TryOnCanvas, { imagenACanvas } from '../components/tryon/TryOnCanvas';
-import useFaceLandmarker from '../hooks/useFaceLandmarker';
 import FotosCarrusel from '../components/tryon/FotosCarrusel';
 import MarcosCarrusel from '../components/tryon/MarcosCarrusel';
-import ControlesMarco from '../components/tryon/ControlesMarco';
 import EditarClienteModal from '../components/tryon/EditarClienteModal';
 import EditarMarcoModal from '../components/tryon/EditarMarcoModal';
+import useFaceLandmarker from '../hooks/useFaceLandmarker';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
-const TRANSFORM_INICIAL = { offsetX: 0, offsetY: 0, scale: 1, rotation: 0 };
+// DIP estándar adulto si el cliente no tiene receta con DIP cargada.
+const DIP_ESTANDAR_MM = 63;
 
 export default function TryOnPage() {
-  // Selección de cliente
   const [clientes, setClientes] = useState([]);
   const [clienteId, setClienteId] = useState('');
   const [cliente, setCliente] = useState(null);
 
-  // Datos del cliente seleccionado
   const [fotos, setFotos] = useState([]);
   const [fotoSel, setFotoSel] = useState(null);
+  const [dipMm, setDipMm] = useState(null); // DIP real del cliente (mm) o null
 
-  // Catálogo de marcos
   const [marcos, setMarcos] = useState([]);
   const [marcoSel, setMarcoSel] = useState(null);
   const [qMarco, setQMarco] = useState('');
 
-  // Transformación del marco en el canvas (ajuste fino sobre el auto-ajuste)
-  const [transform, setTransform] = useState(TRANSFORM_INICIAL);
-
-  // Ancla de auto-ajuste calculada por MediaPipe (centro/ancho/ángulo de ojos
-  // en coords del canvas). null = sin detección -> posicionamiento manual.
+  // Ancla de dibujo del marco (centro ojos + ancho objetivo en px + ángulo)
   const [anchor, setAnchor] = useState(null);
-  const [autoAjuste, setAutoAjuste] = useState('idle'); // idle|detectando|ok|sin_rostro
+  const [estadoAjuste, setEstadoAjuste] = useState('idle'); // idle|detectando|ok|no_frontal|sin_rostro
 
-  // Modales de edición
   const [editandoCliente, setEditandoCliente] = useState(false);
   const [editandoMarco, setEditandoMarco] = useState(false);
 
   const [error, setError] = useState('');
   const canvasRef = useRef(null);
-
   const { listo: faceListo, detectar } = useFaceLandmarker();
 
-  // Cuando la foto queda cargada en el canvas, corremos la detección facial.
-  const handleFotoCargada = useCallback(
-    (img) => {
-      if (!faceListo) return;
-      setAutoAjuste('detectando');
-      // Pequeño defer para no bloquear el render
-      setTimeout(() => {
-        try {
-          const r = detectar(img);
-          if (!r) {
-            setAnchor(null);
-            setAutoAjuste('sin_rostro');
-            return;
-          }
-          // Mapear ojos (px de la imagen) a coords del canvas
-          const ci = imagenACanvas(r.centro, r.imgW, r.imgH);
-          const izq = imagenACanvas(r.ojoIzq, r.imgW, r.imgH);
-          const der = imagenACanvas(r.ojoDer, r.imgW, r.imgH);
-          const anchoOjosCanvas = Math.hypot(der.x - izq.x, der.y - izq.y);
-          setAnchor({
-            cx: ci.x,
-            cy: ci.y,
-            anchoOjos: anchoOjosCanvas,
-            anguloRad: Math.atan2(der.y - izq.y, der.x - izq.x),
-          });
-          setTransform(TRANSFORM_INICIAL); // el anteojo cae centrado en los ojos
-          setAutoAjuste('ok');
-        } catch {
-          setAnchor(null);
-          setAutoAjuste('sin_rostro');
-        }
-      }, 30);
-    },
-    [faceListo, detectar]
-  );
+  // Guardamos la última imagen cargada para recalcular si cambia el marco
+  const ultimaImg = useRef(null);
 
-  // Cargar lista de clientes y catálogo de marcos al inicio
   useEffect(() => {
     (async () => {
       try {
-        const [uData, mData] = await Promise.all([listarUsuarios({ limit: 200 }), listarMarcos({ limit: 200 })]);
+        const [uData, mData] = await Promise.all([
+          listarUsuarios({ limit: 200 }),
+          listarMarcos({ limit: 200 }),
+        ]);
         setClientes(uData.usuarios);
         setMarcos(mData.marcos);
       } catch (err) {
@@ -102,27 +65,33 @@ export default function TryOnPage() {
     })();
   }, []);
 
-  // Al elegir cliente: cargar sus datos y fotos
   useEffect(() => {
     if (!clienteId) {
       setCliente(null);
       setFotos([]);
       setFotoSel(null);
+      setDipMm(null);
       return;
     }
     (async () => {
       try {
-        const [c, f] = await Promise.all([obtenerUsuario(clienteId), listarFotos(clienteId)]);
+        const [c, f, grads] = await Promise.all([
+          obtenerUsuario(clienteId),
+          listarFotos(clienteId),
+          listarGraduaciones(clienteId).catch(() => []),
+        ]);
         setCliente(c);
         setFotos(f);
-        setFotoSel(f[0] || null); // primera foto por defecto
+        setFotoSel(f[0] || null);
+        // DIP: tomamos la de la graduación más reciente que la tenga
+        const conDip = grads.find((g) => g.distancia_interpupilar != null);
+        setDipMm(conDip ? Number(conDip.distancia_interpupilar) : null);
       } catch (err) {
         setError(err.response?.data?.error || 'No se pudo cargar el cliente');
       }
     })();
   }, [clienteId]);
 
-  // Filtrado del carrusel de marcos por código o nombre (cliente-side)
   const marcosFiltrados = useMemo(() => {
     const term = qMarco.trim().toLowerCase();
     if (!term) return marcos;
@@ -133,18 +102,71 @@ export default function TryOnPage() {
     );
   }, [marcos, qMarco]);
 
-  // Cambiar de foto preserva el marco y su transformación
+  // Calcula el anchor (posición + ancho antropométrico) a partir de la
+  // detección facial y las medidas del marco seleccionado.
+  const calcularAnchor = useCallback(
+    (img, marco) => {
+      if (!img) return null;
+      const r = detectar(img);
+      if (!r) {
+        setEstadoAjuste('sin_rostro');
+        return null;
+      }
+      if (!r.esFrontal) {
+        setEstadoAjuste('no_frontal');
+        return null;
+      }
+
+      // Puntos de los ojos en coords del canvas
+      const izq = imagenACanvas(r.ojoIzq, r.imgW, r.imgH);
+      const der = imagenACanvas(r.ojoDer, r.imgW, r.imgH);
+      const centro = { x: (izq.x + der.x) / 2, y: (izq.y + der.y) / 2 };
+      const distOjosPx = Math.hypot(der.x - izq.x, der.y - izq.y);
+      const anguloRad = Math.atan2(der.y - izq.y, der.x - izq.x);
+
+      // Referencia de escala mm -> px: la distancia entre centros de ojos
+      // en px equivale a la DIP real (mm). Si no hay DIP, usamos estándar.
+      const dip = dipMm || DIP_ESTANDAR_MM;
+      const pxPorMm = distOjosPx / dip;
+
+      // Ancho objetivo del marco en px: su ancho real (mm) * px/mm.
+      // Si el marco no tiene ancho_mm, caemos a una proporción razonable
+      // (el frente de un anteojo suele medir ~2.1x la DIP).
+      let anchoMarcoPx;
+      if (marco && marco.ancho_mm) {
+        anchoMarcoPx = Number(marco.ancho_mm) * pxPorMm;
+      } else {
+        anchoMarcoPx = distOjosPx * 2.1;
+      }
+
+      setEstadoAjuste('ok');
+      return { cx: centro.x, cy: centro.y, anchoMarcoPx, anguloRad, frontal: true };
+    },
+    [detectar, dipMm]
+  );
+
+  const handleFotoCargada = useCallback(
+    (img) => {
+      ultimaImg.current = img;
+      if (!faceListo) return;
+      setEstadoAjuste('detectando');
+      setTimeout(() => {
+        setAnchor(calcularAnchor(img, marcoSel));
+      }, 30);
+    },
+    [faceListo, calcularAnchor, marcoSel]
+  );
+
+  // Al cambiar el marco, recalculamos el ancho con sus medidas
+  useEffect(() => {
+    if (ultimaImg.current && faceListo && marcoSel) {
+      setAnchor(calcularAnchor(ultimaImg.current, marcoSel));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [marcoSel, faceListo]);
+
   const handleSeleccionarFoto = useCallback((foto) => setFotoSel(foto), []);
-
-  // Al elegir un marco, reseteamos la transformación para centrarlo
-  const handleSeleccionarMarco = useCallback((marco) => {
-    setMarcoSel(marco);
-    setTransform(TRANSFORM_INICIAL);
-  }, []);
-
-  function handleReset() {
-    setTransform(TRANSFORM_INICIAL);
-  }
+  const handleSeleccionarMarco = useCallback((marco) => setMarcoSel(marco), []);
 
   function handleExportar() {
     const canvas = canvasRef.current;
@@ -157,9 +179,8 @@ export default function TryOnPage() {
       a.href = url;
       a.download = `tryon_${nombre}${marcoCod}.png`;
       a.click();
-    } catch (err) {
-      // toDataURL falla si el canvas quedó "tainted" (CORS)
-      setError('No se pudo exportar la imagen (posible restricción CORS en las imágenes).');
+    } catch {
+      setError('No se pudo exportar la imagen (posible restricción CORS).');
     }
   }
 
@@ -184,12 +205,7 @@ export default function TryOnPage() {
               Editar cliente
             </button>
           )}
-          <button
-            type="button"
-            className="btn btn--primary btn--inline"
-            onClick={handleExportar}
-            disabled={!fotoSel}
-          >
+          <button type="button" className="btn btn--primary btn--inline" onClick={handleExportar} disabled={!fotoSel}>
             Exportar PNG
           </button>
         </div>
@@ -203,57 +219,59 @@ export default function TryOnPage() {
         </div>
       ) : (
         <>
-          {/* Carrusel superior: fotos del cliente */}
           <div className="card">
             <h2 className="section-title">Fotos del cliente</h2>
-            <FotosCarrusel
-              fotos={fotos}
-              seleccionadaId={fotoSel?.id}
-              onSeleccionar={handleSeleccionarFoto}
-            />
+            <FotosCarrusel fotos={fotos} seleccionadaId={fotoSel?.id} onSeleccionar={handleSeleccionarFoto} />
           </div>
 
-          {/* Visor central + controles */}
           <div className="tryon-main">
             <TryOnCanvas
               ref={canvasRef}
               fotoUrl={fotoUrl}
               marcoUrl={marcoUrl}
-              transform={transform}
-              onTransformChange={setTransform}
-              onFotoCargada={handleFotoCargada}
               anchor={anchor}
+              onFotoCargada={handleFotoCargada}
             />
             <div className="tryon-side">
-              <h2 className="section-title">Ajuste del marco</h2>
+              <h2 className="section-title">Prueba</h2>
               {marcoSel ? (
-                <>
-                  <div className="marco-activo">
-                    <span className="badge">{marcoSel.codigo}</span>
-                    <strong>{marcoSel.nombre_modelo}</strong>
-                    <button type="button" className="link-btn" onClick={() => setEditandoMarco(true)}>
-                      Editar
-                    </button>
-                  </div>
-                  <ControlesMarco transform={transform} onChange={setTransform} onReset={handleReset} />
-                  {autoAjuste === 'ok' && (
-                    <p className="ok-text small">✔ Ajuste automático aplicado sobre los ojos.</p>
-                  )}
-                  {autoAjuste === 'detectando' && (
-                    <p className="muted small">Detectando rostro…</p>
-                  )}
-                  {autoAjuste === 'sin_rostro' && (
-                    <p className="muted small">No se detectó rostro; ajustá el marco manualmente.</p>
-                  )}
-                  <p className="muted small">Podés afinar arrastrando, con zoom y rotación.</p>
-                </>
+                <div className="marco-activo">
+                  <span className="badge">{marcoSel.codigo}</span>
+                  <strong>{marcoSel.nombre_modelo}</strong>
+                  <button type="button" className="link-btn" onClick={() => setEditandoMarco(true)}>
+                    Editar
+                  </button>
+                </div>
               ) : (
                 <p className="muted">Seleccioná un marco del catálogo de abajo.</p>
               )}
+
+              {/* Estado del ajuste */}
+              {marcoSel && estadoAjuste === 'ok' && (
+                <p className="ok-text small">✔ Ajustado a escala real sobre la foto frontal.</p>
+              )}
+              {marcoSel && estadoAjuste === 'detectando' && <p className="muted small">Detectando rostro…</p>}
+              {marcoSel && estadoAjuste === 'no_frontal' && (
+                <p className="muted small">
+                  Esta foto no es frontal. El marco solo se superpone en la foto de frente;
+                  las de 45° y perfil quedan como referencia.
+                </p>
+              )}
+              {marcoSel && estadoAjuste === 'sin_rostro' && (
+                <p className="muted small">No se detectó un rostro en esta foto.</p>
+              )}
+
+              {/* Info de escala */}
+              <div className="escala-info muted small">
+                <div>DIP del cliente: {dipMm ? `${dipMm} mm` : `estándar (${DIP_ESTANDAR_MM} mm)`}</div>
+                {marcoSel?.ancho_mm && <div>Ancho del marco: {marcoSel.ancho_mm} mm</div>}
+                {marcoSel && !marcoSel.ancho_mm && (
+                  <div>Este marco no tiene ancho (mm) cargado: se usa proporción estimada.</div>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Carrusel inferior: catálogo de marcos con búsqueda */}
           <div className="card">
             <h2 className="section-title">Catálogo de marcos</h2>
             <MarcosCarrusel

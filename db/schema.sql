@@ -48,9 +48,18 @@ CREATE TABLE IF NOT EXISTS marcos (
     color VARCHAR(50),
     ruta_imagen_png VARCHAR(500) NOT NULL,
     estilo_forma VARCHAR(50),
+    -- Medidas físicas reales del marco (para escalado antropométrico)
+    ancho_mm NUMERIC(5,1),   -- ancho frontal total
+    alto_mm NUMERIC(5,1),    -- alto del lente
+    patilla_mm NUMERIC(5,1), -- largo de la patilla
     activo BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Migración idempotente (para bases ya creadas sin estas columnas)
+ALTER TABLE marcos ADD COLUMN IF NOT EXISTS ancho_mm NUMERIC(5,1);
+ALTER TABLE marcos ADD COLUMN IF NOT EXISTS alto_mm NUMERIC(5,1);
+ALTER TABLE marcos ADD COLUMN IF NOT EXISTS patilla_mm NUMERIC(5,1);
 
 -- 5. Prescripciones y Graduaciones (Con validación biométrica de DIP)
 CREATE TABLE IF NOT EXISTS graduaciones (

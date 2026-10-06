@@ -81,7 +81,17 @@ export default function useFaceLandmarker() {
     const anchoOjos = Math.hypot(dx, dy); // distancia interpupilar en px
     const anguloRad = Math.atan2(dy, dx); // inclinación de la línea de ojos
 
-    return { ojoIzq, ojoDer, centro, anchoOjos, anguloRad, imgW: W, imgH: H };
+    // Estimación de yaw (giro horizontal de la cabeza):
+    // comparamos la distancia de cada ojo a la punta de la nariz (landmark 1).
+    // De frente, ambas distancias son parecidas; de perfil, muy distintas.
+    const nariz = px(pts[1]);
+    const dIzq = Math.hypot(ojoIzq.x - nariz.x, ojoIzq.y - nariz.y);
+    const dDer = Math.hypot(ojoDer.x - nariz.x, ojoDer.y - nariz.y);
+    const asimetria = Math.abs(dIzq - dDer) / Math.max(dIzq, dDer); // 0=frontal, ~1=perfil
+    // Frontal si la asimetría es baja (umbral empírico)
+    const esFrontal = asimetria < 0.25;
+
+    return { ojoIzq, ojoDer, centro, anchoOjos, anguloRad, asimetria, esFrontal, imgW: W, imgH: H };
   }, []);
 
   return { listo, error, detectar };

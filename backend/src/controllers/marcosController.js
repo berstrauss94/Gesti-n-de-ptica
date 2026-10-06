@@ -36,7 +36,8 @@ async function listar(req, res) {
   try {
     const result = await query(
       `SELECT id, codigo, nombre_modelo, marca, material, color,
-              ruta_imagen_png, estilo_forma, activo, created_at
+              ruta_imagen_png, estilo_forma, ancho_mm, alto_mm, patilla_mm,
+              activo, created_at
        FROM marcos ${where}
        ORDER BY created_at DESC
        LIMIT $${params.length - 1} OFFSET $${params.length}`,
@@ -54,7 +55,8 @@ async function obtener(req, res) {
   try {
     const result = await query(
       `SELECT id, codigo, nombre_modelo, marca, material, color,
-              ruta_imagen_png, estilo_forma, activo, created_at
+              ruta_imagen_png, estilo_forma, ancho_mm, alto_mm, patilla_mm,
+              activo, created_at
        FROM marcos WHERE id = $1`,
       [req.params.id]
     );
@@ -68,9 +70,19 @@ async function obtener(req, res) {
   }
 }
 
+// Convierte "" / undefined a null, y numérico válido a Number
+function numOrNull(v) {
+  if (v === undefined || v === null || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
 // POST /api/marcos  (multipart: campo "imagen" con el PNG transparente)
 async function crear(req, res) {
   const { codigo, nombre_modelo, marca, material, color, estilo_forma } = req.body || {};
+  const ancho_mm = numOrNull(req.body?.ancho_mm);
+  const alto_mm = numOrNull(req.body?.alto_mm);
+  const patilla_mm = numOrNull(req.body?.patilla_mm);
 
   if (!codigo || !nombre_modelo) {
     return res.status(400).json({ error: 'codigo y nombre_modelo son obligatorios' });
@@ -83,10 +95,10 @@ async function crear(req, res) {
 
   try {
     const result = await query(
-      `INSERT INTO marcos (codigo, nombre_modelo, marca, material, color, ruta_imagen_png, estilo_forma)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING id, codigo, nombre_modelo, marca, material, color, ruta_imagen_png, estilo_forma, activo, created_at`,
-      [codigo, nombre_modelo, marca || null, material || null, color || null, rutaImagen, estilo_forma || null]
+      `INSERT INTO marcos (codigo, nombre_modelo, marca, material, color, ruta_imagen_png, estilo_forma, ancho_mm, alto_mm, patilla_mm)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       RETURNING id, codigo, nombre_modelo, marca, material, color, ruta_imagen_png, estilo_forma, ancho_mm, alto_mm, patilla_mm, activo, created_at`,
+      [codigo, nombre_modelo, marca || null, material || null, color || null, rutaImagen, estilo_forma || null, ancho_mm, alto_mm, patilla_mm]
     );
     return res.status(201).json({ marco: result.rows[0] });
   } catch (err) {
@@ -105,12 +117,21 @@ async function crear(req, res) {
 // PUT /api/marcos/:id  (actualización parcial; imagen opcional)
 async function actualizar(req, res) {
   const permitidos = ['codigo', 'nombre_modelo', 'marca', 'material', 'color', 'estilo_forma', 'activo'];
+  const numericos = ['ancho_mm', 'alto_mm', 'patilla_mm'];
   const campos = [];
   const valores = [];
 
   permitidos.forEach((campo) => {
     if (req.body && req.body[campo] !== undefined) {
       valores.push(campo === 'activo' ? req.body[campo] === 'true' || req.body[campo] === true : req.body[campo]);
+      campos.push(`${campo} = $${valores.length}`);
+    }
+  });
+
+  // Campos numéricos de medidas (mm)
+  numericos.forEach((campo) => {
+    if (req.body && req.body[campo] !== undefined) {
+      valores.push(numOrNull(req.body[campo]));
       campos.push(`${campo} = $${valores.length}`);
     }
   });
@@ -131,7 +152,7 @@ async function actualizar(req, res) {
     const result = await query(
       `UPDATE marcos SET ${campos.join(', ')}
        WHERE id = $${valores.length}
-       RETURNING id, codigo, nombre_modelo, marca, material, color, ruta_imagen_png, estilo_forma, activo, created_at`,
+       RETURNING id, codigo, nombre_modelo, marca, material, color, ruta_imagen_png, estilo_forma, ancho_mm, alto_mm, patilla_mm, activo, created_at`,
       valores
     );
     if (result.rowCount === 0) {
