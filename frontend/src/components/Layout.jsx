@@ -8,10 +8,11 @@ import { useState } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
 import {
   Home, Users, Glasses, Package, ShoppingCart, Truck, Settings,
-  Sparkles, LogOut, KeyRound, Menu, X,
+  LogOut, KeyRound, Menu, X,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import CambiarPasswordModal from './CambiarPasswordModal';
+import logo from '../assets/logo.png';
 
 const MENU = [
   { name: 'Inicio', path: '/', icon: Home, end: true },
@@ -44,8 +45,8 @@ export default function Layout() {
 
       <aside className={`sidebar ${abiertoMovil ? 'is-open' : ''}`}>
         <div className="sidebar__top">
-          <div className="brand">
-            <Sparkles className="brand__spark" size={22} />
+          <div className="brand" title={MARCA}>
+            <img src={logo} alt={MARCA} className="brand__logo" />
             <span className="brand__name typing">{MARCA}</span>
           </div>
 
