@@ -519,3 +519,19 @@ body {
   font-size: 0.82rem;
   line-height: 1.4;
 }
+
+/* ===================================================================
+   Módulo Stock
+   =================================================================== */
+.readonly { background: var(--gris-fondo); color: var(--texto-suave); }
+.fila-alerta { background: #fff7ed; }
+.tag--rojo { background: rgba(220,38,38,0.1); color: var(--rojo); margin-left: 0.4rem; }
+.col-mov { white-space: nowrap; }
+.btn-mini {
+  width: 30px; height: 30px;
+  border: 1px solid var(--gris-borde);
+  background: #fff; border-radius: 6px;
+  font-size: 1.1rem; line-height: 1; cursor: pointer;
+  margin: 0 2px;
+}
+.btn-mini:hover { background: var(--gris-fondo); border-color: var(--azul); }

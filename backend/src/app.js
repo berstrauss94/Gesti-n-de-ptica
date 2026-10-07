@@ -14,6 +14,7 @@ const authRoutes = require('./routes/authRoutes');
 const usuariosRoutes = require('./routes/usuariosRoutes');
 const marcosRoutes = require('./routes/marcosRoutes');
 const graduacionesRoutes = require('./routes/graduacionesRoutes');
+const stockRoutes = require('./routes/stockRoutes');
 
 const app = express();
 
@@ -43,6 +44,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/marcos', marcosRoutes);
 app.use('/api/graduaciones', graduacionesRoutes);
+app.use('/api', stockRoutes);
 
 // 404 solo para rutas de API (deja pasar lo demás al frontend/SPA)
 app.use('/api', (req, res) => {

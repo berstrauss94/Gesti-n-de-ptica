@@ -20,6 +20,7 @@ export default function Layout() {
           <NavLink to="/" end>Inicio</NavLink>
           <NavLink to="/clientes">Clientes</NavLink>
           <NavLink to="/marcos">Marcos</NavLink>
+          <NavLink to="/stock">Stock</NavLink>
           <NavLink to="/try-on">Prueba Virtual</NavLink>
         </nav>
         <div className="topbar__user">
