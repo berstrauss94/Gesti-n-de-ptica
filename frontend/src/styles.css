@@ -507,3 +507,15 @@ body {
 /* Info de escala en el Try-On */
 .escala-info { margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.2rem; border-top: 1px solid var(--gris-borde); padding-top: 0.6rem; }
 .tryon-canvas--fijo { cursor: default; }
+
+/* Aviso en el alta de fotos de cliente */
+.aviso-fotos {
+  margin: 0 0 0.75rem;
+  padding: 0.6rem 0.8rem;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  color: #92400e;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}

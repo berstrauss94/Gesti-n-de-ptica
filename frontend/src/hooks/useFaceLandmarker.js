@@ -94,15 +94,39 @@ export default function useFaceLandmarker() {
     else if (asimetria < 0.55) vista = '45';
     else vista = 'perfil';
 
-    // Lado hacia el que mira (para espejar la vista 45/perfil si hace falta):
+    // Lado hacia el que mira:
     // si el ojo derecho está más lejos de la nariz, la cara mira a la izquierda.
     const lado = dDer > dIzq ? 'izquierda' : 'derecha';
 
     const esFrontal = vista === 'frontal';
 
+    // Referencia de escala ROBUSTA en cualquier ángulo: altura de la cara
+    // (frente/entrecejo landmark 10 -> mentón landmark 152). No colapsa en
+    // perfil como sí lo hace la distancia entre ojos.
+    const frente = px(pts[10]);
+    const menton = px(pts[152]);
+    const alturaCara = Math.hypot(menton.x - frente.x, menton.y - frente.y);
+
+    // Punto de anclaje del anteojo (línea de ojos / nasion).
+    // En frontal: centro entre ojos. En 45/perfil: el ojo visible desplazado
+    // levemente hacia la nariz, que es donde apoya el anteojo.
+    let anclaOjos;
+    if (vista === 'frontal') {
+      anclaOjos = centro;
+    } else {
+      // ojo que está del lado de la nariz (más cercano a ella)
+      const ojoVisible = dIzq < dDer ? ojoIzq : ojoDer;
+      anclaOjos = {
+        x: (ojoVisible.x + nariz.x) / 2,
+        y: (ojoVisible.y + nariz.y) / 2,
+      };
+    }
+
     return {
       ojoIzq, ojoDer, centro, anchoOjos, anguloRad,
-      asimetria, vista, lado, esFrontal, imgW: W, imgH: H,
+      asimetria, vista, lado, esFrontal,
+      alturaCara, anclaOjos, nariz,
+      imgW: W, imgH: H,
     };
   }, []);
 

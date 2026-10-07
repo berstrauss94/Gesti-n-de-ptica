@@ -134,34 +134,33 @@ export default function TryOnPage() {
         return null;
       }
 
-      // Puntos de los ojos en coords del canvas
+      // Ancla del anteojo (línea de ojos) en coords del canvas
+      const ancla = imagenACanvas(r.anclaOjos, r.imgW, r.imgH);
       const izq = imagenACanvas(r.ojoIzq, r.imgW, r.imgH);
       const der = imagenACanvas(r.ojoDer, r.imgW, r.imgH);
-      const centro = { x: (izq.x + der.x) / 2, y: (izq.y + der.y) / 2 };
-      const distOjosPx = Math.hypot(der.x - izq.x, der.y - izq.y) || 1;
-      const anguloRad = Math.atan2(der.y - izq.y, der.x - izq.x);
+      const anguloRad = r.vista === 'frontal'
+        ? Math.atan2(der.y - izq.y, der.x - izq.x)
+        : 0; // en 45/perfil no inclinamos: la vista del marco ya está girada
 
-      // Escala antropométrica: distancia entre ojos (px) ~ DIP real (mm).
-      const dip = dipMm || DIP_ESTANDAR_MM;
-      const pxPorMm = distOjosPx / dip;
+      // Referencia de escala ROBUSTA: altura de la cara (frente-mentón) en px
+      // del canvas. Es estable en cualquier ángulo (no colapsa en perfil).
+      const escalaFoto = imagenACanvas({ x: 0, y: 0 }, r.imgW, r.imgH).escala;
+      const alturaCanvas = r.alturaCara * escalaFoto;
 
-      // En perfil, la distancia entre ojos deja de ser confiable (se ve 1 ojo),
-      // así que usamos la DIP como referencia relativa al ancho de la imagen.
+      // Altura facial media adulto frente-mentón ≈ 185 mm -> px/mm.
+      const pxPorMm = alturaCanvas / 185;
       let anchoMarcoPx;
-      if (r.vista === 'perfil') {
-        // ancho objetivo ~ ancho real del marco escalado por una referencia
-        // estable: usamos la altura del rostro aproximada por la posición.
-        anchoMarcoPx = (marco?.ancho_mm ? Number(marco.ancho_mm) : 140) * pxPorMm;
-      } else if (marco?.ancho_mm) {
+      if (marco?.ancho_mm) {
         anchoMarcoPx = Number(marco.ancho_mm) * pxPorMm;
       } else {
-        anchoMarcoPx = distOjosPx * 2.1;
+        // Sin medida: el frente del anteojo ≈ 0.72x la altura de la cara
+        anchoMarcoPx = alturaCanvas * 0.72;
       }
 
       setEstadoAjuste(`ok_${r.vista}`);
       return {
-        cx: centro.x,
-        cy: centro.y,
+        cx: ancla.x,
+        cy: ancla.y,
         anchoMarcoPx,
         anguloRad,
         vista: r.vista,

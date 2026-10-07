@@ -132,6 +132,11 @@ export default function ClienteNuevoPage() {
 
         <div className="field--full">
           <span className="slots-title">Fotos de seguimiento (3 obligatorias) *</span>
+          <p className="aviso-fotos">
+            Importante: subí la foto del rostro tal cual (JPG/PNG normal). No uses
+            fotos con el fondo recortado o "transparente" (cuadriculado): el sistema
+            necesita la cara con su fondo real para el probador.
+          </p>
           <div className="slots-grid">
             {SLOTS.map((slot, i) => (
               <div key={slot.key} className={`slot ${fotos[slot.key] ? 'slot--ok' : ''}`}>
