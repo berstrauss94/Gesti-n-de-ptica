@@ -257,6 +257,9 @@ const MIGRACIONES = [
      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
    )`,
   `CREATE INDEX IF NOT EXISTS idx_notif_evento ON notificaciones(evento)`,
+
+  // --- Try-On con IA: API key de Google (opcional, se puede cargar por UI) ---
+  `ALTER TABLE config_notificaciones ADD COLUMN IF NOT EXISTS gemini_api_key VARCHAR(200)`,
 ];
 
 async function ejecutarMigraciones() {

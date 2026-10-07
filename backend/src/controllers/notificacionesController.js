@@ -15,6 +15,7 @@ async function obtenerConfig(req, res) {
       telegram_configurado: Boolean(c.telegram_token),
       telegram_chat_default: c.telegram_chat_default || '',
       whatsapp_configurado: Boolean(c.whatsapp_token),
+      gemini_configurado: Boolean(c.gemini_api_key),
     });
   } catch (err) {
     console.error('Error al obtener config notificaciones:', err);
@@ -27,7 +28,7 @@ async function guardarConfig(req, res) {
   const b = req.body || {};
   const campos = [];
   const valores = [];
-  const permitidos = ['telegram_token', 'telegram_chat_default', 'whatsapp_token', 'whatsapp_phone_id'];
+  const permitidos = ['telegram_token', 'telegram_chat_default', 'whatsapp_token', 'whatsapp_phone_id', 'gemini_api_key'];
   permitidos.forEach((c) => {
     if (b[c] !== undefined && b[c] !== '') { valores.push(b[c]); campos.push(`${c} = $${valores.length}`); }
   });

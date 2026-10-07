@@ -16,7 +16,9 @@ import FotosCarrusel from '../components/tryon/FotosCarrusel';
 import MarcosCarrusel from '../components/tryon/MarcosCarrusel';
 import EditarClienteModal from '../components/tryon/EditarClienteModal';
 import EditarMarcoModal from '../components/tryon/EditarMarcoModal';
+import Modal from '../components/Modal';
 import useFaceLandmarker from '../hooks/useFaceLandmarker';
+import { estadoTryonIA, generarTryonIA } from '../api/tryonIA';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -46,6 +48,28 @@ export default function TryOnPage() {
   const [error, setError] = useState('');
   const canvasRef = useRef(null);
   const { listo: faceListo, detectar } = useFaceLandmarker();
+
+  // Try-On con IA
+  const [iaHabilitada, setIaHabilitada] = useState(false);
+  const [iaImagen, setIaImagen] = useState('');
+  const [iaCargando, setIaCargando] = useState(false);
+
+  useEffect(() => {
+    estadoTryonIA().then((e) => setIaHabilitada(e.habilitado)).catch(() => setIaHabilitada(false));
+  }, []);
+
+  async function handleGenerarIA() {
+    if (!fotoSel || !marcoSel) return;
+    setError(''); setIaImagen(''); setIaCargando(true);
+    try {
+      const r = await generarTryonIA(fotoSel.ruta_local, marcoSel.ruta_imagen_png);
+      setIaImagen(r.imagen);
+    } catch (err) {
+      setError(err.response?.data?.error || 'No se pudo generar la imagen con IA');
+    } finally {
+      setIaCargando(false);
+    }
+  }
 
   // Guardamos la última imagen cargada para recalcular si cambia el marco
   const ultimaImg = useRef(null);
@@ -296,6 +320,25 @@ export default function TryOnPage() {
                   <div>Este marco no tiene ancho (mm) cargado: se usa proporción estimada.</div>
                 )}
               </div>
+
+              {/* Try-On con IA (prueba realista) */}
+              {marcoSel && (
+                <div className="ia-box">
+                  <button
+                    type="button"
+                    className="btn btn--primary btn--inline"
+                    onClick={handleGenerarIA}
+                    disabled={!iaHabilitada || iaCargando || !fotoSel}
+                  >
+                    {iaCargando ? 'Generando…' : '✨ Prueba realista con IA'}
+                  </button>
+                  {!iaHabilitada && (
+                    <p className="muted small">
+                      Requiere configurar la API key de Google en Configuración.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -334,6 +377,17 @@ export default function TryOnPage() {
             setEditandoMarco(false);
           }}
         />
+      )}
+
+      {iaImagen && (
+        <Modal titulo="Prueba realista (IA)" onCerrar={() => setIaImagen('')}>
+          <div className="ia-resultado">
+            <img src={iaImagen} alt="Prueba con IA" />
+            <a href={iaImagen} download="tryon_ia.png" className="btn btn--primary btn--inline">
+              Descargar imagen
+            </a>
+          </div>
+        </Modal>
       )}
     </div>
   );

@@ -568,3 +568,8 @@ body {
   padding: 0.35rem 0.5rem; border: 1px solid var(--gris-borde);
   border-radius: 6px; font-size: 0.85rem;
 }
+
+/* Try-On con IA */
+.ia-box { margin-top: 1rem; border-top: 1px solid var(--gris-borde); padding-top: 0.9rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.ia-resultado { display: flex; flex-direction: column; gap: 1rem; align-items: center; }
+.ia-resultado img { max-width: 100%; border-radius: var(--radio); }

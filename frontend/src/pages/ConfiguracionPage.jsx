@@ -13,7 +13,7 @@ export default function ConfiguracionPage() {
   const [cfg, setCfg] = useState(null);
   const [form, setForm] = useState({
     telegram_token: '', telegram_chat_default: '', whatsapp_token: '', whatsapp_phone_id: '',
-    alertas_activas: true,
+    gemini_api_key: '', alertas_activas: true,
   });
   const [historial, setHistorial] = useState([]);
   const [error, setError] = useState('');
@@ -39,9 +39,10 @@ export default function ConfiguracionPage() {
       if (form.telegram_token) payload.telegram_token = form.telegram_token;
       if (form.whatsapp_token) payload.whatsapp_token = form.whatsapp_token;
       if (form.whatsapp_phone_id) payload.whatsapp_phone_id = form.whatsapp_phone_id;
+      if (form.gemini_api_key) payload.gemini_api_key = form.gemini_api_key;
       await guardarConfigNotif(payload);
       setOk('Configuración guardada.');
-      setForm((f) => ({ ...f, telegram_token: '', whatsapp_token: '', whatsapp_phone_id: '' }));
+      setForm((f) => ({ ...f, telegram_token: '', whatsapp_token: '', whatsapp_phone_id: '', gemini_api_key: '' }));
       cargar();
     } catch (err) { setError(err.response?.data?.error || 'No se pudo guardar'); }
   }
@@ -87,6 +88,9 @@ export default function ConfiguracionPage() {
           <input value={form.whatsapp_token} onChange={(e) => setCampo('whatsapp_token', e.target.value)} placeholder="dejar vacío para no cambiar" /></label>
         <label className="field"><span>WhatsApp Phone ID</span>
           <input value={form.whatsapp_phone_id} onChange={(e) => setCampo('whatsapp_phone_id', e.target.value)} /></label>
+
+        <label className="field field--full"><span>Google / Gemini API Key (Try-On con IA)</span>
+          <input value={form.gemini_api_key} onChange={(e) => setCampo('gemini_api_key', e.target.value)} placeholder="dejar vacío para no cambiar — habilita la prueba realista con IA" /></label>
 
         <div className="form-actions">
           <button type="button" className="btn btn--ghost btn--inline" onClick={probar}>Enviar prueba (Telegram)</button>

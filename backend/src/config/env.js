@@ -35,4 +35,9 @@ module.exports = {
   AFIP_KEY: process.env.AFIP_KEY || '',     // contenido o ruta del .key
   AFIP_PUNTO_VENTA: parseInt(process.env.AFIP_PUNTO_VENTA, 10) || 1,
   AFIP_PRODUCCION: process.env.AFIP_PRODUCCION === 'true', // false = homologación
+
+  // --- IA generativa de imágenes (Try-On realista) ---
+  // Si falta, el Try-On con IA queda deshabilitado (sigue la superposición 2D).
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
+  GEMINI_IMAGE_MODEL: process.env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image-preview',
 };
