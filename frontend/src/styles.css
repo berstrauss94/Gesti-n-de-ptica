@@ -91,40 +91,66 @@ body {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
-/* --- Layout con sidebar lateral (estética Gemini/Optix) --- */
+/* --- Layout con sidebar lateral COLAPSABLE (estética Gemini/Optix) --- */
+:root { --sidebar-colapsado: 64px; }
+
 .app-shell { min-height: 100vh; display: flex; }
 
 .sidebar {
-  width: var(--sidebar-ancho);
-  flex: 0 0 var(--sidebar-ancho);
+  width: var(--sidebar-colapsado);
+  flex: 0 0 var(--sidebar-colapsado);
   background: var(--antracita);
   color: #e8e8ea;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 1.1rem 0.9rem;
+  padding: 1.1rem 0.6rem;
   position: sticky;
   top: 0;
   height: 100vh;
+  overflow: hidden;
+  transition: width 0.25s ease, flex-basis 0.25s ease, padding 0.25s ease;
+  z-index: 40;
+}
+/* Expansión al pasar el puntero (desktop) */
+.sidebar:hover {
+  width: var(--sidebar-ancho);
+  flex-basis: var(--sidebar-ancho);
+  padding: 1.1rem 0.9rem;
 }
 
+/* Textos: ocultos cuando está colapsado, aparecen al expandir */
+.brand__name,
+.nav-item__label,
+.sidebar__sucursal,
+.sidebar__user,
+.sidebar__btn-label {
+  opacity: 0;
+  white-space: nowrap;
+  transition: opacity 0.18s ease;
+}
+.sidebar:hover .brand__name,
+.sidebar:hover .nav-item__label,
+.sidebar:hover .sidebar__sucursal,
+.sidebar:hover .sidebar__user,
+.sidebar:hover .sidebar__btn-label { opacity: 1; }
+
 /* Marca */
-.brand { display: flex; align-items: center; gap: 0.55rem; padding: 0.3rem 0.5rem 1.2rem; }
+.brand { display: flex; align-items: center; gap: 0.55rem; padding: 0.3rem 0.6rem 1.2rem; }
 .brand__spark { color: var(--primary-accent); animation: spark-pulse 2.4s ease-in-out infinite; flex: 0 0 auto; }
-.brand__name {
-  font-weight: 700; font-size: 1.02rem; color: #fff;
-  white-space: nowrap; overflow: hidden;
-  border-right: 2px solid transparent;
-  animation: typing 2.2s steps(16, end) 1 both;
+.brand__name { font-weight: 700; font-size: 1rem; color: #fff; overflow: hidden; }
+/* Tipeo fluido: solo corre cuando el sidebar está expandido */
+.sidebar:hover .brand__name.typing {
+  animation: typing 1.1s steps(24, end) 1 both;
 }
 @keyframes spark-pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(0.9); } }
-@keyframes typing { from { max-width: 0; } to { max-width: 200px; } }
+@keyframes typing { from { max-width: 0; } to { max-width: 220px; } }
 
 /* Navegación */
 .nav-menu { display: flex; flex-direction: column; gap: 0.2rem; }
 .nav-item {
   display: flex; align-items: center; gap: 0.7rem;
-  padding: 0.6rem 0.7rem; border-radius: 9px;
+  padding: 0.6rem 0.65rem; border-radius: 9px;
   color: #b9b9c0; text-decoration: none; font-size: 0.92rem;
   transition: background 0.15s ease, color 0.15s ease;
 }
@@ -148,20 +174,42 @@ body {
 .sidebar__btn {
   display: flex; align-items: center; gap: 0.45rem; justify-content: flex-start;
   background: transparent; border: 1px solid #44454a; color: #c9c9d0;
-  padding: 0.45rem 0.6rem; border-radius: 8px; font-size: 0.82rem; cursor: pointer;
-  transition: all 0.15s ease;
+  padding: 0.45rem 0.55rem; border-radius: 8px; font-size: 0.82rem; cursor: pointer;
+  transition: all 0.15s ease; white-space: nowrap; overflow: hidden;
 }
 .sidebar__btn:hover { background: var(--antracita-2); color: #fff; }
 .sidebar__btn--salir:hover { border-color: var(--rojo); color: #fff; background: var(--rojo); }
 
+/* Botón hamburguesa (solo táctil/móvil) */
+.menu-toggle {
+  display: none;
+  position: fixed; top: 0.8rem; left: 0.8rem; z-index: 60;
+  width: 42px; height: 42px; border-radius: 10px;
+  background: var(--antracita); color: #fff; border: none; cursor: pointer;
+  align-items: center; justify-content: center;
+}
+
 /* Contenido */
 .content { flex: 1; padding: 1.5rem 2rem; min-width: 0; }
 
+/* --- Táctil / móvil: sin hover; se usa el botón ☰ --- */
 @media (max-width: 760px) {
-  .app-shell { flex-direction: column; }
-  .sidebar { width: 100%; flex: none; height: auto; position: static; flex-direction: column; }
-  .nav-menu { flex-direction: row; flex-wrap: wrap; }
-  .content { padding: 1rem; }
+  .menu-toggle { display: flex; }
+  .sidebar {
+    position: fixed; left: 0; top: 0;
+    width: var(--sidebar-ancho); flex-basis: var(--sidebar-ancho);
+    padding: 1.1rem 0.9rem;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+  }
+  .sidebar.is-open { transform: translateX(0); }
+  /* En móvil, cuando se abre, mostrar los textos */
+  .sidebar .brand__name,
+  .sidebar .nav-item__label,
+  .sidebar .sidebar__sucursal,
+  .sidebar .sidebar__user,
+  .sidebar .sidebar__btn-label { opacity: 1; }
+  .content { padding: 1rem; padding-top: 4rem; }
 }
 
 /* --- Tarjetas --- */
