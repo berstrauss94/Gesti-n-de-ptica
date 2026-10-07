@@ -191,37 +191,37 @@ body {
   top: 0;
   height: 100vh;
   z-index: 40;
-  /* Despliegue vertical de entrada */
+  /* 1) Despliegue vertical de entrada — duración larga y fluida */
   transform-origin: top;
-  animation: deployVertical 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: deployVertical 0.8s cubic-bezier(0.22, 0.61, 0.36, 1) both;
 }
 @keyframes deployVertical {
   0% { transform: scaleY(0.4); opacity: 0; }
   100% { transform: scaleY(1); opacity: 1; }
 }
 
-/* Logo: aparece con pop acentuado al terminar el despliegue */
-.brand__logo { animation: logoPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.55s both; }
+/* 2a) Logo sidebar: pop al terminar el despliegue */
+.brand__logo { animation: logoPop 0.7s cubic-bezier(0.34, 1.4, 0.5, 1) 0.8s both; }
 @keyframes logoPop {
   0% { opacity: 0; transform: scale(0.8); }
   70% { transform: scale(1.12); box-shadow: 0 0 16px rgba(216, 0, 117, 0.55); }
   100% { opacity: 1; transform: scale(1); }
 }
 
-/* Íconos del menú: entran en cascada, uno por uno */
+/* 2b) Íconos del menú: cascada fluida, duraciones largas */
 .nav-item {
   opacity: 0;
   transform: translateX(-12px);
-  animation: slideInLeft 0.35s ease-out both;
+  animation: slideInLeft 0.6s cubic-bezier(0.22, 0.61, 0.36, 1) both;
 }
 @keyframes slideInLeft { to { opacity: 1; transform: translateX(0); } }
-.nav-menu .nav-item:nth-child(1) { animation-delay: 0.75s; }
-.nav-menu .nav-item:nth-child(2) { animation-delay: 0.85s; }
-.nav-menu .nav-item:nth-child(3) { animation-delay: 0.95s; }
-.nav-menu .nav-item:nth-child(4) { animation-delay: 1.05s; }
-.nav-menu .nav-item:nth-child(5) { animation-delay: 1.15s; }
-.nav-menu .nav-item:nth-child(6) { animation-delay: 1.25s; }
-.nav-menu .nav-item:nth-child(7) { animation-delay: 1.35s; }
+.nav-menu .nav-item:nth-child(1) { animation-delay: 1.5s; }
+.nav-menu .nav-item:nth-child(2) { animation-delay: 1.7s; }
+.nav-menu .nav-item:nth-child(3) { animation-delay: 1.9s; }
+.nav-menu .nav-item:nth-child(4) { animation-delay: 2.1s; }
+.nav-menu .nav-item:nth-child(5) { animation-delay: 2.3s; }
+.nav-menu .nav-item:nth-child(6) { animation-delay: 2.5s; }
+.nav-menu .nav-item:nth-child(7) { animation-delay: 2.7s; }
 
 /* El sidebar SIEMPRE queda angosto (estilo Gemini): solo íconos.
    Los nombres aparecen como tooltip flotante al apuntar cada ícono. */
@@ -309,11 +309,11 @@ body {
   align-items: center; justify-content: center;
 }
 
-/* Contenido: entra deslizando desde la izquierda (misma animación que el menú).
-   En cada cambio de sección se reproduce, dando continuidad visual. */
+/* 4) Contenido: entra deslizando, con duración larga y fluida.
+   En la primera carga queda después de los íconos; al navegar, fluido. */
 .content {
   flex: 1; padding: 1.5rem 2rem; min-width: 0;
-  animation: contentSlideIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: contentSlideIn 0.7s cubic-bezier(0.22, 0.61, 0.36, 1) 0.8s both;
 }
 @keyframes contentSlideIn {
   0% { opacity: 0; transform: translateX(-24px); }
@@ -924,24 +924,23 @@ body {
    Fondo propio por sección (ej. Stock) — aparece primero, suave
    =================================================================== */
 .seccion-con-fondo { position: relative; }
-/* El fondo aparece con la misma animación fluida del login (fade + zoom suave) */
+/* 3) El fondo aparece con la misma animación fluida del login (fade + zoom suave) */
 .seccion-fondo {
   position: fixed;
   top: 0; left: var(--sidebar-colapsado); right: 0; bottom: 0;
   background-size: cover; background-position: center;
   z-index: 0;
   opacity: 0;
-  animation: fondoAppear 0.9s cubic-bezier(0.22, 0.61, 0.36, 1) 0s both;
+  animation: fondoAppear 0.9s cubic-bezier(0.22, 0.61, 0.36, 1) 0.5s both;
   pointer-events: none;
 }
 .seccion-fondo-velo {
   position: fixed;
   top: 0; left: var(--sidebar-colapsado); right: 0; bottom: 0;
   z-index: 0;
-  /* Velo difuminado a la mitad (39%) para que se vea más la foto */
   background: rgba(245, 245, 247, 0.39);
   opacity: 0;
-  animation: fondoVelo 0.9s ease-out 0s both;
+  animation: fondoVelo 0.9s ease-out 0.5s both;
   pointer-events: none;
 }
 /* El contenido de la sección por encima del fondo */

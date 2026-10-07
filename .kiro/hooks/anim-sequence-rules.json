@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Reglas de secuencia de animación",
+      "trigger": "PreToolUse",
+      "description": "Memoria activa que mantiene las reglas de secuencia de animación (orden, fluidez, tiempos, curvas) al modificar cualquier archivo CSS o JSX con animaciones.",
+      "matcher": "fs_write|str_replace|fs_append",
+      "action": {
+        "type": "agent",
+        "prompt": "REGLAS DE ANIMACIÓN — MEMORIA ACTIVA (aplicar siempre que se modifique CSS o JSX de animaciones):\n\n1. SECUENCIA ENCADENADA OBLIGATORIA (cada paso arranca al terminar el anterior):\n   Paso 1: Barra lateral (deployVertical) + logo sidebar (logoPop)\n   Paso 2: Íconos de las pestañas (slideInLeft, cascada)\n   Paso 3: Imagen/fondo de la sección (fondoAppear, fade+zoom suave)\n   Paso 4: Casillas de texto / contenido (contentSlideIn)\n\n2. FLUIDEZ: todas las animaciones deben usar duraciones LARGAS (0.6s-0.9s) y curvas SUAVES (cubic-bezier 0.22, 0.61, 0.36, 1). NUNCA usar duraciones menores a 0.5s.\n\n3. CONSECUTIVO SIN PAUSAS: cada animación arranca justo al terminar la anterior. Sin huecos ni solapamientos.\n\n4. CURVA ESTÁNDAR: cubic-bezier(0.22, 0.61, 0.36, 1) para entradas. cubic-bezier(0.34, 1.4, 0.5, 1) para pops/acentuar.\n\n5. Al agregar nuevos elementos animados, RESPETAR el orden de la secuencia y recalcular los delays para que encadenen correctamente.\n\n6. El sidebar solo se anima en la primera carga (no se re-monta al navegar). El contenido se re-anima en cada navegación (tiene key por ruta)."
+      }
+    }
+  ]
+}
