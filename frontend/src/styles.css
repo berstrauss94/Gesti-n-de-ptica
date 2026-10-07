@@ -552,3 +552,19 @@ body {
 .venta-total strong { font-size: 1.15rem; }
 .table--compact th, .table--compact td { padding: 0.5rem 0.75rem; font-size: 0.9rem; }
 .btn-mini--wide { width: auto; padding: 0 0.6rem; font-size: 0.8rem; }
+
+/* ===================================================================
+   Módulo Compras (tabs, estados)
+   =================================================================== */
+.tabs { display: flex; gap: 0.25rem; border-bottom: 1px solid var(--gris-borde); }
+.tab {
+  background: none; border: none; padding: 0.6rem 1rem; cursor: pointer;
+  color: var(--texto-suave); font-size: 0.95rem; border-bottom: 2px solid transparent;
+}
+.tab.is-active { color: var(--azul); border-bottom-color: var(--azul); font-weight: 600; }
+.field--check { flex-direction: row; align-items: center; gap: 0.5rem; }
+.field--check input { width: auto; }
+.select-estado {
+  padding: 0.35rem 0.5rem; border: 1px solid var(--gris-borde);
+  border-radius: 6px; font-size: 0.85rem;
+}

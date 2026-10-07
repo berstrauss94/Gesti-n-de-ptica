@@ -17,6 +17,7 @@ import MarcoNuevoPage from './pages/MarcoNuevoPage';
 import TryOnPage from './pages/TryOnPage';
 import StockPage from './pages/StockPage';
 import TpvPage from './pages/TpvPage';
+import ComprasPage from './pages/ComprasPage';
 
 export default function App() {
   return (
@@ -39,6 +40,7 @@ export default function App() {
         <Route path="/try-on" element={<TryOnPage />} />
         <Route path="/stock" element={<StockPage />} />
         <Route path="/tpv" element={<TpvPage />} />
+        <Route path="/compras" element={<ComprasPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

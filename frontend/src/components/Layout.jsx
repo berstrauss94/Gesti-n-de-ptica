@@ -22,6 +22,7 @@ export default function Layout() {
           <NavLink to="/marcos">Marcos</NavLink>
           <NavLink to="/stock">Stock</NavLink>
           <NavLink to="/tpv">TPV</NavLink>
+          <NavLink to="/compras">Compras</NavLink>
           <NavLink to="/try-on">Prueba Virtual</NavLink>
         </nav>
         <div className="topbar__user">
