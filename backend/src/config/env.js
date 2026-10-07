@@ -27,4 +27,12 @@ module.exports = {
   UPLOAD_DIR: process.env.UPLOAD_DIR || '',
   // Sirve el build del frontend desde Express (modo monolito en Railway)
   SERVE_FRONTEND: process.env.SERVE_FRONTEND === 'true',
+
+  // --- AFIP / ARCA (facturación electrónica) ---
+  // Si faltan, el módulo fiscal opera en modo SIMULACIÓN (no bloquea el TPV).
+  AFIP_CUIT: process.env.AFIP_CUIT || '',
+  AFIP_CERT: process.env.AFIP_CERT || '',   // contenido o ruta del .crt
+  AFIP_KEY: process.env.AFIP_KEY || '',     // contenido o ruta del .key
+  AFIP_PUNTO_VENTA: parseInt(process.env.AFIP_PUNTO_VENTA, 10) || 1,
+  AFIP_PRODUCCION: process.env.AFIP_PRODUCCION === 'true', // false = homologación
 };

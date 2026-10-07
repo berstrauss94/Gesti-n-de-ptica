@@ -12,6 +12,7 @@ import {
   cajaActual, abrirCaja, cerrarCaja,
   listarVentas, crearVenta, entregarVenta, anularVenta,
 } from '../api/ventas';
+import { estadoFiscal, emitirComprobante } from '../api/fiscal';
 
 const MEDIOS = ['efectivo', 'tarjeta', 'transferencia'];
 const ESTADO_LABEL = {
@@ -35,19 +36,42 @@ export default function TpvPage() {
   const [senaMonto, setSenaMonto] = useState('');
   const [senaMedio, setSenaMedio] = useState('efectivo');
   const [prodSel, setProdSel] = useState('');
+  const [fiscal, setFiscal] = useState(null); // estado del módulo fiscal
+  const [tipoComp, setTipoComp] = useState({}); // tipo elegido por venta
 
   useEffect(() => {
     (async () => {
       try {
-        const [s, u] = await Promise.all([listarSucursales(), listarUsuarios({ limit: 200 })]);
+        const [s, u, f] = await Promise.all([
+          listarSucursales(), listarUsuarios({ limit: 200 }), estadoFiscal().catch(() => null),
+        ]);
         setSucursales(s);
         setClientes(u.usuarios);
+        setFiscal(f);
         if (s.length) setSucursalId(s[0].id);
       } catch (err) {
         setError(err.response?.data?.error || 'No se pudieron cargar los datos');
       }
     })();
   }, []);
+
+  async function handleFacturar(ventaId) {
+    const tipo = tipoComp[ventaId] || 'INTERNO';
+    setError(''); setOk('');
+    try {
+      const r = await emitirComprobante({ venta_id: ventaId, tipo });
+      const c = r.comprobante;
+      if (c.estado === 'autorizado') {
+        setOk(`Factura ${c.tipo} autorizada. CAE: ${c.cae}`);
+      } else if (c.estado === 'simulado') {
+        setOk(`Comprobante ${c.tipo} emitido en modo simulación (sin validez fiscal).`);
+      } else {
+        setError(`Comprobante ${c.tipo}: ${c.observaciones || 'no autorizado'}`);
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || 'No se pudo emitir el comprobante');
+    }
+  }
 
   const refrescar = useCallback(async (sid) => {
     if (!sid) return;
@@ -161,6 +185,12 @@ export default function TpvPage() {
         <strong>Caja: </strong>
         {caja ? <span className="ok-text">Abierta (inicial ${Number(caja.monto_inicial).toFixed(2)})</span>
               : <span className="muted">Cerrada — abrí una caja para registrar cobros en efectivo.</span>}
+        {fiscal && (
+          <span className="muted small" style={{ marginLeft: '1rem' }}>
+            · Facturación: <strong>{fiscal.modo}</strong>
+            {fiscal.modo === 'simulacion' && ' (sin credenciales AFIP; emite comprobantes internos)'}
+          </span>
+        )}
       </div>
 
       {/* Nueva venta */}
@@ -239,6 +269,21 @@ export default function TpvPage() {
                   )}
                   {v.estado !== 'anulada' && v.estado !== 'entregada' && (
                     <button type="button" className="btn-mini btn-mini--wide" onClick={() => handleAnular(v.id)}>Anular</button>
+                  )}
+                  {v.estado !== 'anulada' && (
+                    <>
+                      <select
+                        className="select-estado"
+                        value={tipoComp[v.id] || 'INTERNO'}
+                        onChange={(e) => setTipoComp((prev) => ({ ...prev, [v.id]: e.target.value }))}
+                      >
+                        <option value="INTERNO">Interno</option>
+                        <option value="A">Factura A</option>
+                        <option value="B">Factura B</option>
+                        <option value="C">Factura C</option>
+                      </select>
+                      <button type="button" className="btn-mini btn-mini--wide" onClick={() => handleFacturar(v.id)}>Facturar</button>
+                    </>
                   )}
                 </td>
               </tr>

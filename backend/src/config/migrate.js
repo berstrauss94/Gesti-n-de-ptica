@@ -211,6 +211,27 @@ const MIGRACIONES = [
   `CREATE TRIGGER update_ordenes_lab_updated_at
      BEFORE UPDATE ON ordenes_laboratorio FOR EACH ROW
      EXECUTE FUNCTION update_updated_at_column()`,
+
+  // --- Módulo Fiscal (AFIP/ARCA) ---
+  `CREATE TABLE IF NOT EXISTS comprobantes_fiscales (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     venta_id UUID REFERENCES ventas(id) ON DELETE SET NULL,
+     tipo VARCHAR(10) NOT NULL CHECK (tipo IN ('A','B','C','INTERNO')),
+     cuit_emisor VARCHAR(15), cuit_receptor VARCHAR(15),
+     punto_venta INT, numero INT,
+     importe_total NUMERIC(12,2) NOT NULL DEFAULT 0,
+     importe_neto NUMERIC(12,2) DEFAULT 0,
+     importe_iva NUMERIC(12,2) DEFAULT 0,
+     cae VARCHAR(20), cae_vencimiento DATE,
+     estado VARCHAR(15) NOT NULL DEFAULT 'borrador'
+       CHECK (estado IN ('borrador','simulado','autorizado','rechazado','anulado')),
+     modo VARCHAR(12) NOT NULL DEFAULT 'simulacion' CHECK (modo IN ('simulacion','produccion')),
+     observaciones TEXT,
+     payload JSONB DEFAULT '{}'::jsonb,
+     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+   )`,
+  `CREATE INDEX IF NOT EXISTS idx_comprobantes_venta ON comprobantes_fiscales(venta_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_comprobantes_estado ON comprobantes_fiscales(estado)`,
 ];
 
 async function ejecutarMigraciones() {
