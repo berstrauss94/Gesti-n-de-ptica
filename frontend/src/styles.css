@@ -109,7 +109,37 @@ body {
   top: 0;
   height: 100vh;
   z-index: 40;
+  /* Despliegue vertical de entrada */
+  transform-origin: top;
+  animation: deployVertical 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+@keyframes deployVertical {
+  0% { transform: scaleY(0.4); opacity: 0; }
+  100% { transform: scaleY(1); opacity: 1; }
+}
+
+/* Logo: aparece con pop acentuado al terminar el despliegue */
+.brand__logo { animation: logoPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.55s both; }
+@keyframes logoPop {
+  0% { opacity: 0; transform: scale(0.8); }
+  70% { transform: scale(1.12); box-shadow: 0 0 16px rgba(216, 0, 117, 0.55); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Íconos del menú: entran en cascada, uno por uno */
+.nav-item {
+  opacity: 0;
+  transform: translateX(-12px);
+  animation: slideInLeft 0.35s ease-out both;
+}
+@keyframes slideInLeft { to { opacity: 1; transform: translateX(0); } }
+.nav-menu .nav-item:nth-child(1) { animation-delay: 0.75s; }
+.nav-menu .nav-item:nth-child(2) { animation-delay: 0.85s; }
+.nav-menu .nav-item:nth-child(3) { animation-delay: 0.95s; }
+.nav-menu .nav-item:nth-child(4) { animation-delay: 1.05s; }
+.nav-menu .nav-item:nth-child(5) { animation-delay: 1.15s; }
+.nav-menu .nav-item:nth-child(6) { animation-delay: 1.25s; }
+.nav-menu .nav-item:nth-child(7) { animation-delay: 1.35s; }
 
 /* El sidebar SIEMPRE queda angosto (estilo Gemini): solo íconos.
    Los nombres aparecen como tooltip flotante al apuntar cada ícono. */
@@ -248,7 +278,7 @@ body {
   background: #fff;
   border-radius: var(--radio);
   padding: 1.5rem;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.14), 0 2px 6px rgba(15, 23, 42, 0.08);
 }
 .roadmap { list-style: none; padding: 0; line-height: 1.9; color: var(--texto-suave); }
 
@@ -788,3 +818,14 @@ body {
 .optometry-frame-guide::after { bottom: 0; right: 0; width: 1px; height: 0%; }
 .optometry-frame-guide:hover::before { width: 100%; }
 .optometry-frame-guide:hover::after { height: 100%; }
+
+/* ===================================================================
+   Sombreado reforzado de los cuadros (sobre fondo platinado)
+   =================================================================== */
+.login__card,
+.modal,
+.marco-card {
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.22), 0 3px 8px rgba(15, 23, 42, 0.12);
+}
+/* Las miniaturas del catálogo y filas también despegan del fondo */
+.card.no-pad { box-shadow: 0 10px 28px rgba(15, 23, 42, 0.14), 0 2px 6px rgba(15, 23, 42, 0.08); }
