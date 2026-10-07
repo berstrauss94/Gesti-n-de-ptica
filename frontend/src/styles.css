@@ -52,6 +52,7 @@ body {
 
 /* --- Login --- */
 .login {
+  position: relative;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -59,7 +60,31 @@ body {
   justify-content: center;
   gap: 1.25rem;
   padding: 1.5rem;
+  overflow: hidden;
 }
+
+/* 0) FONDO: imagen del local. Aparece PRIMERO (fade + zoom suave). */
+.login__fondo {
+  position: absolute; inset: 0;
+  background-size: cover; background-position: center;
+  z-index: 0;
+  opacity: 0;
+  animation: fondoAppear 0.9s cubic-bezier(0.22, 0.61, 0.36, 1) 0s both;
+}
+@keyframes fondoAppear {
+  0% { opacity: 0; transform: scale(1.06); }
+  100% { opacity: 1; transform: scale(1); }
+}
+/* Velo sutil para dar contraste al contenido sobre la foto */
+.login__fondo-velo {
+  position: absolute; inset: 0; z-index: 0;
+  background: rgba(20, 22, 28, 0.35);
+  opacity: 0;
+  animation: fondoVelo 0.9s ease-out 0s both;
+}
+@keyframes fondoVelo { to { opacity: 1; } }
+/* El logo, tarjeta y casillas van por encima del fondo */
+.login__logo, .login__card { position: relative; z-index: 1; }
 
 /* 1) LOGO (achicado), FUERA de la tarjeta, arriba.
    Secuencia paso 1 (dentro de los ~1.5s totales): aparece con pop y luego
@@ -72,8 +97,8 @@ body {
   filter: drop-shadow(22px 28px 24px rgba(15, 23, 42, 0.45));
   opacity: 0;
   animation:
-    logoPopIn 0.8s cubic-bezier(0.34, 1.4, 0.5, 1) 0s both,
-    logoFloat 4s ease-in-out 2.5s infinite;
+    logoPopIn 0.8s cubic-bezier(0.34, 1.4, 0.5, 1) 0.8s both,
+    logoFloat 4s ease-in-out 3.4s infinite;
 }
 .login__logo:hover {
   transform: scale(1.04);
@@ -104,8 +129,8 @@ body {
   align-items: center;
   text-align: center;
   opacity: 0;
-  /* arranca al terminar el logo (0.8s); duración más larga = más fluido */
-  animation: cardAppear 0.7s cubic-bezier(0.22, 0.61, 0.36, 1) 0.8s both;
+  /* arranca al terminar el logo (0.8 fondo + 0.8 logo = 1.6s) */
+  animation: cardAppear 0.7s cubic-bezier(0.22, 0.61, 0.36, 1) 1.6s both;
 }
 @keyframes cardAppear {
   0% { opacity: 0; transform: translateY(16px) scale(0.98); }
@@ -123,10 +148,10 @@ body {
   0% { opacity: 0; transform: translateY(-12px); }
   100% { opacity: 1; transform: translateY(0); }
 }
-/* arrancan al terminar la tarjeta (0.8s + 0.7s ≈ 1.5s), cascada espaciada */
-.login__stagger--1 { animation-delay: 1.5s; }
-.login__stagger--2 { animation-delay: 1.75s; }
-.login__stagger--3 { animation-delay: 2s; }
+/* arrancan al terminar la tarjeta (1.6s + 0.7s ≈ 2.3s), cascada espaciada */
+.login__stagger--1 { animation-delay: 2.3s; }
+.login__stagger--2 { animation-delay: 2.55s; }
+.login__stagger--3 { animation-delay: 2.8s; }
 .login__error {
   margin: 0;
   color: var(--rojo);

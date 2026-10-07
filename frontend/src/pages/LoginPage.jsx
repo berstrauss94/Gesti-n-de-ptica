@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import logo from '../assets/logo.png';
+import fondo from '../assets/fondo-local.jpg';
 
 export default function LoginPage() {
   const { login, cargando, autenticado } = useAuth();
@@ -37,6 +38,10 @@ export default function LoginPage() {
 
   return (
     <div className="login">
+      {/* 0) Fondo: aparece primero, antes que el logo */}
+      <div className="login__fondo" style={{ backgroundImage: `url(${fondo})` }} aria-hidden="true" />
+      <div className="login__fondo-velo" aria-hidden="true" />
+
       {/* 1) Logo grande, FUERA de la tarjeta, arriba */}
       <img src={logo} alt="Centro de Contactología" className="login__logo" />
 
