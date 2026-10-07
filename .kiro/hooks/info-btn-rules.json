@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Regla de tooltips informativos de seccion",
+      "trigger": "PreToolUse",
+      "description": "Recuerda agregar el InfoBtn con 3 puntos al título de cada sección nueva.",
+      "matcher": "fs_write|str_replace|fs_append",
+      "action": {
+        "type": "agent",
+        "prompt": "REGLA DE TOOLTIPS INFORMATIVOS DE SECCIÓN — MEMORIA ACTIVA (aplicar siempre que se cree o edite una página/sección con título):\n\n1. TODA sección nueva debe llevar, a la derecha de su título principal (dentro del <h1>), el componente reutilizable <InfoBtn /> importado desde '../components/InfoBtn'.\n\n2. El InfoBtn es un botón \"!\" (clase .info-btn) que abre un popover (.info-popover) con EXACTAMENTE 3 puntos, pasados como props:\n   - paraQue: \"¿Para qué sirve?\" — qué administra o resuelve la sección.\n   - comoFunciona: \"¿Cómo funciona?\" — pasos o acciones principales que el usuario puede hacer.\n   - conQueFin: \"¿Con qué fin?\" — el objetivo de negocio de la sección.\n\n3. Patrón JSX estándar:\n   <h1>\n     Título de la sección\n     <InfoBtn\n       paraQue=\"...\"\n       comoFunciona=\"...\"\n       conQueFin=\"...\"\n     />\n   </h1>\n\n4. El popover se cierra al hacer clic/tap fuera (ya implementado en InfoBtn.jsx). NO reimplementar esa lógica; reutilizar el componente.\n\n5. Los textos van en español rioplatense (voseo: \"cargá\", \"revisá\", \"tené\"), claros y breves (1 frase por punto).\n\n6. NO duplicar el código del botón en cada página: siempre usar el componente InfoBtn. Si el componente no existe en un proyecto nuevo, crearlo primero en frontend/src/components/InfoBtn.jsx con los estilos .info-btn/.info-popover en styles.css.\n\n7. CAPAS Y SOMBRAS (para que nada se superponga ni se transparente):\n   a) El popover .info-popover debe tener fondo 100% opaco (#ffffff), z-index alto (200, por encima de cualquier dropdown/autocompletado que suele estar en z-index 60) y sombra marcada, para quedar SIEMPRE por delante y despegado del contenido de abajo.\n   b) Las casillas de texto (.field input/select/textarea y .searchbar input[type=search]) llevan fondo blanco opaco + sombra sutil (box-shadow ~0 2px 6-8px rgba(15,23,42,0.08-0.10)) para diferenciarse de la capa de fondo de la sección.\n   c) Los paneles flotantes propios de la sección (resultados de búsqueda, autocompletados, dropdowns) deben tener fondo opaco y un z-index MENOR que el del popover de ayuda (nunca ≥ 200), para que el InfoBtn no quede tapado.\n   d) Al agregar un nuevo campo, panel o dropdown, revisá que no compita en el mismo z-index con el popover de ayuda ni se vea translúcido sobre el fondo platinado.\n\nEste es un recordatorio, no un bloqueo: procedé con la edición respetando esta regla cuando corresponda a una sección con título."
+      }
+    }
+  ]
+}
