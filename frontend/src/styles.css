@@ -99,7 +99,8 @@ body {
   align-items: center;
   text-align: center;
   opacity: 0;
-  animation: cardAppear 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.55s both;
+  /* arranca al terminar el pop del logo (0.5s) */
+  animation: cardAppear 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both;
 }
 @keyframes cardAppear {
   0% { opacity: 0; transform: translateY(16px) scale(0.98); }
@@ -117,6 +118,7 @@ body {
   0% { opacity: 0; transform: translateY(-10px); }
   100% { opacity: 1; transform: translateY(0); }
 }
+/* arrancan al terminar la tarjeta (0.5s + 0.45s ≈ 0.95s), en cascada */
 .login__stagger--1 { animation-delay: 0.95s; }
 .login__stagger--2 { animation-delay: 1.1s; }
 .login__stagger--3 { animation-delay: 1.25s; }
