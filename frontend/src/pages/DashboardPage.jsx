@@ -3,13 +3,21 @@
 // =====================================================================
 
 import { useAuth } from '../context/AuthContext';
+import InfoBtn from '../components/InfoBtn';
 
 export default function DashboardPage() {
   const { usuario } = useAuth();
 
   return (
     <div className="card">
-      <h1>Bienvenido, {usuario?.usuario}</h1>
+      <h1>
+        Bienvenido, {usuario?.usuario}
+        <InfoBtn
+          paraQue="Es la pantalla de inicio del sistema: punto de entrada tras iniciar sesión."
+          comoFunciona="Desde el menú lateral accedés a cada módulo (Clientes, Stock, TPV, Compras, Configuración)."
+          conQueFin="Darte una bienvenida y un acceso rápido a todas las áreas de la óptica."
+        />
+      </h1>
       <p>Sesión iniciada correctamente. El sistema está listo.</p>
       <ul className="roadmap">
         <li>✔ Fase 1 — Autenticación y estructura base</li>

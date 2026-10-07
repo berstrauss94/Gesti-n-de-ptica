@@ -8,6 +8,7 @@ import { useEffect, useState, useCallback } from 'react';
 import {
   obtenerConfigNotif, guardarConfigNotif, listarNotificaciones, enviarPrueba,
 } from '../api/notificaciones';
+import InfoBtn from '../components/InfoBtn';
 
 export default function ConfiguracionPage() {
   const [cfg, setCfg] = useState(null);
@@ -58,7 +59,16 @@ export default function ConfiguracionPage() {
 
   return (
     <div className="stack">
-      <div className="page-header"><h1>Configuración · Notificaciones</h1></div>
+      <div className="page-header">
+        <h1>
+          Configuración · Notificaciones
+          <InfoBtn
+            paraQue="Centraliza las credenciales y preferencias para avisar al cliente y al equipo por Telegram y WhatsApp."
+            comoFunciona="Cargá los tokens de cada canal, activá o desactivá las alertas, enviá una prueba y revisá el historial de envíos."
+            conQueFin="Automatizar avisos clave (pedido listo, mora, stock) sin tener que escribir mensajes a mano."
+          />
+        </h1>
+      </div>
 
       {error && <p className="alert alert--error" role="alert">{error}</p>}
       {ok && <p className="alert alert--ok" role="status">{ok}</p>}

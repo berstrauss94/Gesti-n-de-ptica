@@ -17,6 +17,7 @@ import {
   recalcularPrecios,
 } from '../api/stock';
 import fondoStock from '../assets/fondo-stock.jpg';
+import InfoBtn from '../components/InfoBtn';
 
 const CATEGORIAS = ['armazon', 'cristal', 'lente_contacto', 'accesorio', 'otro'];
 const CAT_LABEL = {
@@ -136,7 +137,14 @@ export default function StockPage() {
       <div className="seccion-fondo-velo" aria-hidden="true" />
 
       <div className="page-header">
-        <h1>Stock / Inventario</h1>
+        <h1>
+          Stock / Inventario
+          <InfoBtn
+            paraQue="Controla el inventario de productos (armazones, cristales, lentes de contacto) por sucursal."
+            comoFunciona="Elegí la sucursal, buscá productos, cargá nuevos con costo y margen, y ajustá cantidades con los botones +/−."
+            conQueFin="Saber qué hay en stock en cada local y mantener los precios de venta actualizados."
+          />
+        </h1>
         <div className="tryon-toolbar">
           <select value={sucursalId} onChange={(e) => setSucursalId(e.target.value)}>
             {sucursales.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}

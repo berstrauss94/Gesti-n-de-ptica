@@ -5,6 +5,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { listarUsuarios } from '../api/usuarios';
+import InfoBtn from '../components/InfoBtn';
 
 export default function ClientesPage() {
   const [usuarios, setUsuarios] = useState([]);
@@ -37,7 +38,14 @@ export default function ClientesPage() {
   return (
     <div className="stack">
       <div className="page-header">
-        <h1>Clientes</h1>
+        <h1>
+          Clientes
+          <InfoBtn
+            paraQue="Administra la biblioteca de pacientes de la óptica: alta, búsqueda y ficha de cada cliente."
+            comoFunciona="Buscá por nombre o DNI, o creá un cliente nuevo con sus datos y 3 fotos de seguimiento (frontal, 45° y perfil)."
+            conQueFin="Tener centralizado el historial de cada paciente para graduaciones, pedidos y la prueba virtual."
+          />
+        </h1>
         <Link to="/clientes/nuevo" className="btn btn--primary btn--inline">
           + Nuevo cliente
         </Link>

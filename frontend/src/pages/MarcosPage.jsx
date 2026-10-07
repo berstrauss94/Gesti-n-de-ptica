@@ -5,6 +5,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { listarMarcos } from '../api/marcos';
+import InfoBtn from '../components/InfoBtn';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -42,7 +43,14 @@ export default function MarcosPage() {
   return (
     <div className="stack">
       <div className="page-header">
-        <h1>Catálogo de marcos</h1>
+        <h1>
+          Catálogo de marcos
+          <InfoBtn
+            paraQue="Es el catálogo de armazones/lentes disponibles para la prueba virtual y la venta."
+            comoFunciona="Buscá por código, modelo o marca, filtrá por forma, o cargá un marco nuevo con su imagen y medidas (mm)."
+            conQueFin="Tener los modelos listos para mostrarlos sobre la foto del cliente y asociarlos a ventas."
+          />
+        </h1>
         <Link to="/marcos/nuevo" className="btn btn--primary btn--inline">
           + Nuevo marco
         </Link>

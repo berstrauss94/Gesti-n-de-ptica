@@ -13,6 +13,7 @@ import {
   listarVentas, crearVenta, entregarVenta, anularVenta,
 } from '../api/ventas';
 import { estadoFiscal, emitirComprobante } from '../api/fiscal';
+import InfoBtn from '../components/InfoBtn';
 
 const MEDIOS = ['efectivo', 'tarjeta', 'transferencia'];
 const ESTADO_LABEL = {
@@ -165,7 +166,14 @@ export default function TpvPage() {
   return (
     <div className="stack">
       <div className="page-header">
-        <h1>TPV / Ventas</h1>
+        <h1>
+          TPV / Ventas
+          <InfoBtn
+            paraQue="Es el punto de venta: registra ventas, señas, entregas y cobros, con control de caja."
+            comoFunciona="Abrí la caja, armá la venta agregando productos, elegí cliente y seña, creala y luego entregala y facturala."
+            conQueFin="Vender y cobrar de forma ordenada, descontando stock y llevando el arqueo de caja."
+          />
+        </h1>
         <div className="tryon-toolbar">
           <select value={sucursalId} onChange={(e) => setSucursalId(e.target.value)}>
             {sucursales.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}

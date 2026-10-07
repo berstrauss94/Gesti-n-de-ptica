@@ -14,6 +14,7 @@ import {
   listarCompras, crearCompra, confirmarCompra,
   listarOrdenes, crearOrden, cambiarEstadoOrden,
 } from '../api/compras';
+import InfoBtn from '../components/InfoBtn';
 
 const ESTADOS_ORDEN = ['enviado', 'en_proceso', 'recibido_sucursal', 'listo_entrega', 'entregado'];
 const ORDEN_LABEL = {
@@ -41,7 +42,14 @@ export default function ComprasPage() {
   return (
     <div className="stack">
       <div className="page-header">
-        <h1>Compras / Proveedores</h1>
+        <h1>
+          Compras / Proveedores
+          <InfoBtn
+            paraQue="Gestiona las compras a proveedores, el alta de proveedores/laboratorios y las órdenes de trabajo a laboratorio."
+            comoFunciona="Cargá una compra con sus productos y costos y confirmala (suma stock y actualiza precios); seguí las órdenes por su estado."
+            conQueFin="Reponer inventario, mantener los costos al día y seguir los trabajos enviados a laboratorio hasta la entrega."
+          />
+        </h1>
         <select value={sucursalId} onChange={(e) => setSucursalId(e.target.value)}>
           {sucursales.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
         </select>
