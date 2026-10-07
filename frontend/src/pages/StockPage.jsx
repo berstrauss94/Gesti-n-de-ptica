@@ -16,6 +16,7 @@ import {
   registrarMovimiento,
   recalcularPrecios,
 } from '../api/stock';
+import fondoStock from '../assets/fondo-stock.jpg';
 
 const CATEGORIAS = ['armazon', 'cristal', 'lente_contacto', 'accesorio', 'otro'];
 const CAT_LABEL = {
@@ -129,7 +130,11 @@ export default function StockPage() {
   }
 
   return (
-    <div className="stack">
+    <div className="stack seccion-con-fondo">
+      {/* Fondo propio de la sección Stock (aparece primero, suave) */}
+      <div className="seccion-fondo" style={{ backgroundImage: `url(${fondoStock})` }} aria-hidden="true" />
+      <div className="seccion-fondo-velo" aria-hidden="true" />
+
       <div className="page-header">
         <h1>Stock / Inventario</h1>
         <div className="tryon-toolbar">
