@@ -23,7 +23,10 @@ export default function Layout() {
           <NavLink to="/stock">Stock</NavLink>
           <NavLink to="/tpv">TPV</NavLink>
           <NavLink to="/compras">Compras</NavLink>
-          <NavLink to="/try-on">Prueba Virtual</NavLink>
+          {/* Prueba Virtual suspendida del menú hasta cargar las credenciales
+              de IA (Gemini). La ruta /try-on sigue activa; para reactivar,
+              descomentar esta línea. */}
+          {/* <NavLink to="/try-on">Prueba Virtual</NavLink> */}
           <NavLink to="/configuracion">Config</NavLink>
         </nav>
         <div className="topbar__user">
