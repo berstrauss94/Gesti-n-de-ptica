@@ -11,28 +11,24 @@
 //   />
 // =====================================================================
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function InfoBtn({ paraQue, comoFunciona, conQueFin }) {
   const [abierto, setAbierto] = useState(false);
-  const ref = useRef(null);
 
-  // Cerrar al hacer clic/tap fuera
+  // El cierre al hacer clic/tap fuera lo maneja el overlay (ver más abajo).
+  // Cerrar con la tecla Escape
   useEffect(() => {
     if (!abierto) return undefined;
-    function fuera(e) {
-      if (ref.current && !ref.current.contains(e.target)) setAbierto(false);
+    function escape(e) {
+      if (e.key === 'Escape') setAbierto(false);
     }
-    document.addEventListener('mousedown', fuera);
-    document.addEventListener('touchstart', fuera);
-    return () => {
-      document.removeEventListener('mousedown', fuera);
-      document.removeEventListener('touchstart', fuera);
-    };
+    document.addEventListener('keydown', escape);
+    return () => document.removeEventListener('keydown', escape);
   }, [abierto]);
 
   return (
-    <span className="info-wrap" ref={ref}>
+    <span className="info-wrap">
       <button
         type="button"
         className="info-btn"
@@ -43,25 +39,45 @@ export default function InfoBtn({ paraQue, comoFunciona, conQueFin }) {
         !
       </button>
       {abierto && (
-        <div className="info-popover" role="dialog">
-          {paraQue && (
-            <div className="info-popover__item">
-              <span className="info-popover__label">¿Para qué sirve?</span>
-              <p>{paraQue}</p>
-            </div>
-          )}
-          {comoFunciona && (
-            <div className="info-popover__item">
-              <span className="info-popover__label">¿Cómo funciona?</span>
-              <p>{comoFunciona}</p>
-            </div>
-          )}
-          {conQueFin && (
-            <div className="info-popover__item">
-              <span className="info-popover__label">¿Con qué fin?</span>
-              <p>{conQueFin}</p>
-            </div>
-          )}
+        // Overlay fijo que cubre toda la pantalla: el panel queda centrado y
+        // SIEMPRE por encima de cualquier otra capa (inputs, dropdowns, etc.).
+        <div
+          className="info-overlay"
+          onClick={() => setAbierto(false)}
+        >
+          <div
+            className="info-popover"
+            role="dialog"
+            aria-modal="true"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="info-popover__close"
+              aria-label="Cerrar"
+              onClick={() => setAbierto(false)}
+            >
+              ×
+            </button>
+            {paraQue && (
+              <div className="info-popover__item">
+                <span className="info-popover__label">¿Para qué sirve?</span>
+                <p>{paraQue}</p>
+              </div>
+            )}
+            {comoFunciona && (
+              <div className="info-popover__item">
+                <span className="info-popover__label">¿Cómo funciona?</span>
+                <p>{comoFunciona}</p>
+              </div>
+            )}
+            {conQueFin && (
+              <div className="info-popover__item">
+                <span className="info-popover__label">¿Con qué fin?</span>
+                <p>{conQueFin}</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </span>
