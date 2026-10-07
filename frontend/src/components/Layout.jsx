@@ -5,7 +5,7 @@
 // =====================================================================
 
 import { useState } from 'react';
-import { Outlet, NavLink } from 'react-router-dom';
+import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import {
   Home, Users, Glasses, Package, ShoppingCart, Truck, Settings,
   LogOut, KeyRound, Menu, X,
@@ -28,6 +28,7 @@ const MARCA = 'Centro De Contactología';
 
 export default function Layout() {
   const { usuario, logout } = useAuth();
+  const location = useLocation();
   const [cambiandoPass, setCambiandoPass] = useState(false);
   const [abiertoMovil, setAbiertoMovil] = useState(false); // control táctil
 
@@ -90,7 +91,7 @@ export default function Layout() {
         </div>
       </aside>
 
-      <main className="content">
+      <main className="content" key={location.pathname}>
         <Outlet />
       </main>
 

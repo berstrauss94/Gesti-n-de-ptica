@@ -227,8 +227,16 @@ body {
   align-items: center; justify-content: center;
 }
 
-/* Contenido */
-.content { flex: 1; padding: 1.5rem 2rem; min-width: 0; }
+/* Contenido: entra deslizando desde la izquierda (misma animación que el menú).
+   En cada cambio de sección se reproduce, dando continuidad visual. */
+.content {
+  flex: 1; padding: 1.5rem 2rem; min-width: 0;
+  animation: contentSlideIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes contentSlideIn {
+  0% { opacity: 0; transform: translateX(-24px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
 
 /* --- Táctil / móvil: menú ancho desplegable con el botón ☰ --- */
 @media (max-width: 760px) {
