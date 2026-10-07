@@ -404,8 +404,16 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  /* El header crea su propio stacking context ELEVADO para que el popover
+     de ayuda quede por encima de los demás hijos de la sección (que llevan
+     z-index: 1 por la regla .seccion-con-fondo > *). */
+  position: relative;
+  z-index: 100;
 }
 .page-header h1, .page-header h2 { margin: 0; }
+/* Alineación del título + botón de ayuda, y el "!" por encima de todo el header */
+.page-header h1 { display: inline-flex; align-items: center; }
+.page-header .info-wrap { position: relative; z-index: 1; }
 
 .back-link {
   display: inline-block;
