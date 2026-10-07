@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import logo from '../assets/logo.png';
 
 export default function LoginPage() {
   const { login, cargando, autenticado } = useAuth();
@@ -37,7 +38,8 @@ export default function LoginPage() {
   return (
     <div className="login">
       <form className="login__card" onSubmit={handleSubmit}>
-        <h1 className="login__title">Óptica · KIRO</h1>
+        <img src={logo} alt="Centro de Contactología" className="login__logo" />
+        <h1 className="login__title">Centro de Contactología</h1>
         <p className="login__subtitle">Ingresa tus credenciales</p>
 
         <label className="field">
