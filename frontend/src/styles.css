@@ -161,16 +161,25 @@ body {
 /* --- Campos de formulario --- */
 .field { display: flex; flex-direction: column; gap: 0.35rem; }
 .field span { font-size: 0.85rem; color: var(--texto-suave); }
-.field input {
+.field input,
+.field select,
+.field textarea {
   padding: 0.6rem 0.75rem;
   border: 1px solid var(--gris-borde);
   border-radius: var(--radio);
   font-size: 1rem;
+  background: #ffffff;
+  /* Sombra sutil: diferencia la casilla de texto de la capa de fondo de la sección */
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
 }
-.field input:focus {
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
   outline: none;
   border-color: var(--azul);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  box-shadow:
+    0 0 0 3px rgba(37, 99, 235, 0.15),
+    0 2px 8px rgba(15, 23, 42, 0.12);
 }
 
 /* --- Layout con sidebar lateral COLAPSABLE (estética Gemini/Optix) --- */
@@ -429,6 +438,9 @@ body {
   border: 1px solid var(--gris-borde);
   border-radius: var(--radio);
   font-size: 0.95rem;
+  background: #ffffff;
+  /* Sombra: separa la casilla de búsqueda del fondo de la sección */
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.10);
 }
 .searchbar select {
   padding: 0.55rem 0.75rem;
@@ -979,12 +991,17 @@ body {
   top: calc(100% + 8px);
   left: 0;
   width: 300px; max-width: 80vw;
-  background: #fff; color: var(--texto);
+  /* Fondo 100% opaco para que NUNCA se transparente la capa de abajo */
+  background: #ffffff; color: var(--texto);
   border: 1px solid var(--gris-borde);
   border-radius: 12px;
   padding: 0.9rem 1rem;
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.22);
-  z-index: 60;
+  /* Sombra marcada: lo despega claramente de los textos/casillas de la sección */
+  box-shadow:
+    0 18px 44px rgba(15, 23, 42, 0.32),
+    0 4px 12px rgba(15, 23, 42, 0.18);
+  /* Muy por encima de cualquier dropdown de búsqueda (z-index 60) */
+  z-index: 200;
   display: flex; flex-direction: column; gap: 0.7rem;
   text-align: left;
 }
