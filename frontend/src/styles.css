@@ -329,8 +329,20 @@ body {
     padding: 1.1rem 0.9rem;
     transform: translateX(-100%);
     transition: transform 0.25s ease;
+    /* Desactivar las animaciones del sidebar en móvil (las animaciones
+       pisan el transform y dejan el sidebar visible). En móvil se
+       controla con el botón ☰ + transición. */
+    animation: none;
   }
   .sidebar.is-open { transform: translateX(0); }
+
+  /* En móvil: logo, íconos y botones visibles y sin animación */
+  .sidebar .brand__logo,
+  .sidebar .nav-item,
+  .sidebar .sidebar__btn { animation: none; opacity: 1; transform: none; }
+
+  /* Fondo de sección: ocupa toda la pantalla (no hay sidebar fijo) */
+  .seccion-fondo, .seccion-fondo-velo { left: 0; }
 
   /* En móvil mostramos los textos (menú ancho) y desactivamos tooltips */
   .sidebar .brand__name,
