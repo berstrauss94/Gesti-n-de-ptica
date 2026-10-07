@@ -37,12 +37,16 @@ export default function LoginPage() {
 
   return (
     <div className="login">
+      {/* 1) Logo grande, FUERA de la tarjeta, arriba */}
+      <img src={logo} alt="Centro de Contactología" className="login__logo" />
+
+      {/* 2) Tarjeta de login (aparece al terminar el logo) */}
       <form className="login__card" onSubmit={handleSubmit}>
-        <img src={logo} alt="Centro de Contactología" className="login__logo" />
         <h1 className="login__title">Centro de Contactología</h1>
         <p className="login__subtitle">Ingresa tus credenciales</p>
 
-        <label className="field">
+        {/* 3) Sub-casillas en cascada de arriba hacia abajo */}
+        <label className="field login__stagger login__stagger--1">
           <span>Usuario</span>
           <input
             type="text"
@@ -53,7 +57,7 @@ export default function LoginPage() {
           />
         </label>
 
-        <label className="field">
+        <label className="field login__stagger login__stagger--2">
           <span>Contraseña</span>
           <input
             type="password"
@@ -66,7 +70,7 @@ export default function LoginPage() {
 
         {error && <p className="login__error" role="alert">{error}</p>}
 
-        <button type="submit" className="btn btn--primary" disabled={cargando}>
+        <button type="submit" className="btn btn--primary login__stagger login__stagger--3" disabled={cargando}>
           {cargando ? 'Ingresando…' : 'Ingresar'}
         </button>
       </form>
