@@ -924,8 +924,7 @@ body {
    Fondo propio por sección (ej. Stock) — aparece primero, suave
    =================================================================== */
 .seccion-con-fondo { position: relative; }
-/* El fondo cubre toda el área de contenido (se extiende con margen negativo
-   para llegar a los bordes del main) */
+/* El fondo aparece con la misma animación fluida del login (fade + zoom suave) */
 .seccion-fondo {
   position: fixed;
   top: 0; left: var(--sidebar-colapsado); right: 0; bottom: 0;
@@ -939,8 +938,8 @@ body {
   position: fixed;
   top: 0; left: var(--sidebar-colapsado); right: 0; bottom: 0;
   z-index: 0;
-  /* velo claro: deja ver la foto pero mantiene legible el contenido */
-  background: rgba(245, 245, 247, 0.78);
+  /* Velo difuminado a la mitad (39%) para que se vea más la foto */
+  background: rgba(245, 245, 247, 0.39);
   opacity: 0;
   animation: fondoVelo 0.9s ease-out 0s both;
   pointer-events: none;
