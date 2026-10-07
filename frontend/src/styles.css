@@ -67,17 +67,22 @@ body {
 .login__logo {
   width: 360px; height: 360px; max-width: 72vw; max-height: 72vw;
   border-radius: 50%; object-fit: cover;
-  box-shadow: 0 12px 36px rgba(216, 0, 117, 0.4);
+  /* Sombra proyectada diagonal (luz cenital desde el frente -> sombra hacia
+     atrás/derecha-abajo). drop-shadow respeta el círculo transparente. */
+  filter: drop-shadow(22px 28px 24px rgba(15, 23, 42, 0.45));
   opacity: 0;
   animation:
     logoPopIn 0.8s cubic-bezier(0.34, 1.4, 0.5, 1) 0s both,
     logoFloat 4s ease-in-out 2.5s infinite;
 }
-.login__logo:hover { transform: scale(1.04); box-shadow: 0 16px 42px rgba(216, 0, 117, 0.55); }
+.login__logo:hover {
+  transform: scale(1.04);
+  filter: drop-shadow(26px 32px 28px rgba(15, 23, 42, 0.5));
+}
 @keyframes logoPopIn {
-  0% { opacity: 0; transform: scale(0.6); }
-  70% { opacity: 1; transform: scale(1.08); box-shadow: 0 0 30px rgba(216, 0, 117, 0.6); }
-  100% { opacity: 1; transform: scale(1); }
+  0% { opacity: 0; transform: scale(0.6); filter: drop-shadow(0 0 0 rgba(216,0,117,0)); }
+  70% { opacity: 1; transform: scale(1.08); filter: drop-shadow(22px 28px 30px rgba(216, 0, 117, 0.5)); }
+  100% { opacity: 1; transform: scale(1); filter: drop-shadow(22px 28px 24px rgba(15, 23, 42, 0.45)); }
 }
 /* Flotación suave (sube y baja) */
 @keyframes logoFloat {
