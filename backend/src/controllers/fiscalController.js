@@ -6,6 +6,7 @@
 const { query } = require('../config/db');
 const { AFIP_CUIT, AFIP_PUNTO_VENTA } = require('../config/env');
 const afip = require('../services/afipService');
+const { notificar } = require('../services/notificacionesService');
 
 // GET /api/fiscal/estado  -> en qué modo está el módulo
 async function estado(req, res) {
@@ -52,6 +53,14 @@ async function emitir(req, res) {
         resultado.observaciones || null,
       ]
     );
+
+    // Disparador: aviso de confirmación de venta (best-effort, no bloquea).
+    const etiqueta = tipo === 'INTERNO' ? 'comprobante' : `factura ${tipo}`;
+    notificar({
+      canal: 'telegram',
+      evento: 'venta_confirmada',
+      mensaje: `Venta confirmada en la óptica. Se emitió ${etiqueta} por $${total.toFixed(2)}.`,
+    }).catch(() => {});
 
     // El comprobante se emite siempre (aunque sea interno/simulado): no bloquea el TPV.
     return res.status(201).json({ comprobante: r.rows[0], afip: resultado });

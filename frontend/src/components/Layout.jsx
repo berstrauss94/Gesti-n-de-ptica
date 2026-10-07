@@ -24,6 +24,7 @@ export default function Layout() {
           <NavLink to="/tpv">TPV</NavLink>
           <NavLink to="/compras">Compras</NavLink>
           <NavLink to="/try-on">Prueba Virtual</NavLink>
+          <NavLink to="/configuracion">Config</NavLink>
         </nav>
         <div className="topbar__user">
           <span>{usuario?.usuario} · {usuario?.rol}</span>

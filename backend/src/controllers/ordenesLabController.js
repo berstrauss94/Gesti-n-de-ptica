@@ -4,6 +4,7 @@
 // =====================================================================
 
 const { query } = require('../config/db');
+const { notificar } = require('../services/notificacionesService');
 
 const ESTADOS = ['enviado', 'en_proceso', 'recibido_sucursal', 'listo_entrega', 'entregado'];
 
@@ -65,8 +66,14 @@ async function cambiarEstado(req, res) {
       [estado, req.params.id]
     );
     if (r.rowCount === 0) return res.status(404).json({ error: 'Orden no encontrada' });
-    // Nota: al pasar a 'listo_entrega' se podría disparar notificación
-    // WhatsApp/Telegram (Módulo 5), cuando esté activado.
+
+    // Disparador: al pasar a "listo_entrega", avisar al cliente (best-effort).
+    if (estado === 'listo_entrega') {
+      const orden = r.rows[0];
+      const mensaje = `¡Hola! Tu pedido en la óptica (orden #${orden.numero}) ya está listo para retirar.`;
+      // No bloqueamos la respuesta por la notificación
+      notificar({ canal: 'telegram', evento: 'orden_lista', mensaje }).catch(() => {});
+    }
     return res.json({ orden: r.rows[0] });
   } catch (err) {
     console.error('Error al cambiar estado de orden:', err);

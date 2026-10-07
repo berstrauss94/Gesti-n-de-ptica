@@ -232,6 +232,31 @@ const MIGRACIONES = [
    )`,
   `CREATE INDEX IF NOT EXISTS idx_comprobantes_venta ON comprobantes_fiscales(venta_id)`,
   `CREATE INDEX IF NOT EXISTS idx_comprobantes_estado ON comprobantes_fiscales(estado)`,
+
+  // --- Módulo Notificaciones (WhatsApp / Telegram) ---
+  `CREATE TABLE IF NOT EXISTS config_notificaciones (
+     id INT PRIMARY KEY DEFAULT 1,
+     telegram_token VARCHAR(120),
+     telegram_chat_default VARCHAR(60),
+     whatsapp_token VARCHAR(300),
+     whatsapp_phone_id VARCHAR(60),
+     alertas_activas BOOLEAN DEFAULT TRUE,
+     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+     CONSTRAINT config_unica CHECK (id = 1)
+   )`,
+  `INSERT INTO config_notificaciones (id) VALUES (1) ON CONFLICT (id) DO NOTHING`,
+  `CREATE TABLE IF NOT EXISTS notificaciones (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     canal VARCHAR(15) NOT NULL CHECK (canal IN ('whatsapp','telegram')),
+     destino VARCHAR(120),
+     evento VARCHAR(40),
+     mensaje TEXT NOT NULL,
+     estado VARCHAR(15) NOT NULL DEFAULT 'simulado'
+       CHECK (estado IN ('simulado','enviado','error')),
+     detalle TEXT,
+     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+   )`,
+  `CREATE INDEX IF NOT EXISTS idx_notif_evento ON notificaciones(evento)`,
 ];
 
 async function ejecutarMigraciones() {

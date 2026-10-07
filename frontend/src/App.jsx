@@ -18,6 +18,7 @@ import TryOnPage from './pages/TryOnPage';
 import StockPage from './pages/StockPage';
 import TpvPage from './pages/TpvPage';
 import ComprasPage from './pages/ComprasPage';
+import ConfiguracionPage from './pages/ConfiguracionPage';
 
 export default function App() {
   return (
@@ -41,6 +42,7 @@ export default function App() {
         <Route path="/stock" element={<StockPage />} />
         <Route path="/tpv" element={<TpvPage />} />
         <Route path="/compras" element={<ComprasPage />} />
+        <Route path="/configuracion" element={<ConfiguracionPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -18,6 +18,7 @@ const stockRoutes = require('./routes/stockRoutes');
 const ventasRoutes = require('./routes/ventasRoutes');
 const comprasRoutes = require('./routes/comprasRoutes');
 const fiscalRoutes = require('./routes/fiscalRoutes');
+const notificacionesRoutes = require('./routes/notificacionesRoutes');
 
 const app = express();
 
@@ -51,6 +52,7 @@ app.use('/api', stockRoutes);
 app.use('/api', ventasRoutes);
 app.use('/api', comprasRoutes);
 app.use('/api', fiscalRoutes);
+app.use('/api', notificacionesRoutes);
 
 // 404 solo para rutas de API (deja pasar lo demás al frontend/SPA)
 app.use('/api', (req, res) => {
