@@ -51,6 +51,14 @@ que se cree o modifique una sección con título.
 - Al agregar un nuevo campo, panel o dropdown: verificar que no compita en el
   mismo `z-index` con el popover de ayuda ni se vea translúcido sobre el fondo
   platinado (`--gris-fondo: #b9b9be`).
+- **IMPORTANTE (stacking context):** la regla
+  `.seccion-con-fondo > *:not(.seccion-fondo):not(.seccion-fondo-velo)` pone
+  `position: relative; z-index: 1` a CADA hijo directo de la sección. Eso crea
+  un stacking context por hijo, así que el `z-index: 200` del popover solo
+  compite DENTRO del `.page-header`, no contra los hermanos. Para que el
+  popover no quede tapado por el contenido de más abajo, el `.page-header`
+  (donde vive el `InfoBtn`) debe tener `position: relative; z-index: 100`
+  (mayor que el `z-index: 1` de los demás hijos). Mantener esa regla.
 
 ## 3. Mapa de z-index de referencia
 
