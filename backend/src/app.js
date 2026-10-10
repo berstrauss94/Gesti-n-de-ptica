@@ -21,6 +21,7 @@ const fiscalRoutes = require('./routes/fiscalRoutes');
 const notificacionesRoutes = require('./routes/notificacionesRoutes');
 const tryonIARoutes = require('./routes/tryonIARoutes');
 const turnosRoutes = require('./routes/turnosRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
 
 const app = express();
 
@@ -57,6 +58,7 @@ app.use('/api', fiscalRoutes);
 app.use('/api', notificacionesRoutes);
 app.use('/api', tryonIARoutes);
 app.use('/api', turnosRoutes);
+app.use('/api', dashboardRoutes);
 
 // 404 solo para rutas de API (deja pasar lo demás al frontend/SPA)
 app.use('/api', (req, res) => {

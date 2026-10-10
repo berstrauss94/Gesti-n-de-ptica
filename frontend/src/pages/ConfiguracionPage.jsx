@@ -9,6 +9,8 @@ import { Navigate } from 'react-router-dom';
 import {
   obtenerConfigNotif, guardarConfigNotif, listarNotificaciones, enviarPrueba,
 } from '../api/notificaciones';
+import { estadoFiscal } from '../api/fiscal';
+import { estadoTryonIA } from '../api/tryonIA';
 import InfoBtn from '../components/InfoBtn';
 import { useEsAdmin } from '../hooks/useEsAdmin';
 
@@ -20,15 +22,24 @@ export default function ConfiguracionPage() {
     gemini_api_key: '', alertas_activas: true,
   });
   const [historial, setHistorial] = useState([]);
+  const [fiscal, setFiscal] = useState(null); // { modo, credenciales, punto_venta }
+  const [ia, setIa] = useState(null);         // { habilitado, modelo }
   const [error, setError] = useState('');
   const [ok, setOk] = useState('');
 
   const cargar = useCallback(async () => {
     try {
-      const [c, h] = await Promise.all([obtenerConfigNotif(), listarNotificaciones()]);
+      const [c, h, f, i] = await Promise.all([
+        obtenerConfigNotif(),
+        listarNotificaciones(),
+        estadoFiscal().catch(() => null),
+        estadoTryonIA().catch(() => null),
+      ]);
       setCfg(c);
-      setForm((f) => ({ ...f, alertas_activas: c.alertas_activas, telegram_chat_default: c.telegram_chat_default || '' }));
+      setForm((f2) => ({ ...f2, alertas_activas: c.alertas_activas, telegram_chat_default: c.telegram_chat_default || '' }));
       setHistorial(h);
+      setFiscal(f);
+      setIa(i);
     } catch (err) { setError(err.response?.data?.error || 'No se pudo cargar la configuración'); }
   }, []);
   useEffect(() => { cargar(); }, [cargar]);
@@ -80,13 +91,85 @@ export default function ConfiguracionPage() {
       {error && <p className="alert alert--error" role="alert">{error}</p>}
       {ok && <p className="alert alert--ok" role="status">{ok}</p>}
 
+      {/* Panel de estado de integraciones: muestra qué está activo y qué
+          queda listo para activar cargando una credencial (modelo all-inclusive). */}
       {cfg && (
-        <div className="card">
-          <p className="muted small">
-            Estado actual — Telegram: <strong>{cfg.telegram_configurado ? 'configurado' : 'sin token'}</strong>
-            {' · '}WhatsApp: <strong>{cfg.whatsapp_configurado ? 'configurado' : 'sin token'}</strong>
-            {' · '}Alertas: <strong>{cfg.alertas_activas ? 'activas' : 'desactivadas'}</strong>
-          </p>
+        <div className="card no-pad">
+          <h2 className="section-title" style={{ padding: '1rem 1rem 0' }}>Estado de las integraciones</h2>
+          <table className="table">
+            <thead><tr><th>Integración</th><th>Estado</th><th>Detalle</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><strong>Try-On con IA</strong> <span className="muted small">(Google / Gemini)</span></td>
+                <td>
+                  {ia?.habilitado
+                    ? <span className="badge">✓ Activo</span>
+                    : <span className="badge tag--rojo">Listo para activar</span>}
+                </td>
+                <td className="small">
+                  {ia?.habilitado
+                    ? `Modelo ${ia.modelo}. La prueba realista con IA está disponible en Try-On.`
+                    : 'Cargá la API key de Google abajo para habilitar la prueba realista. Mientras tanto funciona la superposición 2D.'}
+                </td>
+              </tr>
+              <tr>
+                <td><strong>Facturación AFIP/ARCA</strong></td>
+                <td>
+                  {fiscal?.modo === 'produccion'
+                    ? <span className="badge">✓ Producción</span>
+                    : fiscal?.modo === 'homologacion'
+                      ? <span className="badge">Homologación</span>
+                      : <span className="badge tag--rojo">Modo simulación</span>}
+                </td>
+                <td className="small">
+                  {fiscal?.modo === 'produccion'
+                    ? `Emisión de CAE real. Punto de venta ${fiscal.punto_venta}.`
+                    : fiscal?.modo === 'homologacion'
+                      ? `Credenciales de prueba cargadas (sin validez fiscal). Punto de venta ${fiscal.punto_venta}.`
+                      : 'Emite comprobante interno (sin CAE). Cargá el certificado AFIP para pasar a facturación real.'}
+                </td>
+              </tr>
+              <tr>
+                <td><strong>Telegram</strong></td>
+                <td>
+                  {cfg.telegram_configurado
+                    ? <span className="badge">✓ Configurado</span>
+                    : <span className="badge tag--rojo">Sin token</span>}
+                </td>
+                <td className="small">
+                  {cfg.telegram_configurado
+                    ? 'Envío real de avisos por el bot de Telegram.'
+                    : 'Cargá el Bot Token para enviar avisos automáticos de verdad.'}
+                </td>
+              </tr>
+              <tr>
+                <td><strong>WhatsApp</strong> <span className="muted small">(Meta Cloud API)</span></td>
+                <td>
+                  {cfg.whatsapp_configurado
+                    ? <span className="badge">✓ Configurado</span>
+                    : <span className="badge tag--rojo">Sin token</span>}
+                </td>
+                <td className="small">
+                  {cfg.whatsapp_configurado
+                    ? 'Credenciales cargadas. Requiere plantillas aprobadas por Meta.'
+                    : 'Cargá el token y Phone ID de Meta para habilitar los avisos por WhatsApp.'}
+                </td>
+              </tr>
+              <tr>
+                <td><strong>Alertas automáticas</strong></td>
+                <td>
+                  {cfg.alertas_activas
+                    ? <span className="badge">✓ Activas</span>
+                    : <span className="badge tag--rojo">Desactivadas</span>}
+                </td>
+                <td className="small">
+                  {cfg.alertas_activas
+                    ? 'El sistema dispara avisos ante eventos (venta, mora, stock).'
+                    : 'Los avisos quedan registrados en el historial, sin envío real.'}
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       )}
 

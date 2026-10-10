@@ -37,20 +37,23 @@ async function emitir(req, res) {
       tipo, importe_total: total, importe_neto: neto, importe_iva: iva, cuit_receptor,
     });
 
+    // El payload guarda datos extra del comprobante (ej. el string del QR AFIP)
+    const payload = { qr_data: resultado.qr_data || null };
+
     // Persistir el comprobante (quede autorizado, simulado o rechazado)
     const r = await query(
       `INSERT INTO comprobantes_fiscales
          (venta_id, tipo, cuit_emisor, cuit_receptor, punto_venta, numero,
           importe_total, importe_neto, importe_iva, cae, cae_vencimiento,
-          estado, modo, observaciones)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+          estado, modo, observaciones, payload)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
        RETURNING *`,
       [
         venta_id || null, tipo, AFIP_CUIT || null, cuit_receptor || null,
         resultado.punto_venta || AFIP_PUNTO_VENTA, resultado.numero || null,
         total, neto, iva, resultado.cae || null, resultado.cae_vencimiento || null,
         resultado.estado, resultado.modo === 'simulacion' ? 'simulacion' : 'produccion',
-        resultado.observaciones || null,
+        resultado.observaciones || null, JSON.stringify(payload),
       ]
     );
 

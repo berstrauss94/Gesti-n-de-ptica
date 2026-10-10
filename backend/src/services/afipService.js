@@ -11,11 +11,51 @@
 //    reales. Hasta entonces, cae a simulación con un aviso. ***
 // =====================================================================
 
+const { query } = require('../config/db');
 const { AFIP_CUIT, AFIP_CERT, AFIP_KEY, AFIP_PUNTO_VENTA, AFIP_PRODUCCION } = require('../config/env');
+
+// Mapeo de tipo de comprobante a código AFIP (para el QR y, luego, WSFEv1).
+const COD_TIPO_AFIP = { A: 1, B: 6, C: 11, INTERNO: 0 };
 
 // ¿Están cargadas las credenciales mínimas para operar con AFIP real?
 function credencialesListas() {
   return Boolean(AFIP_CUIT && AFIP_CERT && AFIP_KEY);
+}
+
+// Numeración correlativa por tipo + punto de venta. En simulación la llevamos
+// nosotros (último + 1); con AFIP real la define FECompUltimoAutorizado.
+async function siguienteNumero(tipo) {
+  try {
+    const r = await query(
+      `SELECT COALESCE(MAX(numero), 0) + 1 AS siguiente
+       FROM comprobantes_fiscales
+       WHERE tipo = $1 AND punto_venta = $2`,
+      [tipo, AFIP_PUNTO_VENTA]
+    );
+    return r.rows[0].siguiente;
+  } catch {
+    return 1;
+  }
+}
+
+// Arma el string del QR según la especificación oficial de AFIP:
+// https://www.afip.gob.ar/fe/qr/  -> URL + ?p=<json base64>
+function construirQR({ fecha, cuit, ptoVta, tipoCod, nro, importe, cae }) {
+  const datos = {
+    ver: 1,
+    fecha,
+    cuit: Number(cuit) || 0,
+    ptoVta,
+    tipoCmp: tipoCod,
+    nroCmp: nro,
+    importe,
+    moneda: 'PES',
+    ctz: 1,
+    tipoCodAut: cae ? 'E' : 'A',
+    codAut: cae ? Number(cae) : 0,
+  };
+  const b64 = Buffer.from(JSON.stringify(datos)).toString('base64');
+  return `https://www.afip.gob.ar/fe/qr/?p=${b64}`;
 }
 
 function estadoServicio() {
@@ -26,21 +66,32 @@ function estadoServicio() {
   };
 }
 
-// Genera un comprobante en modo simulación (sin CAE real)
-function autorizarSimulado(datos) {
-  const ahora = new Date();
-  const venc = new Date(ahora);
-  venc.setDate(venc.getDate() + 10);
+// Genera un comprobante en modo simulación (sin CAE real), pero FORMAL:
+// numeración correlativa por punto de venta + QR con el formato oficial AFIP.
+async function autorizarSimulado(datos) {
+  const tipo = datos.tipo === 'INTERNO' ? 'INTERNO' : datos.tipo;
+  const numero = await siguienteNumero(tipo);
+  const fecha = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const qr = construirQR({
+    fecha,
+    cuit: AFIP_CUIT,
+    ptoVta: AFIP_PUNTO_VENTA,
+    tipoCod: COD_TIPO_AFIP[tipo] ?? 0,
+    nro: numero,
+    importe: Number(datos.importe_total) || 0,
+    cae: null,
+  });
   return {
     ok: true,
     modo: 'simulacion',
     estado: 'simulado',
-    tipo: datos.tipo === 'INTERNO' ? 'INTERNO' : datos.tipo,
+    tipo,
     punto_venta: AFIP_PUNTO_VENTA,
-    numero: Math.floor(Math.random() * 90000) + 10000, // nro interno
+    numero,
     cae: null,
     cae_vencimiento: null,
-    observaciones: 'Comprobante en modo simulación (sin credenciales AFIP). No tiene validez fiscal.',
+    qr_data: qr,
+    observaciones: 'Comprobante interno con numeración formal (sin CAE de AFIP). No tiene validez fiscal hasta activar la facturación electrónica.',
   };
 }
 
@@ -76,15 +127,20 @@ async function autorizar(datos) {
     return autorizarSimulado(datos);
   }
   try {
-    return await autorizarReal(datos);
+    const r = await autorizarReal(datos);
+    // Si la integración real todavía no está operativa, caemos al comprobante
+    // interno formal como respaldo (nunca bloqueamos la venta).
+    if (!r.ok) {
+      const respaldo = await autorizarSimulado(datos);
+      respaldo.observaciones = `${r.observaciones} Se emitió comprobante interno de respaldo.`;
+      return respaldo;
+    }
+    return r;
   } catch (err) {
-    // Ante cualquier fallo con AFIP, no bloqueamos la venta: avisamos.
-    return {
-      ok: false,
-      modo: 'produccion',
-      estado: 'rechazado',
-      observaciones: `Error al conectar con AFIP: ${err.message}`,
-    };
+    // Ante cualquier fallo con AFIP, no bloqueamos la venta: comprobante interno.
+    const respaldo = await autorizarSimulado(datos);
+    respaldo.observaciones = `Error al conectar con AFIP: ${err.message}. Se emitió comprobante interno de respaldo.`;
+    return respaldo;
   }
 }
 
