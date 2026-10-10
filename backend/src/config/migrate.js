@@ -265,6 +265,20 @@ const MIGRACIONES = [
   // --- Try-On con IA: API key de Google (opcional, se puede cargar por UI) ---
   `ALTER TABLE config_notificaciones ADD COLUMN IF NOT EXISTS gemini_api_key VARCHAR(200)`,
 
+  // --- Config fiscal AFIP/ARCA (fila única; cargable por UI en modelo 1 óptica/instalación) ---
+  `CREATE TABLE IF NOT EXISTS config_fiscal (
+     id INT PRIMARY KEY DEFAULT 1,
+     cuit VARCHAR(11),
+     punto_venta INT NOT NULL DEFAULT 1,
+     produccion BOOLEAN NOT NULL DEFAULT FALSE,
+     certificado TEXT,
+     clave_privada TEXT,
+     razon_social VARCHAR(150),
+     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+     CONSTRAINT config_fiscal_unica CHECK (id = 1)
+   )`,
+  `INSERT INTO config_fiscal (id) VALUES (1) ON CONFLICT (id) DO NOTHING`,
+
   // --- Módulo Turnos / Agenda ---
   `CREATE TABLE IF NOT EXISTS turnos (
      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -8,7 +8,7 @@
 > cambio. Hay un hook de Kiro (`.kiro/hooks/sync-arquitectura-doc.json`) que lo
 > recuerda automáticamente. Al final está el **Registro de cambios**.
 
-_Última actualización: 2026-10-06 (brecha Optix: descuentos/promos, etiquetas, CITI)_
+_Última actualización: 2026-10-06 (config AFIP por UI — modelo una óptica por instalación)_
 
 ---
 
@@ -127,7 +127,7 @@ lentes, quitar fondo, 3 vistas de marcos, logo). No corren en producción.
 - **TPV:** `/cajas/*` (actual/abrir/cerrar/movimientos), `/ventas/*` (acepta `descuento` al crear), pagos, entregar, anular, `/cuenta-corriente/:id`.
 - **Promociones:** `GET /promociones`, `POST /promociones` (admin), `PATCH /promociones/:id` (admin), `DELETE /promociones/:id` (admin).
 - **Compras:** `/proveedores`, `/compras`, `/ordenes-laboratorio`, `GET /compras-citi?periodo=YYYY-MM` (admin, descarga .txt).
-- **Fiscal:** `/fiscal/estado`, `/fiscal/emitir`, `/fiscal/comprobantes`.
+- **Fiscal:** `/fiscal/estado`, `GET/PUT /fiscal/config` (admin; config AFIP sin exponer cert/clave), `/fiscal/emitir`, `/fiscal/comprobantes`.
 - **Notificaciones:** `/notificaciones/config`, `/notificaciones`, `/notificaciones/prueba`.
 - **Health:** `GET /health`.
 
@@ -161,6 +161,7 @@ integraciones NO se devuelven al frontend (solo flags `_configurado`).
 - **TPV:** `cajas`, `ventas` (con `total_bruto`/`descuento_*`), `venta_items`, `pagos`, `cuenta_corriente`, `movimientos_caja`, `promociones`.
 - **Compras:** `proveedores`, `compras`, `compra_items`, `ordenes_laboratorio`.
 - **Fiscal/avisos/agenda:** `comprobantes_fiscales` (con `payload` JSONB para el QR),
+  `config_fiscal` (CUIT/punto de venta/certificado/clave, fila única),
   `config_notificaciones`, `notificaciones`, `turnos`, `graduaciones`, fotos.
 
 Operaciones críticas (traslados, cierre de caja, confirmar compra) usan
@@ -174,7 +175,10 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
 
 - **AFIP/ARCA** (`afipService.js`): sin certificado → comprobante interno formal
   (numeración correlativa + QR oficial, sin CAE). Con certificado → `autorizarReal`
-  cableado (WSAA + WSFEv1), listo para activar en homologación.
+  cableado (WSAA + WSFEv1), listo para activar en homologación. La config fiscal
+  (CUIT, punto de venta, certificado, clave) se resuelve por env **o** desde la
+  tabla `config_fiscal`, cargable desde Configuración. **Modelo A: una instalación
+  por óptica**, cada óptica carga su propio certificado AFIP y sus credenciales.
 - **Try-On IA** (`tryonIAService.js`): composición foto+armazón vía **Google Gemini**
   (`gemini-2.5-flash-image-preview`). Sin key → superposición 2D gratis.
 - **Notificaciones** (`notificacionesService.js`): **Telegram real** (Bot API);
@@ -252,3 +256,9 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
     (`ComprasPage.jsx`, `api/compras.js`).
   - Pendiente (requiere definición/credenciales): módulo de Obras Sociales/Convenios,
     importación de listas de precios de proveedores por CSV, CAE AFIP real y WhatsApp Business.
+- **2026-10-06** — Config fiscal AFIP cargable desde la UI (modelo A: una óptica por
+  instalación). Tabla `config_fiscal` (fila única) con CUIT, punto de venta, producción,
+  certificado y clave; `afipService` resuelve credenciales por env o DB; `fiscalController`
+  + rutas `GET/PUT /fiscal/config` (admin, sin exponer cert/clave); sección de carga de
+  certificado/clave en Configuración (`ConfiguracionPage.jsx`, `api/fiscal.js`). El dueño
+  de cada óptica carga su propio certificado AFIP desde la app, sin tocar el deploy.

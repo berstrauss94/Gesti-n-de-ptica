@@ -10,7 +10,29 @@ const { notificar } = require('../services/notificacionesService');
 
 // GET /api/fiscal/estado  -> en qué modo está el módulo
 async function estado(req, res) {
-  return res.json(afip.estadoServicio());
+  return res.json(await afip.estadoServicio());
+}
+
+// GET /api/fiscal/config  -> config fiscal (sin exponer cert/clave)
+async function obtenerConfig(req, res) {
+  try {
+    return res.json(await afip.configPublica());
+  } catch (err) {
+    console.error('Error al obtener config fiscal:', err);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}
+
+// PUT /api/fiscal/config  { cuit?, punto_venta?, produccion?, razon_social?,
+//                           certificado?, clave_privada? }  (solo admin)
+async function guardarConfig(req, res) {
+  try {
+    const r = await afip.guardarConfig(req.body || {});
+    return res.json(r);
+  } catch (err) {
+    console.error('Error al guardar config fiscal:', err);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
 }
 
 // POST /api/fiscal/emitir
@@ -93,4 +115,4 @@ async function listar(req, res) {
   }
 }
 
-module.exports = { estado, emitir, listar };
+module.exports = { estado, obtenerConfig, guardarConfig, emitir, listar };

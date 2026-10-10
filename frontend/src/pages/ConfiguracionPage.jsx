@@ -9,7 +9,7 @@ import { Navigate } from 'react-router-dom';
 import {
   obtenerConfigNotif, guardarConfigNotif, listarNotificaciones, enviarPrueba,
 } from '../api/notificaciones';
-import { estadoFiscal } from '../api/fiscal';
+import { estadoFiscal, obtenerConfigFiscal, guardarConfigFiscal } from '../api/fiscal';
 import { estadoTryonIA } from '../api/tryonIA';
 import InfoBtn from '../components/InfoBtn';
 import { useEsAdmin } from '../hooks/useEsAdmin';
@@ -24,27 +24,70 @@ export default function ConfiguracionPage() {
   const [historial, setHistorial] = useState([]);
   const [fiscal, setFiscal] = useState(null); // { modo, credenciales, punto_venta }
   const [ia, setIa] = useState(null);         // { habilitado, modelo }
+  const [cfgFiscal, setCfgFiscal] = useState(null); // config AFIP (sin cert/clave)
+  const [formFiscal, setFormFiscal] = useState({
+    cuit: '', punto_venta: '1', produccion: false, razon_social: '',
+    certificado: '', clave_privada: '',
+  });
   const [error, setError] = useState('');
   const [ok, setOk] = useState('');
 
   const cargar = useCallback(async () => {
     try {
-      const [c, h, f, i] = await Promise.all([
+      const [c, h, f, i, cf] = await Promise.all([
         obtenerConfigNotif(),
         listarNotificaciones(),
         estadoFiscal().catch(() => null),
         estadoTryonIA().catch(() => null),
+        obtenerConfigFiscal().catch(() => null),
       ]);
       setCfg(c);
       setForm((f2) => ({ ...f2, alertas_activas: c.alertas_activas, telegram_chat_default: c.telegram_chat_default || '' }));
       setHistorial(h);
       setFiscal(f);
       setIa(i);
+      setCfgFiscal(cf);
+      if (cf) {
+        setFormFiscal((ff) => ({
+          ...ff,
+          cuit: cf.cuit || '',
+          punto_venta: String(cf.punto_venta || 1),
+          produccion: Boolean(cf.produccion),
+        }));
+      }
     } catch (err) { setError(err.response?.data?.error || 'No se pudo cargar la configuración'); }
   }, []);
   useEffect(() => { cargar(); }, [cargar]);
 
   function setCampo(c, v) { setForm((f) => ({ ...f, [c]: v })); }
+  function setCampoFiscal(c, v) { setFormFiscal((f) => ({ ...f, [c]: v })); }
+
+  // Lee un archivo (.crt/.key/.pem) como texto y lo vuelca al campo indicado.
+  function leerArchivoFiscal(campo, file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setCampoFiscal(campo, String(reader.result || ''));
+    reader.readAsText(file);
+  }
+
+  async function guardarFiscal(e) {
+    e.preventDefault(); setError(''); setOk('');
+    try {
+      const payload = {
+        cuit: formFiscal.cuit,
+        punto_venta: formFiscal.punto_venta,
+        produccion: formFiscal.produccion,
+        razon_social: formFiscal.razon_social,
+      };
+      if (formFiscal.certificado) payload.certificado = formFiscal.certificado;
+      if (formFiscal.clave_privada) payload.clave_privada = formFiscal.clave_privada;
+      const r = await guardarConfigFiscal(payload);
+      setCfgFiscal(r);
+      setFormFiscal((f) => ({ ...f, certificado: '', clave_privada: '' }));
+      setOk('Configuración fiscal guardada.');
+      cargar();
+    } catch (err) { setError(err.response?.data?.error || 'No se pudo guardar la configuración fiscal'); }
+  }
 
   async function guardar(e) {
     e.preventDefault(); setError(''); setOk('');
@@ -172,6 +215,48 @@ export default function ConfiguracionPage() {
           </table>
         </div>
       )}
+
+      {/* Facturación electrónica AFIP: cada óptica carga su propio certificado */}
+      <form className="card form-grid" onSubmit={guardarFiscal}>
+        <h2 className="section-title field--full">Facturación electrónica (AFIP/ARCA)</h2>
+        <p className="muted small field--full">
+          Cargá los datos fiscales de tu óptica. El sistema factura a nombre de <strong>tu CUIT</strong>.
+          Estado actual: <strong>{fiscal?.modo || 'simulación'}</strong>
+          {cfgFiscal?.por_entorno && ' (configurado por variables de entorno)'}.
+        </p>
+        <label className="field"><span>CUIT (sin guiones)</span>
+          <input value={formFiscal.cuit} onChange={(e) => setCampoFiscal('cuit', e.target.value)}
+            placeholder="30712345678" disabled={cfgFiscal?.por_entorno} /></label>
+        <label className="field"><span>Punto de venta</span>
+          <input type="number" min="1" value={formFiscal.punto_venta}
+            onChange={(e) => setCampoFiscal('punto_venta', e.target.value)} disabled={cfgFiscal?.por_entorno} /></label>
+        <label className="field"><span>Razón social</span>
+          <input value={formFiscal.razon_social} onChange={(e) => setCampoFiscal('razon_social', e.target.value)}
+            placeholder="Óptica ..." disabled={cfgFiscal?.por_entorno} /></label>
+        <label className="field field--check">
+          <input type="checkbox" checked={formFiscal.produccion}
+            onChange={(e) => setCampoFiscal('produccion', e.target.checked)} disabled={cfgFiscal?.por_entorno} />
+          <span>Producción (destildado = homologación/pruebas)</span>
+        </label>
+        <label className="field field--full"><span>Certificado AFIP (.crt / .pem)
+          {cfgFiscal?.certificado_cargado && <span className="badge" style={{ marginLeft: 8 }}>✓ cargado</span>}</span>
+          <input type="file" accept=".crt,.pem,.cer,.txt"
+            onChange={(e) => leerArchivoFiscal('certificado', e.target.files?.[0])} disabled={cfgFiscal?.por_entorno} /></label>
+        <label className="field field--full"><span>Clave privada (.key)
+          {cfgFiscal?.clave_cargada && <span className="badge" style={{ marginLeft: 8 }}>✓ cargada</span>}</span>
+          <input type="file" accept=".key,.pem,.txt"
+            onChange={(e) => leerArchivoFiscal('clave_privada', e.target.files?.[0])} disabled={cfgFiscal?.por_entorno} /></label>
+        {!cfgFiscal?.por_entorno && (
+          <div className="form-actions">
+            <button type="submit" className="btn btn--primary btn--inline">Guardar datos fiscales</button>
+          </div>
+        )}
+        {cfgFiscal?.por_entorno && (
+          <p className="muted small field--full">
+            Esta instalación tiene la config fiscal fijada por variables de entorno; para cambiarla, editá el deploy.
+          </p>
+        )}
+      </form>
 
       <form className="card form-grid" onSubmit={guardar}>
         <label className="field field--full field--check">
