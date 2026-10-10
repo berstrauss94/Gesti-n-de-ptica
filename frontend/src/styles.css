@@ -1045,3 +1045,112 @@ body {
   font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.03em; color: var(--primary-accent);
 }
+
+/* ===================================================================
+   KIT DE HERRAMIENTAS REUTILIZABLES (incorporación limpia)
+   Clases base disponibles para usar en cualquier vista. NO se aplican
+   a ninguna página todavía: son "piezas" del sistema de diseño,
+   adaptadas a la paleta del proyecto (--azul, --gris-borde, --radio…).
+   =================================================================== */
+
+/* --- 1) Grilla de tarjetas con ícono -------------------------------
+   Uso sugerido:
+     <div class="category-grid">
+       <article class="category-card">
+         <span class="cat-icon-box"><IconoLucide /></span>
+         <div> … contenido … </div>
+       </article>
+     </div>
+*/
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+}
+.category-card {
+  background: #ffffff;
+  border: 1px solid var(--gris-borde);
+  border-radius: var(--radio);
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+  transition: transform 0.2s cubic-bezier(0.22, 0.61, 0.36, 1),
+              box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.category-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
+  border-color: var(--azul);
+}
+.cat-icon-box {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--azul);
+  color: #ffffff;
+  padding: 0.75rem;
+  border-radius: var(--radio);
+  box-shadow: 0 2px 8px rgba(216, 0, 117, 0.35);
+}
+
+/* --- 2) Encabezado de módulo con franja de color sólido ------------
+   Uso sugerido:
+     <div class="module-header module-header--fucsia">
+       <h2>Título</h2>
+       <button class="btn …">Acción</button>
+     </div>
+   Variante de .page-header: franja fucsia opaca para destacar.
+*/
+.module-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radio);
+  margin-bottom: 1.5rem;
+}
+.module-header--fucsia {
+  background: var(--azul);
+  color: #ffffff;
+}
+/* Que los títulos y textos directos hereden el blanco de la franja */
+.module-header--fucsia h1,
+.module-header--fucsia h2,
+.module-header--fucsia h3 { margin: 0; color: #ffffff; }
+
+/* --- 3) Tabla de datos densa con grilla completa -------------------
+   Uso sugerido: <table class="data-table"> … </table>
+   Variante de .table con bordes en todas las celdas (planilla).
+*/
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1.5rem;
+}
+.data-table th {
+  background: var(--gris-fondo);
+  border: 1px solid var(--gris-borde);
+  padding: 0.5rem;
+  font-size: 0.85rem;
+  text-align: left;
+  color: var(--texto);
+}
+.data-table td {
+  border: 1px solid var(--gris-borde);
+  padding: 0.45rem;
+  text-align: center;
+  color: var(--texto);
+}
+.data-table tbody tr:hover { background: var(--gris-fondo); }
+.data-table input {
+  width: 90%;
+  padding: 0.3rem;
+  border: 1px solid var(--gris-borde);
+  border-radius: 6px;
+  text-align: center;
+  font-size: 0.9rem;
+}
