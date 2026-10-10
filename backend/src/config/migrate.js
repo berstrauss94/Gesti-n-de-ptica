@@ -347,6 +347,23 @@ const MIGRACIONES = [
      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
    )`,
   `CREATE INDEX IF NOT EXISTS idx_promociones_activa ON promociones(activa)`,
+
+  // --- Obras sociales / Convenios ---
+  // Cada convenio tiene un % de cobertura por defecto. En la venta se registra
+  // cuánto cubre la obra social y cuánto queda a cargo del paciente.
+  `CREATE TABLE IF NOT EXISTS obras_sociales (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     nombre VARCHAR(120) NOT NULL,
+     cobertura_pct NUMERIC(5,2) NOT NULL DEFAULT 0 CHECK (cobertura_pct >= 0 AND cobertura_pct <= 100),
+     cuit VARCHAR(11),
+     notas VARCHAR(200),
+     activa BOOLEAN NOT NULL DEFAULT TRUE,
+     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+   )`,
+  `CREATE INDEX IF NOT EXISTS idx_obras_sociales_activa ON obras_sociales(activa)`,
+  // En la venta: a cuánto cubre la obra social (si corresponde)
+  `ALTER TABLE ventas ADD COLUMN IF NOT EXISTS obra_social_id UUID REFERENCES obras_sociales(id)`,
+  `ALTER TABLE ventas ADD COLUMN IF NOT EXISTS cobertura_os NUMERIC(12,2) NOT NULL DEFAULT 0`,
 ];
 
 async function ejecutarMigraciones() {

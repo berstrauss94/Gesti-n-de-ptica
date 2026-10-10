@@ -116,14 +116,35 @@ async function crear(req, res) {
       descMonto = Math.min(descValor, totalBruto);
     }
     descMonto = Math.round(descMonto * 100) / 100;
-    const total = Math.round((totalBruto - descMonto) * 100) / 100;
+    const subtotalConDesc = Math.round((totalBruto - descMonto) * 100) / 100;
+
+    // Cobertura de obra social (opcional): se aplica sobre el subtotal ya con
+    // descuento. Lo que cubre la obra social NO lo paga el paciente.
+    let obraSocialId = b.obra_social_id || null;
+    let coberturaOS = 0;
+    if (obraSocialId) {
+      const os = await client.query(
+        'SELECT cobertura_pct FROM obras_sociales WHERE id = $1 AND activa = TRUE',
+        [obraSocialId]
+      );
+      if (os.rowCount === 0) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'La obra social indicada no existe o está inactiva' });
+      }
+      const pct = Number(os.rows[0].cobertura_pct) || 0;
+      coberturaOS = Math.round(subtotalConDesc * (pct / 100) * 100) / 100;
+    }
+    // Total a cargo del paciente = subtotal con descuento − cobertura de la obra social
+    const total = Math.round((subtotalConDesc - coberturaOS) * 100) / 100;
 
     const ventaR = await client.query(
       `INSERT INTO ventas (sucursal_id, caja_id, cliente_id, vendedor_id, estado,
-         total, total_bruto, descuento_tipo, descuento_valor, descuento_monto, descuento_motivo)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+         total, total_bruto, descuento_tipo, descuento_valor, descuento_monto, descuento_motivo,
+         obra_social_id, cobertura_os)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
       [b.sucursal_id, cajaId, b.cliente_id || null, b.vendedor_id || null, estado,
-       total, totalBruto, descTipo, descValor, descMonto, desc.motivo || null]
+       total, totalBruto, descTipo, descValor, descMonto, desc.motivo || null,
+       obraSocialId, coberturaOS]
     );
     const venta = ventaR.rows[0];
 

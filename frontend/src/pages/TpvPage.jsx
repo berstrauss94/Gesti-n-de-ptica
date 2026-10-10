@@ -15,6 +15,7 @@ import {
 } from '../api/ventas';
 import { estadoFiscal, emitirComprobante } from '../api/fiscal';
 import { listarPromociones } from '../api/promociones';
+import { listarObrasSociales } from '../api/obrasSociales';
 import InfoBtn from '../components/InfoBtn';
 import Modal from '../components/Modal';
 import { useEsAdmin } from '../hooks/useEsAdmin';
@@ -41,6 +42,10 @@ export default function TpvPage() {
   const [descValor, setDescValor] = useState('');
   const [descMotivo, setDescMotivo] = useState('');
 
+  // Obras sociales / convenios
+  const [obrasSociales, setObrasSociales] = useState([]);
+  const [obraSocialId, setObraSocialId] = useState('');
+
   // Venta en construcción
   const [carrito, setCarrito] = useState([]); // [{producto_id, descripcion, cantidad, precio_unitario}]
   const [clienteId, setClienteId] = useState('');
@@ -59,14 +64,16 @@ export default function TpvPage() {
   useEffect(() => {
     (async () => {
       try {
-        const [s, u, f, pr] = await Promise.all([
+        const [s, u, f, pr, os] = await Promise.all([
           listarSucursales(), listarUsuarios({ limit: 200 }), estadoFiscal().catch(() => null),
           listarPromociones(true).catch(() => []),
+          listarObrasSociales(true).catch(() => []),
         ]);
         setSucursales(s);
         setClientes(u.usuarios);
         setFiscal(f);
         setPromos(pr);
+        setObrasSociales(os);
         if (s.length) setSucursalId(s[0].id);
       } catch (err) {
         setError(err.response?.data?.error || 'No se pudieron cargar los datos');
@@ -123,7 +130,17 @@ export default function TpvPage() {
     return 0;
   }, [descTipo, descValor, totalBruto]);
 
-  const totalCarrito = Math.round((totalBruto - descMonto) * 100) / 100;
+  const subtotalConDesc = Math.round((totalBruto - descMonto) * 100) / 100;
+
+  // Cobertura de la obra social sobre el subtotal con descuento.
+  const coberturaOS = useMemo(() => {
+    const os = obrasSociales.find((x) => x.id === obraSocialId);
+    if (!os) return 0;
+    return Math.round(subtotalConDesc * (Number(os.cobertura_pct) / 100) * 100) / 100;
+  }, [obraSocialId, obrasSociales, subtotalConDesc]);
+
+  // Total a cargo del paciente
+  const totalCarrito = Math.round((subtotalConDesc - coberturaOS) * 100) / 100;
 
   // Al elegir una promo guardada, carga su tipo/valor en el descuento manual.
   function aplicarPromo(id) {
@@ -186,10 +203,11 @@ export default function TpvPage() {
       if (descTipo !== 'ninguno' && Number(descValor) > 0) {
         payload.descuento = { tipo: descTipo, valor: Number(descValor), motivo: descMotivo || null };
       }
+      if (obraSocialId) payload.obra_social_id = obraSocialId;
       await crearVenta(payload);
       setOk('Venta creada.');
       setCarrito([]); setClienteId(''); setVendedorId(''); setSenaMonto('');
-      setDescTipo('ninguno'); setDescValor(''); setDescMotivo('');
+      setDescTipo('ninguno'); setDescValor(''); setDescMotivo(''); setObraSocialId('');
       refrescar(sucursalId);
     } catch (err) { setError(err.response?.data?.error || 'No se pudo crear la venta'); }
   }
@@ -361,17 +379,27 @@ export default function TpvPage() {
             <label className="field"><span>Motivo (opcional)</span>
               <input value={descMotivo} onChange={(e) => setDescMotivo(e.target.value)}
                 placeholder="Ej: promo cliente frecuente" /></label>
+            <label className="field"><span>Obra social (opcional)</span>
+              <select value={obraSocialId} onChange={(e) => setObraSocialId(e.target.value)}>
+                <option value="">Sin obra social</option>
+                {obrasSociales.map((os) => (
+                  <option key={os.id} value={os.id}>{os.nombre} ({Number(os.cobertura_pct)}%)</option>
+                ))}
+              </select></label>
           </div>
 
           <div className="venta-total">
             <div className="venta-total__detalle">
-              {descMonto > 0 && (
-                <>
-                  <span className="muted small">Subtotal: ${totalBruto.toFixed(2)}</span>
-                  <span className="muted small">Descuento: −${descMonto.toFixed(2)}</span>
-                </>
+              {(descMonto > 0 || coberturaOS > 0) && (
+                <span className="muted small">Subtotal: ${totalBruto.toFixed(2)}</span>
               )}
-              <strong>Total: ${totalCarrito.toFixed(2)}</strong>
+              {descMonto > 0 && (
+                <span className="muted small">Descuento: −${descMonto.toFixed(2)}</span>
+              )}
+              {coberturaOS > 0 && (
+                <span className="muted small">Cubre obra social: −${coberturaOS.toFixed(2)}</span>
+              )}
+              <strong>Total a pagar: ${totalCarrito.toFixed(2)}</strong>
             </div>
             <button type="button" className="btn btn--primary btn--inline" onClick={handleCrearVenta} disabled={carrito.length === 0}>
               Crear venta

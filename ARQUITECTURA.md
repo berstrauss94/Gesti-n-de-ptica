@@ -8,7 +8,7 @@
 > cambio. Hay un hook de Kiro (`.kiro/hooks/sync-arquitectura-doc.json`) que lo
 > recuerda automáticamente. Al final está el **Registro de cambios**.
 
-_Última actualización: 2026-10-06 (config AFIP por UI — modelo una óptica por instalación)_
+_Última actualización: 2026-10-10 (módulo de Obras Sociales / Convenios)_
 
 ---
 
@@ -105,6 +105,7 @@ Optica/
 | **Stock / Inventario** | Multisucursal: existencias, movimientos, alta, recálculo de precios, filtro por marca, traslados entre sucursales, export CSV, **impresión de etiquetas con código de barras (Code128)**. |
 | **TPV / Ventas** | Caja (apertura/cierre con arqueo), ventas, pagos, señas, entrega, anulación, reintegros/retiros de caja, cuenta corriente, **descuentos/promociones por venta**. |
 | **Promociones / Descuentos** | El comercio crea sus propios descuentos (porcentaje o monto), los activa/desactiva y los aplica en el TPV. |
+| **Obras sociales / Convenios** | Alta de convenios con % de cobertura por defecto; en el TPV se aplica la cobertura y el total refleja lo que paga el paciente. Gestión en Configuración (admin). |
 | **Compras** | Proveedores, laboratorios, compras (confirmar impacta stock/costos), órdenes de laboratorio, **exportación contable CITI Compras (AFIP) por período**. |
 | **Turnos / Agenda** | Alta de turnos, filtro por rango, estados (asistió/ausente/cancelado). |
 | **Fiscal (AFIP/ARCA)** | Comprobantes A/B/C/interno con numeración correlativa y QR oficial; modo real listo para activar con certificado. |
@@ -126,6 +127,7 @@ lentes, quitar fondo, 3 vistas de marcos, logo). No corren en producción.
 - **Stock:** `/sucursales`, `/productos`, `/stock`, `/stock/marcas`, movimientos, `/traslados`.
 - **TPV:** `/cajas/*` (actual/abrir/cerrar/movimientos), `/ventas/*` (acepta `descuento` al crear), pagos, entregar, anular, `/cuenta-corriente/:id`.
 - **Promociones:** `GET /promociones`, `POST /promociones` (admin), `PATCH /promociones/:id` (admin), `DELETE /promociones/:id` (admin).
+- **Obras sociales:** `GET /obras-sociales`, `POST /obras-sociales` (admin), `PUT /obras-sociales/:id` (admin), `DELETE /obras-sociales/:id` (admin).
 - **Compras:** `/proveedores`, `/compras`, `/ordenes-laboratorio`, `GET /compras-citi?periodo=YYYY-MM` (admin, descarga .txt).
 - **Fiscal:** `/fiscal/estado`, `GET/PUT /fiscal/config` (admin; config AFIP sin exponer cert/clave), `/fiscal/emitir`, `/fiscal/comprobantes`.
 - **Notificaciones:** `/notificaciones/config`, `/notificaciones`, `/notificaciones/prueba`.
@@ -158,7 +160,7 @@ integraciones NO se devuelven al frontend (solo flags `_configurado`).
 ~22 tablas con UUID y CHECKs, en `db/*.sql` y `backend/src/config/migrate.js` (idempotente):
 - **Operación:** `usuarios_sistema` (operadores), `usuarios` (clientes), `sucursales`.
 - **Stock:** `productos`, `stock_sucursal`, `movimientos_stock`, `traslados_stock`.
-- **TPV:** `cajas`, `ventas` (con `total_bruto`/`descuento_*`), `venta_items`, `pagos`, `cuenta_corriente`, `movimientos_caja`, `promociones`.
+- **TPV:** `cajas`, `ventas` (con `total_bruto`/`descuento_*`/`obra_social_id`/`cobertura_os`), `venta_items`, `pagos`, `cuenta_corriente`, `movimientos_caja`, `promociones`, `obras_sociales`.
 - **Compras:** `proveedores`, `compras`, `compra_items`, `ordenes_laboratorio`.
 - **Fiscal/avisos/agenda:** `comprobantes_fiscales` (con `payload` JSONB para el QR),
   `config_fiscal` (CUIT/punto de venta/certificado/clave, fila única),
@@ -262,3 +264,9 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
   + rutas `GET/PUT /fiscal/config` (admin, sin exponer cert/clave); sección de carga de
   certificado/clave en Configuración (`ConfiguracionPage.jsx`, `api/fiscal.js`). El dueño
   de cada óptica carga su propio certificado AFIP desde la app, sin tocar el deploy.
+- **2026-10-10** — Módulo de Obras Sociales / Convenios: tabla `obras_sociales` +
+  columnas `obra_social_id`/`cobertura_os` en `ventas`; `obrasSocialesController` +
+  `obrasSocialesRoutes` (listar para todos, ABM admin); `ventasController.crear` aplica
+  la cobertura sobre el total; selector de obra social en el TPV con desglose del total
+  (`TpvPage.jsx`) y gestión de convenios en Configuración (`ConfiguracionPage.jsx`,
+  `api/obrasSociales.js`). Queda pendiente la importación de listas de precios por CSV.

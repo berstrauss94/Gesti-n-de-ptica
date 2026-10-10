@@ -11,6 +11,9 @@ import {
 } from '../api/notificaciones';
 import { estadoFiscal, obtenerConfigFiscal, guardarConfigFiscal } from '../api/fiscal';
 import { estadoTryonIA } from '../api/tryonIA';
+import {
+  listarObrasSociales, crearObraSocial, actualizarObraSocial, eliminarObraSocial,
+} from '../api/obrasSociales';
 import InfoBtn from '../components/InfoBtn';
 import { useEsAdmin } from '../hooks/useEsAdmin';
 
@@ -29,8 +32,42 @@ export default function ConfiguracionPage() {
     cuit: '', punto_venta: '1', produccion: false, razon_social: '',
     certificado: '', clave_privada: '',
   });
+  const [obrasSociales, setObrasSociales] = useState([]);
+  const [formOS, setFormOS] = useState({ nombre: '', cobertura_pct: '', cuit: '' });
   const [error, setError] = useState('');
   const [ok, setOk] = useState('');
+
+  async function cargarOS() {
+    try { setObrasSociales(await listarObrasSociales(false)); }
+    catch { /* se muestra vacío */ }
+  }
+
+  async function crearOS(e) {
+    e.preventDefault(); setError(''); setOk('');
+    try {
+      await crearObraSocial({
+        nombre: formOS.nombre,
+        cobertura_pct: Number(formOS.cobertura_pct) || 0,
+        cuit: formOS.cuit || undefined,
+      });
+      setFormOS({ nombre: '', cobertura_pct: '', cuit: '' });
+      setOk('Obra social creada.');
+      cargarOS();
+    } catch (err) { setError(err.response?.data?.error || 'No se pudo crear la obra social'); }
+  }
+
+  async function toggleOS(os) {
+    setError(''); setOk('');
+    try { await actualizarObraSocial(os.id, { activa: !os.activa }); cargarOS(); }
+    catch (err) { setError(err.response?.data?.error || 'No se pudo actualizar la obra social'); }
+  }
+
+  async function borrarOS(os) {
+    if (!window.confirm(`¿Eliminar la obra social "${os.nombre}"?`)) return;
+    setError(''); setOk('');
+    try { await eliminarObraSocial(os.id); setOk('Obra social eliminada.'); cargarOS(); }
+    catch (err) { setError(err.response?.data?.error || 'No se pudo eliminar la obra social'); }
+  }
 
   const cargar = useCallback(async () => {
     try {
@@ -57,7 +94,7 @@ export default function ConfiguracionPage() {
       }
     } catch (err) { setError(err.response?.data?.error || 'No se pudo cargar la configuración'); }
   }, []);
-  useEffect(() => { cargar(); }, [cargar]);
+  useEffect(() => { cargar(); cargarOS(); }, [cargar]);
 
   function setCampo(c, v) { setForm((f) => ({ ...f, [c]: v })); }
   function setCampoFiscal(c, v) { setFormFiscal((f) => ({ ...f, [c]: v })); }
@@ -257,6 +294,43 @@ export default function ConfiguracionPage() {
           </p>
         )}
       </form>
+
+      {/* Obras sociales / Convenios */}
+      <div className="card no-pad">
+        <h2 className="section-title" style={{ padding: '1rem 1rem 0' }}>Obras sociales / Convenios</h2>
+        <form className="form-grid" style={{ padding: '0 1rem' }} onSubmit={crearOS}>
+          <label className="field"><span>Nombre *</span>
+            <input value={formOS.nombre} onChange={(e) => setFormOS((f) => ({ ...f, nombre: e.target.value }))} required placeholder="OSDE, Swiss Medical…" /></label>
+          <label className="field"><span>Cobertura (%)</span>
+            <input type="number" min="0" max="100" step="0.1" value={formOS.cobertura_pct}
+              onChange={(e) => setFormOS((f) => ({ ...f, cobertura_pct: e.target.value }))} placeholder="50" /></label>
+          <label className="field"><span>CUIT (opcional)</span>
+            <input value={formOS.cuit} onChange={(e) => setFormOS((f) => ({ ...f, cuit: e.target.value }))} placeholder="30xxxxxxxx" /></label>
+          <div className="form-actions">
+            <button type="submit" className="btn btn--primary btn--inline">Agregar obra social</button>
+          </div>
+        </form>
+        <table className="table">
+          <thead><tr><th>Nombre</th><th>Cobertura</th><th>Estado</th><th>Acciones</th></tr></thead>
+          <tbody>
+            {obrasSociales.length === 0 ? (
+              <tr><td colSpan="4" className="muted" style={{ padding: '1rem' }}>Sin obras sociales cargadas.</td></tr>
+            ) : obrasSociales.map((os) => (
+              <tr key={os.id}>
+                <td>{os.nombre}</td>
+                <td>{Number(os.cobertura_pct)}%</td>
+                <td><span className={`badge ${os.activa ? '' : 'tag--rojo'}`}>{os.activa ? 'activa' : 'inactiva'}</span></td>
+                <td className="col-mov">
+                  <button type="button" className="btn-mini btn-mini--wide" onClick={() => toggleOS(os)}>
+                    {os.activa ? 'Desactivar' : 'Activar'}
+                  </button>
+                  <button type="button" className="btn-mini btn-mini--wide" onClick={() => borrarOS(os)}>Eliminar</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       <form className="card form-grid" onSubmit={guardar}>
         <label className="field field--full field--check">
