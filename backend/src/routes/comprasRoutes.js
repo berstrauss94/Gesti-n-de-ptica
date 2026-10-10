@@ -4,7 +4,7 @@
 // =====================================================================
 
 const express = require('express');
-const { authRequired } = require('../middlewares/auth');
+const { authRequired, requireRole } = require('../middlewares/auth');
 const prov = require('../controllers/proveedoresController');
 const compras = require('../controllers/comprasController');
 const ordenes = require('../controllers/ordenesLabController');
@@ -12,16 +12,16 @@ const ordenes = require('../controllers/ordenesLabController');
 const router = express.Router();
 router.use(authRequired);
 
-// --- Proveedores / Laboratorios ---
+// --- Proveedores / Laboratorios (altas/cambios: solo admin) ---
 router.get('/proveedores', prov.listar);
-router.post('/proveedores', prov.crear);
-router.put('/proveedores/:id', prov.actualizar);
+router.post('/proveedores', requireRole('admin'), prov.crear);
+router.put('/proveedores/:id', requireRole('admin'), prov.actualizar);
 
-// --- Compras ---
+// --- Compras (confirmar impacta costos y stock: solo admin) ---
 router.get('/compras', compras.listar);
 router.post('/compras', compras.crear);
 router.get('/compras/:id', compras.obtener);
-router.post('/compras/:id/confirmar', compras.confirmar);
+router.post('/compras/:id/confirmar', requireRole('admin'), compras.confirmar);
 
 // --- Órdenes de laboratorio ---
 router.get('/ordenes-laboratorio', ordenes.listar);

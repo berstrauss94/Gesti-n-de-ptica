@@ -59,6 +59,21 @@ async function crear(req, res) {
   if (!b.sucursal_id) return res.status(400).json({ error: 'sucursal_id es obligatorio' });
   if (items.length === 0) return res.status(400).json({ error: 'La compra debe tener al menos un item' });
 
+  // Validar cada item: producto, cantidad y costo numéricos y no negativos
+  for (const it of items) {
+    const cant = Number(it.cantidad);
+    const costo = Number(it.costo_unitario);
+    if (!it.producto_id) {
+      return res.status(400).json({ error: 'Cada item de compra debe referenciar un producto' });
+    }
+    if (!Number.isFinite(cant) || cant <= 0) {
+      return res.status(400).json({ error: 'La cantidad de cada item debe ser mayor a 0' });
+    }
+    if (!Number.isFinite(costo) || costo < 0) {
+      return res.status(400).json({ error: 'El costo unitario de cada item no puede ser negativo' });
+    }
+  }
+
   const client = await pool.connect();
   try {
     await client.query('BEGIN');

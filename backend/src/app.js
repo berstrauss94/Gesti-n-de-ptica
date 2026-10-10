@@ -79,15 +79,19 @@ if (SERVE_FRONTEND) {
   }
 }
 
-// 404 genérico (si no se sirve frontend)
-app.use((req, res) => {
-  res.status(404).json({ error: 'Recurso no encontrado' });
-});
+// 404 genérico final (cuando NO se sirve frontend; con SPA, app.get('*') ya
+// respondió antes y este handler no se alcanza).
+if (!SERVE_FRONTEND) {
+  app.use((req, res) => {
+    res.status(404).json({ error: 'Recurso no encontrado' });
+  });
+}
 
 // Manejador de errores central (incluye errores de multer)
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
-  console.error('Error no controlado:', err.message);
+  // Logueamos el stack completo para poder diagnosticar en producción
+  console.error('Error no controlado:', err.stack || err.message);
   const status = err.status || 400;
   res.status(status).json({ error: err.message || 'Error en la solicitud' });
 });

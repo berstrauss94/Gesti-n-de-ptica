@@ -61,18 +61,53 @@ async function crear(req, res) {
   if (!b.sucursal_id) return res.status(400).json({ error: 'sucursal_id es obligatorio' });
   if (items.length === 0) return res.status(400).json({ error: 'La venta debe tener al menos un item' });
 
+  // Validar cada item: descripción y cantidad/precio numéricos y no negativos
+  for (const it of items) {
+    const cant = Number(it.cantidad);
+    const precio = Number(it.precio_unitario);
+    if (!it.descripcion || String(it.descripcion).trim() === '') {
+      return res.status(400).json({ error: 'Cada item debe tener descripción' });
+    }
+    if (!Number.isFinite(cant) || cant <= 0) {
+      return res.status(400).json({ error: `Cantidad inválida en "${it.descripcion}"` });
+    }
+    if (!Number.isFinite(precio) || precio < 0) {
+      return res.status(400).json({ error: `Precio unitario inválido en "${it.descripcion}"` });
+    }
+  }
+
+  // Validar la seña si viene
+  const tieneSena = b.sena && Number(b.sena.monto) > 0;
+  if (tieneSena && !['efectivo', 'tarjeta', 'transferencia'].includes(b.sena.medio)) {
+    return res.status(400).json({ error: 'El medio de pago de la seña no es válido' });
+  }
+
   const estado = b.estado && ['presupuesto', 'senada'].includes(b.estado) ? b.estado : 'presupuesto';
 
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
+    // Si hay seña (pago real), debe existir una caja ABIERTA en la sucursal.
+    let cajaId = b.caja_id || null;
+    if (tieneSena) {
+      const cajaR = await client.query(
+        `SELECT id FROM cajas WHERE sucursal_id = $1 AND estado = 'abierta' ORDER BY abierta_at DESC LIMIT 1`,
+        [b.sucursal_id]
+      );
+      if (cajaR.rowCount === 0) {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ error: 'No hay una caja abierta en esta sucursal para registrar la seña' });
+      }
+      cajaId = cajaR.rows[0].id;
+    }
+
     const total = items.reduce((acc, it) => acc + Number(it.cantidad) * Number(it.precio_unitario), 0);
 
     const ventaR = await client.query(
       `INSERT INTO ventas (sucursal_id, caja_id, cliente_id, vendedor_id, estado, total)
        VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-      [b.sucursal_id, b.caja_id || null, b.cliente_id || null, b.vendedor_id || null, estado, total]
+      [b.sucursal_id, cajaId, b.cliente_id || null, b.vendedor_id || null, estado, total]
     );
     const venta = ventaR.rows[0];
 
@@ -85,12 +120,12 @@ async function crear(req, res) {
       );
     }
 
-    // Seña opcional (NO mueve stock)
-    if (b.sena && Number(b.sena.monto) > 0) {
+    // Seña opcional (NO mueve stock). Ya validamos caja abierta arriba.
+    if (tieneSena) {
       await client.query(
         `INSERT INTO pagos (venta_id, caja_id, medio, monto, es_sena, usuario_id)
          VALUES ($1,$2,$3,$4,TRUE,$5)`,
-        [venta.id, b.caja_id || null, b.sena.medio, Number(b.sena.monto), req.user?.id || null]
+        [venta.id, cajaId, b.sena.medio, Number(b.sena.monto), req.user?.id || null]
       );
       await client.query(
         `UPDATE ventas SET total_pagado = $1, estado = 'senada' WHERE id = $2`,
@@ -123,13 +158,40 @@ async function agregarPago(req, res) {
     if (v.rowCount === 0) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Venta no encontrada' }); }
     const venta = v.rows[0];
 
+    // No aceptar pagos sobre ventas anuladas
+    if (venta.estado === 'anulada') {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'No se puede registrar un pago en una venta anulada' });
+    }
+
+    // Evitar sobrepago: el total pagado no puede superar el total de la venta
+    const nuevoPagado = Number(venta.total_pagado) + Number(monto);
+    if (nuevoPagado > Number(venta.total) + 0.001) {
+      await client.query('ROLLBACK');
+      const saldoActual = Number(venta.total) - Number(venta.total_pagado);
+      return res.status(409).json({ error: `El pago supera el saldo pendiente ($${saldoActual.toFixed(2)})` });
+    }
+
+    // Debe existir una caja ABIERTA en la sucursal de la venta
+    const cajaR = await client.query(
+      `SELECT id FROM cajas WHERE sucursal_id = $1 AND estado = 'abierta' ORDER BY abierta_at DESC LIMIT 1`,
+      [venta.sucursal_id]
+    );
+    if (cajaR.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'No hay una caja abierta en esta sucursal para registrar el pago' });
+    }
+    const cajaId = cajaR.rows[0].id;
+
     await client.query(
       `INSERT INTO pagos (venta_id, caja_id, medio, monto, usuario_id)
        VALUES ($1,$2,$3,$4,$5)`,
-      [venta.id, venta.caja_id, medio, Number(monto), req.user?.id || null]
+      [venta.id, cajaId, medio, Number(monto), req.user?.id || null]
     );
-    const nuevoPagado = Number(venta.total_pagado) + Number(monto);
-    await client.query('UPDATE ventas SET total_pagado = $1 WHERE id = $2', [nuevoPagado, venta.id]);
+    // Si quedó saldada y seguía como presupuesto/senada, pasa a 'senada'
+    const nuevoEstado = (venta.estado === 'presupuesto' && nuevoPagado > 0) ? 'senada' : venta.estado;
+    await client.query('UPDATE ventas SET total_pagado = $1, estado = $2 WHERE id = $3',
+      [nuevoPagado, nuevoEstado, venta.id]);
 
     await client.query('COMMIT');
     return res.json({ total_pagado: nuevoPagado, saldo: Number(venta.total) - nuevoPagado });
@@ -187,7 +249,8 @@ async function entregar(req, res) {
       const u = await client.query('SELECT comision_pct FROM usuarios_sistema WHERE id = $1', [venta.vendedor_id]);
       comisionPct = u.rowCount ? Number(u.rows[0].comision_pct) || 0 : 0;
     }
-    const comisionMonto = Math.round(Number(venta.total) * comisionPct) / 100;
+    // Comisión = total * (pct/100), redondeada a centavos
+    const comisionMonto = Math.round(Number(venta.total) * (comisionPct / 100) * 100) / 100;
 
     // 3) Cuenta corriente: si quedó saldo impago y hay cliente, se registra débito
     const saldo = Number(venta.total) - Number(venta.total_pagado);

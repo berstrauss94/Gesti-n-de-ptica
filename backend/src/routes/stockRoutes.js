@@ -4,7 +4,7 @@
 // =====================================================================
 
 const express = require('express');
-const { authRequired } = require('../middlewares/auth');
+const { authRequired, requireRole } = require('../middlewares/auth');
 const suc = require('../controllers/sucursalesController');
 const prod = require('../controllers/productosController');
 const stock = require('../controllers/stockController');
@@ -12,18 +12,18 @@ const stock = require('../controllers/stockController');
 const router = express.Router();
 router.use(authRequired);
 
-// --- Sucursales ---
+// --- Sucursales (altas/cambios: solo admin) ---
 router.get('/sucursales', suc.listar);
-router.post('/sucursales', suc.crear);
-router.put('/sucursales/:id', suc.actualizar);
+router.post('/sucursales', requireRole('admin'), suc.crear);
+router.put('/sucursales/:id', requireRole('admin'), suc.actualizar);
 
 // --- Productos ---
 router.get('/productos', prod.listar);
-router.post('/productos', prod.crear);
-router.post('/productos/recalcular-precios', prod.recalcularMasivo);
+router.post('/productos', requireRole('admin'), prod.crear);
+router.post('/productos/recalcular-precios', requireRole('admin'), prod.recalcularMasivo);
 router.get('/productos/:id', prod.obtener);
-router.put('/productos/:id', prod.actualizar);
-router.delete('/productos/:id', prod.eliminar);
+router.put('/productos/:id', requireRole('admin'), prod.actualizar);
+router.delete('/productos/:id', requireRole('admin'), prod.eliminar);
 
 // --- Stock por sucursal ---
 router.get('/stock', stock.listar);

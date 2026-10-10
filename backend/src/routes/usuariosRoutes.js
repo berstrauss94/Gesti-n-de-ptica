@@ -20,7 +20,7 @@ const {
   listar: listarGraduaciones,
   crear: crearGraduacion,
 } = require('../controllers/graduacionesController');
-const { authRequired } = require('../middlewares/auth');
+const { authRequired, requireRole } = require('../middlewares/auth');
 const { upload } = require('../middlewares/upload');
 
 const router = express.Router();
@@ -33,7 +33,8 @@ router.get('/', listar);
 router.post('/', crear);
 router.get('/:id', obtener);
 router.put('/:id', actualizar);
-router.delete('/:id', eliminar);
+// Eliminar cliente es destructivo: solo admin
+router.delete('/:id', requireRole('admin'), eliminar);
 
 // --- Fotos de seguimiento (hasta 3), anidadas al cliente ---
 router.get('/:usuarioId/fotos', listarFotos);

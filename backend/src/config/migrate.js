@@ -7,6 +7,10 @@
 const { query } = require('./db');
 
 const MIGRACIONES = [
+  // Extensión necesaria para gen_random_uuid(), crypt() y gen_salt().
+  // Debe ir PRIMERO: sin ella, nada funciona (ver runner, falla fuerte).
+  `CREATE EXTENSION IF NOT EXISTS "pgcrypto"`,
+
   `ALTER TABLE marcos ADD COLUMN IF NOT EXISTS ancho_mm NUMERIC(5,1)`,
   `ALTER TABLE marcos ADD COLUMN IF NOT EXISTS alto_mm NUMERIC(5,1)`,
   `ALTER TABLE marcos ADD COLUMN IF NOT EXISTS patilla_mm NUMERIC(5,1)`,
@@ -263,12 +267,23 @@ const MIGRACIONES = [
 ];
 
 async function ejecutarMigraciones() {
-  for (const sql of MIGRACIONES) {
+  for (let i = 0; i < MIGRACIONES.length; i += 1) {
+    const sql = MIGRACIONES[i];
     try {
       await query(sql);
     } catch (err) {
-      // No bloquear el arranque por una migración; registrar y seguir.
-      console.error('Migración falló (continuo):', sql, '-', err.message);
+      // La primera migración (CREATE EXTENSION pgcrypto) es CRÍTICA: sin ella
+      // fallan los UUID y el hashing. Avisar fuerte para no quedar con un
+      // servidor "arriba" pero inservible.
+      if (i === 0) {
+        console.error(
+          '\n*** MIGRACIÓN CRÍTICA FALLIDA: no se pudo habilitar pgcrypto. ' +
+          'La base no funcionará correctamente. ***\n', err.message
+        );
+      } else {
+        // El resto son idempotentes (IF NOT EXISTS): registrar y seguir.
+        console.error('Migración falló (continuo):', sql, '-', err.message);
+      }
     }
   }
   console.log('Migraciones de columnas verificadas.');

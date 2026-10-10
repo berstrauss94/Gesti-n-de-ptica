@@ -61,6 +61,19 @@ async function cambiarEstado(req, res) {
     return res.status(400).json({ error: `Estado inválido. Debe ser uno de: ${ESTADOS.join(', ')}` });
   }
   try {
+    // Leer el estado actual para validar la transición (no permitir retrocesos
+    // ni saltos arbitrarios; sí avanzar o mantenerse)
+    const actualR = await query('SELECT estado FROM ordenes_laboratorio WHERE id = $1', [req.params.id]);
+    if (actualR.rowCount === 0) return res.status(404).json({ error: 'Orden no encontrada' });
+    const estadoActual = actualR.rows[0].estado;
+    const idxActual = ESTADOS.indexOf(estadoActual);
+    const idxNuevo = ESTADOS.indexOf(estado);
+    if (idxNuevo < idxActual) {
+      return res.status(409).json({
+        error: `No se puede retroceder de "${estadoActual}" a "${estado}"`,
+      });
+    }
+
     const r = await query(
       `UPDATE ordenes_laboratorio SET estado = $1 WHERE id = $2 RETURNING *`,
       [estado, req.params.id]
