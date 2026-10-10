@@ -22,6 +22,8 @@ router.get('/compras', compras.listar);
 router.post('/compras', compras.crear);
 router.get('/compras/:id', compras.obtener);
 router.post('/compras/:id/confirmar', requireRole('admin'), compras.confirmar);
+// Exportación contable CITI Compras (AFIP) por período: solo admin
+router.get('/compras-citi', requireRole('admin'), compras.exportarCITI);
 
 // --- Órdenes de laboratorio ---
 router.get('/ordenes-laboratorio', ordenes.listar);

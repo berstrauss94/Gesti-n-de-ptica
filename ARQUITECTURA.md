@@ -8,7 +8,7 @@
 > cambio. Hay un hook de Kiro (`.kiro/hooks/sync-arquitectura-doc.json`) que lo
 > recuerda automáticamente. Al final está el **Registro de cambios**.
 
-_Última actualización: 2026-10-06_
+_Última actualización: 2026-10-06 (brecha Optix: descuentos/promos, etiquetas, CITI)_
 
 ---
 
@@ -102,9 +102,10 @@ Optica/
 | **Clientes/Pacientes** | CRUD, fotos de seguimiento (hasta 3), graduaciones/recetas anidadas. |
 | **Marcos (catálogo)** | CRUD de armazones con 3 vistas (frontal/45°/perfil) en PNG transparente. |
 | **Virtual Try-On** | Superposición 2D con escalado antropométrico (DIP + MediaPipe) + composición realista con IA (Gemini). |
-| **Stock / Inventario** | Multisucursal: existencias, movimientos, alta, recálculo de precios, filtro por marca, traslados entre sucursales, export CSV. |
-| **TPV / Ventas** | Caja (apertura/cierre con arqueo), ventas, pagos, señas, entrega, anulación, reintegros/retiros de caja, cuenta corriente. |
-| **Compras** | Proveedores, laboratorios, compras (confirmar impacta stock/costos), órdenes de laboratorio. |
+| **Stock / Inventario** | Multisucursal: existencias, movimientos, alta, recálculo de precios, filtro por marca, traslados entre sucursales, export CSV, **impresión de etiquetas con código de barras (Code128)**. |
+| **TPV / Ventas** | Caja (apertura/cierre con arqueo), ventas, pagos, señas, entrega, anulación, reintegros/retiros de caja, cuenta corriente, **descuentos/promociones por venta**. |
+| **Promociones / Descuentos** | El comercio crea sus propios descuentos (porcentaje o monto), los activa/desactiva y los aplica en el TPV. |
+| **Compras** | Proveedores, laboratorios, compras (confirmar impacta stock/costos), órdenes de laboratorio, **exportación contable CITI Compras (AFIP) por período**. |
 | **Turnos / Agenda** | Alta de turnos, filtro por rango, estados (asistió/ausente/cancelado). |
 | **Fiscal (AFIP/ARCA)** | Comprobantes A/B/C/interno con numeración correlativa y QR oficial; modo real listo para activar con certificado. |
 | **Notificaciones** | Telegram (real) y WhatsApp (listo para activar), con historial y config. |
@@ -123,8 +124,9 @@ lentes, quitar fondo, 3 vistas de marcos, logo). No corren en producción.
 - **Marcos:** CRUD `/marcos` (subida multiparte de 3 vistas).
 - **Try-On IA:** `GET /tryon-ia/estado`, `POST /tryon-ia/generar`.
 - **Stock:** `/sucursales`, `/productos`, `/stock`, `/stock/marcas`, movimientos, `/traslados`.
-- **TPV:** `/cajas/*` (actual/abrir/cerrar/movimientos), `/ventas/*`, pagos, entregar, anular, `/cuenta-corriente/:id`.
-- **Compras:** `/proveedores`, `/compras`, `/ordenes-laboratorio`.
+- **TPV:** `/cajas/*` (actual/abrir/cerrar/movimientos), `/ventas/*` (acepta `descuento` al crear), pagos, entregar, anular, `/cuenta-corriente/:id`.
+- **Promociones:** `GET /promociones`, `POST /promociones` (admin), `PATCH /promociones/:id` (admin), `DELETE /promociones/:id` (admin).
+- **Compras:** `/proveedores`, `/compras`, `/ordenes-laboratorio`, `GET /compras-citi?periodo=YYYY-MM` (admin, descarga .txt).
 - **Fiscal:** `/fiscal/estado`, `/fiscal/emitir`, `/fiscal/comprobantes`.
 - **Notificaciones:** `/notificaciones/config`, `/notificaciones`, `/notificaciones/prueba`.
 - **Health:** `GET /health`.
@@ -156,7 +158,7 @@ integraciones NO se devuelven al frontend (solo flags `_configurado`).
 ~22 tablas con UUID y CHECKs, en `db/*.sql` y `backend/src/config/migrate.js` (idempotente):
 - **Operación:** `usuarios_sistema` (operadores), `usuarios` (clientes), `sucursales`.
 - **Stock:** `productos`, `stock_sucursal`, `movimientos_stock`, `traslados_stock`.
-- **TPV:** `cajas`, `ventas`, `venta_items`, `pagos`, `cuenta_corriente`, `movimientos_caja`.
+- **TPV:** `cajas`, `ventas` (con `total_bruto`/`descuento_*`), `venta_items`, `pagos`, `cuenta_corriente`, `movimientos_caja`, `promociones`.
 - **Compras:** `proveedores`, `compras`, `compra_items`, `ordenes_laboratorio`.
 - **Fiscal/avisos/agenda:** `comprobantes_fiscales` (con `payload` JSONB para el QR),
   `config_notificaciones`, `notificaciones`, `turnos`, `graduaciones`, fotos.
@@ -238,3 +240,15 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
 - **2026-10-06** — 6 herramientas: Turnos/Agenda, traslados de stock,
   reintegros/retiros de caja, filtro de marca y export CSV de stock.
 - **2026-10-06** — Nueva imagen de fondo (armazones) en login y Stock.
+- **2026-10-06** — Cierre de brecha vs. Optix (parte 1):
+  - **Descuentos/Promociones:** tabla `promociones` + columnas `total_bruto`/`descuento_*`
+    en `ventas`; `promocionesController` + `promocionesRoutes`; `ventasController.crear`
+    aplica descuento; TPV con selector de promo/descuento manual y total neto
+    (`TpvPage.jsx`, `api/promociones.js`).
+  - **Etiquetas con código de barras:** generador Code128 en SVG puro
+    (`utils/barcode.js`) + botón "Etiqueta" imprimible en Stock (`StockPage.jsx`).
+  - **Exportación CITI Compras (AFIP):** `comprasController.exportarCITI` +
+    ruta `/compras-citi` (admin) + botón por período en Compras
+    (`ComprasPage.jsx`, `api/compras.js`).
+  - Pendiente (requiere definición/credenciales): módulo de Obras Sociales/Convenios,
+    importación de listas de precios de proveedores por CSV, CAE AFIP real y WhatsApp Business.

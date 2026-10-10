@@ -12,7 +12,7 @@ import { listarUsuarios } from '../api/usuarios';
 import {
   listarProveedores, crearProveedor, actualizarProveedor,
   listarCompras, obtenerCompra, crearCompra, confirmarCompra,
-  listarOrdenes, crearOrden, cambiarEstadoOrden,
+  listarOrdenes, crearOrden, cambiarEstadoOrden, descargarCITI,
 } from '../api/compras';
 import InfoBtn from '../components/InfoBtn';
 import Modal from '../components/Modal';
@@ -25,11 +25,23 @@ const ORDEN_LABEL = {
 };
 
 export default function ComprasPage() {
+  const esAdmin = useEsAdmin();
   const [tab, setTab] = useState('compras');
   const [sucursales, setSucursales] = useState([]);
   const [sucursalId, setSucursalId] = useState('');
+  const [periodoCiti, setPeriodoCiti] = useState(() => new Date().toISOString().slice(0, 7)); // YYYY-MM
   const [error, setError] = useState('');
   const [ok, setOk] = useState('');
+
+  async function handleCITI() {
+    setError(''); setOk('');
+    try {
+      await descargarCITI(periodoCiti);
+      setOk(`Archivo CITI Compras del período ${periodoCiti} generado.`);
+    } catch (err) {
+      setError(err.response?.data?.error || 'No se pudo generar el archivo CITI');
+    }
+  }
 
   useEffect(() => {
     (async () => {
@@ -52,9 +64,24 @@ export default function ComprasPage() {
             conQueFin="Reponer inventario, mantener los costos al día y seguir los trabajos enviados a laboratorio hasta la entrega."
           />
         </h1>
-        <select value={sucursalId} onChange={(e) => setSucursalId(e.target.value)}>
-          {sucursales.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-        </select>
+        <div className="tryon-toolbar">
+          <select value={sucursalId} onChange={(e) => setSucursalId(e.target.value)}>
+            {sucursales.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+          </select>
+          {esAdmin && (
+            <>
+              <input
+                type="month"
+                value={periodoCiti}
+                onChange={(e) => setPeriodoCiti(e.target.value)}
+                title="Período para la exportación CITI Compras"
+              />
+              <button type="button" className="btn btn--ghost btn--inline" onClick={handleCITI}>
+                CITI Compras (AFIP)
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="tabs">

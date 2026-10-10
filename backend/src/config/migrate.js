@@ -312,6 +312,27 @@ const MIGRACIONES = [
      CONSTRAINT origen_distinto_destino CHECK (origen_id <> destino_id)
    )`,
   `CREATE INDEX IF NOT EXISTS idx_traslados_producto ON traslados_stock(producto_id)`,
+
+  // --- Descuentos / promociones a nivel venta (TPV) ---
+  // total_bruto = suma de items sin descuento; total = neto cobrado.
+  `ALTER TABLE ventas ADD COLUMN IF NOT EXISTS total_bruto NUMERIC(12,2) NOT NULL DEFAULT 0`,
+  `ALTER TABLE ventas ADD COLUMN IF NOT EXISTS descuento_tipo VARCHAR(10) DEFAULT 'ninguno'
+     CHECK (descuento_tipo IN ('ninguno','porcentaje','monto'))`,
+  `ALTER TABLE ventas ADD COLUMN IF NOT EXISTS descuento_valor NUMERIC(12,2) NOT NULL DEFAULT 0`,
+  `ALTER TABLE ventas ADD COLUMN IF NOT EXISTS descuento_monto NUMERIC(12,2) NOT NULL DEFAULT 0`,
+  `ALTER TABLE ventas ADD COLUMN IF NOT EXISTS descuento_motivo VARCHAR(120)`,
+
+  // --- Promociones reutilizables definidas por el usuario ---
+  // El comercio crea sus propios descuentos/promos y los aplica en el TPV.
+  `CREATE TABLE IF NOT EXISTS promociones (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     nombre VARCHAR(120) NOT NULL,
+     tipo VARCHAR(10) NOT NULL CHECK (tipo IN ('porcentaje','monto')),
+     valor NUMERIC(12,2) NOT NULL CHECK (valor > 0),
+     activa BOOLEAN NOT NULL DEFAULT TRUE,
+     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+   )`,
+  `CREATE INDEX IF NOT EXISTS idx_promociones_activa ON promociones(activa)`,
 ];
 
 async function ejecutarMigraciones() {

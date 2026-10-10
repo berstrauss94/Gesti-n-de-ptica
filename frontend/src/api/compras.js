@@ -35,6 +35,20 @@ export async function confirmarCompra(id) {
   const { data } = await api.post(`/api/compras/${id}/confirmar`);
   return data.compra;
 }
+// Descarga el archivo CITI Compras (AFIP) del período YYYY-MM como .txt
+export async function descargarCITI(periodo) {
+  const { data } = await api.get('/api/compras-citi', {
+    params: { periodo }, responseType: 'blob',
+  });
+  const url = URL.createObjectURL(new Blob([data], { type: 'text/plain' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `CITI_COMPRAS_${periodo.replace('-', '')}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
 // --- Órdenes de laboratorio ---
 export async function listarOrdenes(params = {}) {

@@ -102,12 +102,28 @@ async function crear(req, res) {
       cajaId = cajaR.rows[0].id;
     }
 
-    const total = items.reduce((acc, it) => acc + Number(it.cantidad) * Number(it.precio_unitario), 0);
+    const totalBruto = items.reduce((acc, it) => acc + Number(it.cantidad) * Number(it.precio_unitario), 0);
+
+    // Descuento a nivel venta: 'porcentaje' (0-100) o 'monto' (fijo). Se acota
+    // para que nunca supere el bruto ni deje el total negativo.
+    const desc = b.descuento || {};
+    const descTipo = ['porcentaje', 'monto'].includes(desc.tipo) ? desc.tipo : 'ninguno';
+    const descValor = Number(desc.valor) > 0 ? Number(desc.valor) : 0;
+    let descMonto = 0;
+    if (descTipo === 'porcentaje') {
+      descMonto = totalBruto * (Math.min(descValor, 100) / 100);
+    } else if (descTipo === 'monto') {
+      descMonto = Math.min(descValor, totalBruto);
+    }
+    descMonto = Math.round(descMonto * 100) / 100;
+    const total = Math.round((totalBruto - descMonto) * 100) / 100;
 
     const ventaR = await client.query(
-      `INSERT INTO ventas (sucursal_id, caja_id, cliente_id, vendedor_id, estado, total)
-       VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-      [b.sucursal_id, cajaId, b.cliente_id || null, b.vendedor_id || null, estado, total]
+      `INSERT INTO ventas (sucursal_id, caja_id, cliente_id, vendedor_id, estado,
+         total, total_bruto, descuento_tipo, descuento_valor, descuento_monto, descuento_motivo)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+      [b.sucursal_id, cajaId, b.cliente_id || null, b.vendedor_id || null, estado,
+       total, totalBruto, descTipo, descValor, descMonto, desc.motivo || null]
     );
     const venta = ventaR.rows[0];
 

@@ -177,4 +177,63 @@ async function confirmar(req, res) {
   }
 }
 
-module.exports = { listar, obtener, crear, confirmar };
+// GET /api/compras/citi?periodo=YYYY-MM
+// Genera el archivo de texto "CITI Compras" (comprobantes) de AFIP para el
+// período indicado, a partir de las compras CONFIRMADAS con nro de factura.
+// Formato posicional simplificado del registro de comprobantes de compras.
+async function exportarCITI(req, res) {
+  const periodo = String(req.query.periodo || '').trim(); // YYYY-MM
+  if (!/^\d{4}-\d{2}$/.test(periodo)) {
+    return res.status(400).json({ error: 'periodo debe tener el formato YYYY-MM' });
+  }
+  const [anio, mes] = periodo.split('-');
+  try {
+    const r = await query(
+      `SELECT c.*, p.cuit AS proveedor_cuit, p.nombre AS proveedor_nombre
+       FROM compras c
+       LEFT JOIN proveedores p ON p.id = c.proveedor_id
+       WHERE c.estado = 'confirmada'
+         AND to_char(COALESCE(c.confirmada_at, c.created_at), 'YYYY-MM') = $1
+       ORDER BY COALESCE(c.confirmada_at, c.created_at) ASC`,
+      [periodo]
+    );
+
+    // Helpers de formato posicional (relleno a izquierda/derecha)
+    const num = (v, len) => String(Math.round(Number(v || 0) * 100)).padStart(len, '0');
+    const txt = (v, len) => String(v || '').replace(/[\r\n]/g, ' ').slice(0, len).padEnd(len, ' ');
+    const soloDig = (v) => String(v || '').replace(/\D/g, '');
+    const cuit = (v) => soloDig(v).padStart(11, '0').slice(0, 11);
+
+    const lineas = r.rows.map((c) => {
+      const fechaBase = c.confirmada_at || c.created_at;
+      const fecha = new Date(fechaBase);
+      const fechaStr = `${fecha.getFullYear()}${String(fecha.getMonth() + 1).padStart(2, '0')}${String(fecha.getDate()).padStart(2, '0')}`;
+      const neto = Math.round((Number(c.total) / 1.21) * 100) / 100;
+      const iva = Math.round((Number(c.total) - neto) * 100) / 100;
+      // Registro de comprobante (campos clave del layout CITI Compras):
+      // fecha(8) tipoCbte(3) ptoVta(5) nroCbte(20) cuitVend(11) razonSocial(30)
+      // impTotal(15) impNeto(15) impIVA(15)
+      return [
+        fechaStr,
+        '001',                         // tipo comprobante (factura A por defecto)
+        '00000',                       // punto de venta (si no se registra, 0)
+        txt(soloDig(c.nro_factura), 20).replace(/ /g, '0'),
+        cuit(c.proveedor_cuit),
+        txt(c.proveedor_nombre, 30),
+        num(c.total, 15),
+        num(neto, 15),
+        num(iva, 15),
+      ].join('');
+    });
+
+    const contenido = lineas.join('\r\n') + (lineas.length ? '\r\n' : '');
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="CITI_COMPRAS_${anio}${mes}.txt"`);
+    return res.send(contenido);
+  } catch (err) {
+    console.error('Error al exportar CITI Compras:', err);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}
+
+module.exports = { listar, obtener, crear, confirmar, exportarCITI };

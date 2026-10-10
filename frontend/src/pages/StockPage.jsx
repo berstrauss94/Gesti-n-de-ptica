@@ -22,6 +22,7 @@ import {
   crearTraslado,
 } from '../api/stock';
 import fondoStock from '../assets/fondo-stock.jpg';
+import { barcodeSVG } from '../utils/barcode';
 import InfoBtn from '../components/InfoBtn';
 import Modal from '../components/Modal';
 import { useEsAdmin } from '../hooks/useEsAdmin';
@@ -242,6 +243,40 @@ export default function StockPage() {
     setOk('Stock exportado a CSV.');
   }
 
+  // Genera e imprime una etiqueta con código de barras del producto.
+  // Usa el código de barras si existe; si no, el código interno.
+  function imprimirEtiqueta(s) {
+    const valor = (s.codigo_barras && String(s.codigo_barras).trim()) || s.codigo;
+    if (!valor) { setError('El producto no tiene código para la etiqueta.'); return; }
+    const svg = barcodeSVG(valor, { alto: 50, moduloAncho: 2 });
+    const precio = `$ ${Number(s.precio_venta).toFixed(2)}`;
+    const win = window.open('', '_blank', 'width=420,height=320');
+    if (!win) { setError('El navegador bloqueó la ventana de impresión.'); return; }
+    win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Etiqueta ${escapeHtml(s.nombre)}</title>
+      <style>
+        @page { size: 50mm 30mm; margin: 2mm; }
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: system-ui, sans-serif; }
+        .etiqueta { width: 50mm; padding: 2mm; text-align: center; }
+        .et-nombre { font-size: 10px; font-weight: 700; margin: 0 0 1mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .et-precio { font-size: 13px; font-weight: 700; margin: 1mm 0 0; }
+        svg { max-width: 100%; height: auto; }
+      </style></head>
+      <body>
+        <div class="etiqueta">
+          <p class="et-nombre">${escapeHtml(s.nombre)}</p>
+          ${svg}
+          <p class="et-precio">${precio}</p>
+        </div>
+        <script>window.onload = function(){ window.print(); setTimeout(function(){ window.close(); }, 300); };<\/script>
+      </body></html>`);
+    win.document.close();
+  }
+
+  function escapeHtml(t) {
+    return String(t || '').replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+  }
+
   function abrirTraslado(s) {
     setTraslado({ producto: s });
     setTrasladoForm({ destino_id: '', cantidad: '', motivo: '' });
@@ -368,6 +403,7 @@ export default function StockPage() {
                     <button type="button" className="btn-mini" onClick={() => mover(s.producto_id, 'salida', 1)}>−</button>
                     <button type="button" className="btn-mini" onClick={() => mover(s.producto_id, 'entrada', 1)}>+</button>
                     <button type="button" className="btn-mini btn-mini--wide" onClick={() => verHistorial(s)}>Historial</button>
+                    <button type="button" className="btn-mini btn-mini--wide" onClick={() => imprimirEtiqueta(s)}>Etiqueta</button>
                     {esAdmin && (
                       <>
                         <button type="button" className="btn-mini btn-mini--wide" onClick={() => abrirEdicion(s)}>Editar</button>

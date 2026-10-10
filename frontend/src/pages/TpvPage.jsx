@@ -14,6 +14,7 @@ import {
   cuentaCorriente, registrarMovimientoCaja,
 } from '../api/ventas';
 import { estadoFiscal, emitirComprobante } from '../api/fiscal';
+import { listarPromociones } from '../api/promociones';
 import InfoBtn from '../components/InfoBtn';
 import Modal from '../components/Modal';
 import { useEsAdmin } from '../hooks/useEsAdmin';
@@ -34,6 +35,12 @@ export default function TpvPage() {
   const [error, setError] = useState('');
   const [ok, setOk] = useState('');
 
+  // Promociones/descuentos del comercio
+  const [promos, setPromos] = useState([]);
+  const [descTipo, setDescTipo] = useState('ninguno'); // ninguno | porcentaje | monto
+  const [descValor, setDescValor] = useState('');
+  const [descMotivo, setDescMotivo] = useState('');
+
   // Venta en construcción
   const [carrito, setCarrito] = useState([]); // [{producto_id, descripcion, cantidad, precio_unitario}]
   const [clienteId, setClienteId] = useState('');
@@ -52,12 +59,14 @@ export default function TpvPage() {
   useEffect(() => {
     (async () => {
       try {
-        const [s, u, f] = await Promise.all([
+        const [s, u, f, pr] = await Promise.all([
           listarSucursales(), listarUsuarios({ limit: 200 }), estadoFiscal().catch(() => null),
+          listarPromociones(true).catch(() => []),
         ]);
         setSucursales(s);
         setClientes(u.usuarios);
         setFiscal(f);
+        setPromos(pr);
         if (s.length) setSucursalId(s[0].id);
       } catch (err) {
         setError(err.response?.data?.error || 'No se pudieron cargar los datos');
@@ -101,10 +110,29 @@ export default function TpvPage() {
 
   useEffect(() => { refrescar(sucursalId); }, [sucursalId, refrescar]);
 
-  const totalCarrito = useMemo(
+  const totalBruto = useMemo(
     () => carrito.reduce((a, it) => a + it.cantidad * it.precio_unitario, 0),
     [carrito]
   );
+
+  // Monto del descuento según tipo/valor, acotado para no pasarse del bruto.
+  const descMonto = useMemo(() => {
+    const val = Number(descValor) || 0;
+    if (descTipo === 'porcentaje') return Math.round(totalBruto * (Math.min(val, 100) / 100) * 100) / 100;
+    if (descTipo === 'monto') return Math.round(Math.min(val, totalBruto) * 100) / 100;
+    return 0;
+  }, [descTipo, descValor, totalBruto]);
+
+  const totalCarrito = Math.round((totalBruto - descMonto) * 100) / 100;
+
+  // Al elegir una promo guardada, carga su tipo/valor en el descuento manual.
+  function aplicarPromo(id) {
+    const p = promos.find((x) => x.id === id);
+    if (!p) { setDescTipo('ninguno'); setDescValor(''); setDescMotivo(''); return; }
+    setDescTipo(p.tipo);
+    setDescValor(String(p.valor));
+    setDescMotivo(p.nombre);
+  }
 
   function agregarAlCarrito() {
     const p = productos.find((x) => x.id === prodSel);
@@ -155,9 +183,13 @@ export default function TpvPage() {
         items: carrito,
       };
       if (Number(senaMonto) > 0) payload.sena = { medio: senaMedio, monto: Number(senaMonto) };
+      if (descTipo !== 'ninguno' && Number(descValor) > 0) {
+        payload.descuento = { tipo: descTipo, valor: Number(descValor), motivo: descMotivo || null };
+      }
       await crearVenta(payload);
       setOk('Venta creada.');
       setCarrito([]); setClienteId(''); setVendedorId(''); setSenaMonto('');
+      setDescTipo('ninguno'); setDescValor(''); setDescMotivo('');
       refrescar(sucursalId);
     } catch (err) { setError(err.response?.data?.error || 'No se pudo crear la venta'); }
   }
@@ -305,8 +337,42 @@ export default function TpvPage() {
               </select></label>
           </div>
 
+          {/* Descuento / promoción (propio del comercio) */}
+          <div className="venta-form__row">
+            <label className="field"><span>Promoción guardada</span>
+              <select value="" onChange={(e) => aplicarPromo(e.target.value)}>
+                <option value="">— Elegir / sin promo —</option>
+                {promos.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nombre} ({p.tipo === 'porcentaje' ? `${Number(p.valor)}%` : `$${Number(p.valor).toFixed(2)}`})
+                  </option>
+                ))}
+              </select></label>
+            <label className="field"><span>Tipo de descuento</span>
+              <select value={descTipo} onChange={(e) => setDescTipo(e.target.value)}>
+                <option value="ninguno">Sin descuento</option>
+                <option value="porcentaje">Porcentaje (%)</option>
+                <option value="monto">Monto fijo ($)</option>
+              </select></label>
+            <label className="field"><span>Valor del descuento</span>
+              <input type="number" min="0" step="0.01" value={descValor}
+                onChange={(e) => setDescValor(e.target.value)}
+                disabled={descTipo === 'ninguno'} placeholder="0" /></label>
+            <label className="field"><span>Motivo (opcional)</span>
+              <input value={descMotivo} onChange={(e) => setDescMotivo(e.target.value)}
+                placeholder="Ej: promo cliente frecuente" /></label>
+          </div>
+
           <div className="venta-total">
-            <strong>Total: ${totalCarrito.toFixed(2)}</strong>
+            <div className="venta-total__detalle">
+              {descMonto > 0 && (
+                <>
+                  <span className="muted small">Subtotal: ${totalBruto.toFixed(2)}</span>
+                  <span className="muted small">Descuento: −${descMonto.toFixed(2)}</span>
+                </>
+              )}
+              <strong>Total: ${totalCarrito.toFixed(2)}</strong>
+            </div>
             <button type="button" className="btn btn--primary btn--inline" onClick={handleCrearVenta} disabled={carrito.length === 0}>
               Crear venta
             </button>
