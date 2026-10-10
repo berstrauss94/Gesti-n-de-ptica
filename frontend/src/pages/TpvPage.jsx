@@ -11,7 +11,7 @@ import { listarUsuarios } from '../api/usuarios';
 import {
   cajaActual, abrirCaja, cerrarCaja,
   listarVentas, obtenerVenta, crearVenta, agregarPago, entregarVenta, anularVenta,
-  cuentaCorriente,
+  cuentaCorriente, registrarMovimientoCaja,
 } from '../api/ventas';
 import { estadoFiscal, emitirComprobante } from '../api/fiscal';
 import InfoBtn from '../components/InfoBtn';
@@ -47,6 +47,7 @@ export default function TpvPage() {
   const [pagoMonto, setPagoMonto] = useState('');
   const [pagoMedio, setPagoMedio] = useState('efectivo');
   const [cuenta, setCuenta] = useState(null); // { cliente, saldo, movimientos }
+  const [movCaja, setMovCaja] = useState(null); // form de reintegro/retiro de caja
 
   useEffect(() => {
     (async () => {
@@ -199,6 +200,23 @@ export default function TpvPage() {
     } catch (err) { setError(err.response?.data?.error || 'No se pudo cargar la cuenta corriente'); }
   }
 
+  async function guardarMovimientoCaja(e) {
+    e.preventDefault();
+    setError(''); setOk('');
+    try {
+      await registrarMovimientoCaja(caja.id, {
+        tipo: movCaja.tipo,
+        medio: movCaja.medio,
+        monto: Number(movCaja.monto),
+        motivo: movCaja.motivo || null,
+      });
+      setOk(movCaja.tipo === 'ingreso' ? 'Reintegro/ingreso registrado.' : 'Retiro/egreso registrado.');
+      setMovCaja(null);
+    } catch (err) {
+      setError(err.response?.data?.error || 'No se pudo registrar el movimiento de caja');
+    }
+  }
+
   return (
     <div className="stack">
       <div className="page-header">
@@ -215,7 +233,10 @@ export default function TpvPage() {
             {sucursales.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
           </select>
           {caja ? (
-            <button type="button" className="btn btn--ghost btn--inline" onClick={handleCerrarCaja}>Cerrar caja</button>
+            <>
+              <button type="button" className="btn btn--ghost btn--inline" onClick={() => setMovCaja({ tipo: 'egreso', medio: 'efectivo', monto: '', motivo: '' })}>Reintegro / Retiro</button>
+              <button type="button" className="btn btn--ghost btn--inline" onClick={handleCerrarCaja}>Cerrar caja</button>
+            </>
           ) : (
             <button type="button" className="btn btn--primary btn--inline" onClick={handleAbrirCaja}>Abrir caja</button>
           )}
@@ -419,6 +440,31 @@ export default function TpvPage() {
               </tbody>
             </table>
           )}
+        </Modal>
+      )}
+
+      {/* Modal: reintegro / retiro de caja */}
+      {movCaja && (
+        <Modal titulo="Movimiento de caja" onCerrar={() => setMovCaja(null)}>
+          <form className="form-grid" onSubmit={guardarMovimientoCaja}>
+            <label className="field"><span>Tipo</span>
+              <select value={movCaja.tipo} onChange={(e) => setMovCaja({ ...movCaja, tipo: e.target.value })}>
+                <option value="egreso">Retiro / Egreso (gasto)</option>
+                <option value="ingreso">Reintegro / Ingreso</option>
+              </select></label>
+            <label className="field"><span>Medio</span>
+              <select value={movCaja.medio} onChange={(e) => setMovCaja({ ...movCaja, medio: e.target.value })}>
+                {MEDIOS.map((m) => <option key={m} value={m}>{m}</option>)}
+              </select></label>
+            <label className="field"><span>Monto *</span>
+              <input type="number" min="0.01" step="0.01" value={movCaja.monto} onChange={(e) => setMovCaja({ ...movCaja, monto: e.target.value })} required /></label>
+            <label className="field field--full"><span>Motivo</span>
+              <input value={movCaja.motivo} onChange={(e) => setMovCaja({ ...movCaja, motivo: e.target.value })} placeholder="Retiro para proveedor, vuelto, etc." /></label>
+            <div className="form-actions">
+              <button type="button" className="btn btn--ghost btn--inline" onClick={() => setMovCaja(null)}>Cancelar</button>
+              <button type="submit" className="btn btn--primary btn--inline">Registrar</button>
+            </div>
+          </form>
         </Modal>
       )}
     </div>

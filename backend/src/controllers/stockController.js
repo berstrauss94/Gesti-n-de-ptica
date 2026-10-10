@@ -21,6 +21,8 @@ async function listar(req, res) {
     cond.push(`(p.nombre ILIKE ${p} OR p.codigo ILIKE ${p} OR p.codigo_barras ILIKE ${p})`);
   }
   if (categoria) { params.push(categoria); cond.push(`p.categoria = $${params.length}`); }
+  if (req.query.marca) { params.push(req.query.marca); cond.push(`p.marca = $${params.length}`); }
+  if (req.query.bajo_minimo === 'true') { cond.push(`ss.cantidad <= ss.stock_minimo`); }
   const where = cond.length ? `WHERE ${cond.join(' AND ')}` : '';
   params.push(lim, off);
 
@@ -148,4 +150,19 @@ async function listarMovimientos(req, res) {
   }
 }
 
-module.exports = { listar, registrarMovimiento, listarMovimientos };
+// GET /api/stock/marcas  -> lista de marcas distintas (para el filtro de stock)
+async function listarMarcas(req, res) {
+  try {
+    const r = await query(
+      `SELECT DISTINCT marca FROM productos
+       WHERE marca IS NOT NULL AND marca <> '' AND activo = TRUE
+       ORDER BY marca ASC`
+    );
+    return res.json({ marcas: r.rows.map((x) => x.marca) });
+  } catch (err) {
+    console.error('Error al listar marcas:', err);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}
+
+module.exports = { listar, registrarMovimiento, listarMovimientos, listarMarcas };

@@ -17,6 +17,15 @@ export async function cerrarCaja(id, monto_declarado) {
   const { data } = await api.post(`/api/cajas/${id}/cerrar`, { monto_declarado });
   return data; // { caja, esperado_efectivo }
 }
+// Reintegros / retiros / gastos manuales de caja
+export async function listarMovimientosCaja(cajaId) {
+  const { data } = await api.get(`/api/cajas/${cajaId}/movimientos`);
+  return data.movimientos;
+}
+export async function registrarMovimientoCaja(cajaId, payload) {
+  const { data } = await api.post(`/api/cajas/${cajaId}/movimiento`, payload);
+  return data.movimiento;
+}
 
 // --- Ventas ---
 export async function listarVentas(params = {}) {

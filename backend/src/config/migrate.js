@@ -264,6 +264,54 @@ const MIGRACIONES = [
 
   // --- Try-On con IA: API key de Google (opcional, se puede cargar por UI) ---
   `ALTER TABLE config_notificaciones ADD COLUMN IF NOT EXISTS gemini_api_key VARCHAR(200)`,
+
+  // --- Módulo Turnos / Agenda ---
+  `CREATE TABLE IF NOT EXISTS turnos (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     numero SERIAL,
+     sucursal_id UUID NOT NULL REFERENCES sucursales(id),
+     cliente_id UUID REFERENCES usuarios(id),
+     profesional_id UUID REFERENCES usuarios_sistema(id),
+     fecha_hora TIMESTAMP WITH TIME ZONE NOT NULL,
+     motivo VARCHAR(200),
+     nombre_contacto VARCHAR(150),
+     telefono_contacto VARCHAR(50),
+     estado VARCHAR(15) NOT NULL DEFAULT 'pendiente'
+       CHECK (estado IN ('pendiente','asistio','ausente','cancelado')),
+     notas TEXT,
+     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+   )`,
+  `CREATE INDEX IF NOT EXISTS idx_turnos_sucursal ON turnos(sucursal_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_turnos_fecha ON turnos(fecha_hora)`,
+
+  // --- Movimientos manuales de caja (reintegros, retiros, gastos) ---
+  `CREATE TABLE IF NOT EXISTS movimientos_caja (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     caja_id UUID NOT NULL REFERENCES cajas(id),
+     tipo VARCHAR(15) NOT NULL CHECK (tipo IN ('ingreso','egreso')),
+     medio VARCHAR(15) NOT NULL DEFAULT 'efectivo'
+       CHECK (medio IN ('efectivo','tarjeta','transferencia')),
+     monto NUMERIC(12,2) NOT NULL CHECK (monto > 0),
+     motivo VARCHAR(200),
+     usuario_id UUID REFERENCES usuarios_sistema(id),
+     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+   )`,
+  `CREATE INDEX IF NOT EXISTS idx_mov_caja ON movimientos_caja(caja_id)`,
+
+  // --- Traslados de stock entre sucursales ---
+  `CREATE TABLE IF NOT EXISTS traslados_stock (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     numero SERIAL,
+     producto_id UUID NOT NULL REFERENCES productos(id),
+     origen_id UUID NOT NULL REFERENCES sucursales(id),
+     destino_id UUID NOT NULL REFERENCES sucursales(id),
+     cantidad INT NOT NULL CHECK (cantidad > 0),
+     motivo VARCHAR(200),
+     usuario_id UUID REFERENCES usuarios_sistema(id),
+     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+     CONSTRAINT origen_distinto_destino CHECK (origen_id <> destino_id)
+   )`,
+  `CREATE INDEX IF NOT EXISTS idx_traslados_producto ON traslados_stock(producto_id)`,
 ];
 
 async function ejecutarMigraciones() {

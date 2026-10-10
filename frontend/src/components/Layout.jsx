@@ -8,7 +8,7 @@ import { useState } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import {
   Home, Users, Glasses, Package, ShoppingCart, Truck, Settings,
-  LogOut, KeyRound, Menu, X,
+  CalendarClock, LogOut, KeyRound, Menu, X,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useEsAdmin } from '../hooks/useEsAdmin';
@@ -22,6 +22,7 @@ const MENU = [
   { name: 'Stock', path: '/stock', icon: Package },
   { name: 'TPV / Ventas', path: '/tpv', icon: ShoppingCart },
   { name: 'Compras', path: '/compras', icon: Truck },
+  { name: 'Turnos', path: '/turnos', icon: CalendarClock },
   // Configuración (tokens, credenciales): solo admin
   { name: 'Configuración', path: '/configuracion', icon: Settings, adminOnly: true },
 ];

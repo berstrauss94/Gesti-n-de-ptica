@@ -18,6 +18,8 @@ import {
   registrarMovimiento,
   listarMovimientos,
   recalcularPrecios,
+  listarMarcas,
+  crearTraslado,
 } from '../api/stock';
 import fondoStock from '../assets/fondo-stock.jpg';
 import InfoBtn from '../components/InfoBtn';
@@ -50,12 +52,19 @@ export default function StockPage() {
   const [editando, setEditando] = useState(null); // producto en edición
   const [historial, setHistorial] = useState(null); // { producto, movimientos } | null
 
-  // Carga inicial de sucursales
+  // Filtro por marca y traslado entre sucursales
+  const [marcas, setMarcas] = useState([]);
+  const [marcaFiltro, setMarcaFiltro] = useState('');
+  const [traslado, setTraslado] = useState(null); // { producto } en traslado
+  const [trasladoForm, setTrasladoForm] = useState({ destino_id: '', cantidad: '', motivo: '' });
+
+  // Carga inicial de sucursales y marcas (para el filtro)
   useEffect(() => {
     (async () => {
       try {
-        const s = await listarSucursales();
+        const [s, m] = await Promise.all([listarSucursales(), listarMarcas().catch(() => [])]);
         setSucursales(s);
+        setMarcas(m);
         if (s.length) setSucursalId(s[0].id);
       } catch (err) {
         setError(err.response?.data?.error || 'No se pudieron cargar las sucursales');
@@ -63,11 +72,11 @@ export default function StockPage() {
     })();
   }, []);
 
-  const cargarStock = useCallback(async (sid, busqueda) => {
+  const cargarStock = useCallback(async (sid, busqueda, marca) => {
     if (!sid) return;
     setCargando(true); setError('');
     try {
-      const data = await listarStock({ sucursal_id: sid, q: busqueda || undefined });
+      const data = await listarStock({ sucursal_id: sid, q: busqueda || undefined, marca: marca || undefined });
       setStock(data.stock);
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo cargar el stock');
@@ -76,7 +85,7 @@ export default function StockPage() {
     }
   }, []);
 
-  useEffect(() => { cargarStock(sucursalId, ''); }, [sucursalId, cargarStock]);
+  useEffect(() => { cargarStock(sucursalId, q, marcaFiltro); }, [sucursalId, marcaFiltro, cargarStock]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Precio calculado en vivo en el form de alta
   const precioCalculado = useMemo(() => {
@@ -111,7 +120,7 @@ export default function StockPage() {
       setOk(`Producto "${nuevo.nombre}" creado.`);
       setProd({ codigo: '', codigo_barras: '', nombre: '', categoria: 'armazon', marca: '', costo_base: '', margen_pct: '', cantidad: '' });
       setMostrarAlta(false);
-      cargarStock(sucursalId, '');
+      cargarStock(sucursalId, q, marcaFiltro);
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo crear el producto');
     }
@@ -122,7 +131,7 @@ export default function StockPage() {
     setError(''); setOk('');
     try {
       await registrarMovimiento({ producto_id, sucursal_id: sucursalId, tipo, cantidad, motivo: 'ajuste manual' });
-      cargarStock(sucursalId, q);
+      cargarStock(sucursalId, q, marcaFiltro);
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo registrar el movimiento');
     }
@@ -134,7 +143,7 @@ export default function StockPage() {
     try {
       const r = await recalcularPrecios({ margen_pct: Number(margen) });
       setOk(`Precios recalculados: ${r.actualizados} productos.`);
-      cargarStock(sucursalId, q);
+      cargarStock(sucursalId, q, marcaFiltro);
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo recalcular');
     }
@@ -169,7 +178,7 @@ export default function StockPage() {
       });
       setOk(`Producto "${editando.nombre}" actualizado.`);
       setEditando(null);
-      cargarStock(sucursalId, q);
+      cargarStock(sucursalId, q, marcaFiltro);
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo actualizar el producto');
     }
@@ -181,7 +190,7 @@ export default function StockPage() {
     try {
       await eliminarProducto(s.producto_id);
       setOk(`Producto "${s.nombre}" eliminado.`);
-      cargarStock(sucursalId, q);
+      cargarStock(sucursalId, q, marcaFiltro);
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo eliminar el producto');
     }
@@ -194,6 +203,66 @@ export default function StockPage() {
       setHistorial({ producto: s, movimientos });
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo cargar el historial');
+    }
+  }
+
+  // Exporta el stock visible actualmente a un archivo CSV (sin backend).
+  function exportarCSV() {
+    if (!stock.length) {
+      setError('No hay productos para exportar.');
+      return;
+    }
+    const cols = ['Código', 'Código de barras', 'Nombre', 'Categoría', 'Marca', 'Precio', 'Cantidad', 'Bajo mínimo'];
+    const esc = (v) => {
+      const t = v == null ? '' : String(v);
+      return /[";\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
+    };
+    const filas = stock.map((s) => [
+      s.codigo,
+      s.codigo_barras || '',
+      s.nombre,
+      CAT_LABEL[s.categoria] || s.categoria,
+      s.marca || '',
+      Number(s.precio_venta).toFixed(2),
+      s.cantidad,
+      s.bajo_minimo ? 'sí' : 'no',
+    ].map(esc).join(';'));
+    const csv = [cols.join(';'), ...filas].join('\r\n');
+    // BOM para que Excel reconozca los acentos (UTF-8)
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const suc = sucursales.find((x) => String(x.id) === String(sucursalId));
+    a.href = url;
+    a.download = `stock_${suc ? suc.nombre.replace(/\s+/g, '-') : 'sucursal'}_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setOk('Stock exportado a CSV.');
+  }
+
+  function abrirTraslado(s) {
+    setTraslado({ producto: s });
+    setTrasladoForm({ destino_id: '', cantidad: '', motivo: '' });
+  }
+
+  async function guardarTraslado(e) {
+    e.preventDefault();
+    setError(''); setOk('');
+    try {
+      await crearTraslado({
+        producto_id: traslado.producto.producto_id,
+        origen_id: sucursalId,
+        destino_id: trasladoForm.destino_id,
+        cantidad: Number(trasladoForm.cantidad),
+        motivo: trasladoForm.motivo || null,
+      });
+      setOk('Traslado realizado.');
+      setTraslado(null);
+      cargarStock(sucursalId, q, marcaFiltro);
+    } catch (err) {
+      setError(err.response?.data?.error || 'No se pudo realizar el traslado');
     }
   }
 
@@ -216,6 +285,9 @@ export default function StockPage() {
           <select value={sucursalId} onChange={(e) => setSucursalId(e.target.value)}>
             {sucursales.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
           </select>
+          <button type="button" className="btn btn--ghost btn--inline" onClick={exportarCSV}>
+            Exportar CSV
+          </button>
           {esAdmin && (
             <>
               <button type="button" className="btn btn--ghost btn--inline" onClick={handleRecalcular}>
@@ -260,8 +332,12 @@ export default function StockPage() {
         </form>
       )}
 
-      <form className="searchbar" onSubmit={(e) => { e.preventDefault(); cargarStock(sucursalId, q); }}>
+      <form className="searchbar" onSubmit={(e) => { e.preventDefault(); cargarStock(sucursalId, q, marcaFiltro); }}>
         <input type="search" placeholder="Buscar por nombre, código o código de barras…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <select value={marcaFiltro} onChange={(e) => setMarcaFiltro(e.target.value)}>
+          <option value="">Todas las marcas</option>
+          {marcas.map((m) => <option key={m} value={m}>{m}</option>)}
+        </select>
         <button type="submit" className="btn btn--ghost">Buscar</button>
       </form>
 
@@ -295,6 +371,7 @@ export default function StockPage() {
                     {esAdmin && (
                       <>
                         <button type="button" className="btn-mini btn-mini--wide" onClick={() => abrirEdicion(s)}>Editar</button>
+                        <button type="button" className="btn-mini btn-mini--wide" onClick={() => abrirTraslado(s)}>Trasladar</button>
                         <button type="button" className="btn-mini btn-mini--wide" onClick={() => handleEliminarProducto(s)}>Eliminar</button>
                       </>
                     )}
@@ -354,6 +431,31 @@ export default function StockPage() {
               </tbody>
             </table>
           )}
+        </Modal>
+      )}
+
+      {/* Modal: trasladar stock a otra sucursal (solo admin) */}
+      {traslado && (
+        <Modal titulo={`Trasladar · ${traslado.producto.nombre}`} onCerrar={() => setTraslado(null)}>
+          <p className="muted small">
+            Origen: <strong>{sucursales.find((s) => s.id === sucursalId)?.nombre}</strong>
+            {' · '}Disponible: <strong>{traslado.producto.cantidad}</strong>
+          </p>
+          <form className="form-grid" onSubmit={guardarTraslado}>
+            <label className="field field--full"><span>Sucursal destino *</span>
+              <select value={trasladoForm.destino_id} onChange={(e) => setTrasladoForm({ ...trasladoForm, destino_id: e.target.value })} required>
+                <option value="">Elegir destino…</option>
+                {sucursales.filter((s) => s.id !== sucursalId).map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+              </select></label>
+            <label className="field"><span>Cantidad *</span>
+              <input type="number" min="1" max={traslado.producto.cantidad} value={trasladoForm.cantidad} onChange={(e) => setTrasladoForm({ ...trasladoForm, cantidad: e.target.value })} required /></label>
+            <label className="field"><span>Motivo</span>
+              <input value={trasladoForm.motivo} onChange={(e) => setTrasladoForm({ ...trasladoForm, motivo: e.target.value })} placeholder="Reposición, pedido, etc." /></label>
+            <div className="form-actions">
+              <button type="button" className="btn btn--ghost btn--inline" onClick={() => setTraslado(null)}>Cancelar</button>
+              <button type="submit" className="btn btn--primary btn--inline">Trasladar</button>
+            </div>
+          </form>
         </Modal>
       )}
     </div>

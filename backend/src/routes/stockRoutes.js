@@ -8,6 +8,7 @@ const { authRequired, requireRole } = require('../middlewares/auth');
 const suc = require('../controllers/sucursalesController');
 const prod = require('../controllers/productosController');
 const stock = require('../controllers/stockController');
+const traslados = require('../controllers/trasladosController');
 
 const router = express.Router();
 router.use(authRequired);
@@ -27,7 +28,12 @@ router.delete('/productos/:id', requireRole('admin'), prod.eliminar);
 
 // --- Stock por sucursal ---
 router.get('/stock', stock.listar);
+router.get('/stock/marcas', stock.listarMarcas);
 router.post('/stock/movimiento', stock.registrarMovimiento);
 router.get('/stock/movimientos', stock.listarMovimientos);
+
+// --- Traslados entre sucursales (crear: solo admin) ---
+router.get('/traslados', traslados.listar);
+router.post('/traslados', requireRole('admin'), traslados.crear);
 
 module.exports = router;

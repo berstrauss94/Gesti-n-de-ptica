@@ -15,6 +15,9 @@ router.use(authRequired);
 router.get('/cajas/actual', cajas.actual);
 router.post('/cajas/abrir', cajas.abrir);
 router.post('/cajas/:id/cerrar', cajas.cerrar);
+// Reintegros / retiros / gastos manuales de caja
+router.get('/cajas/:id/movimientos', cajas.listarMovimientos);
+router.post('/cajas/:id/movimiento', cajas.registrarMovimiento);
 
 // --- Ventas / TPV ---
 router.get('/ventas', ventas.listar);

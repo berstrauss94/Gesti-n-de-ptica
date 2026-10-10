@@ -56,3 +56,17 @@ export async function listarMovimientos(params = {}) {
   const { data } = await api.get('/api/stock/movimientos', { params });
   return data.movimientos;
 }
+export async function listarMarcas() {
+  const { data } = await api.get('/api/stock/marcas');
+  return data.marcas;
+}
+
+// --- Traslados entre sucursales ---
+export async function listarTraslados(params = {}) {
+  const { data } = await api.get('/api/traslados', { params });
+  return data.traslados;
+}
+export async function crearTraslado(payload) {
+  const { data } = await api.post('/api/traslados', payload);
+  return data.traslado;
+}
