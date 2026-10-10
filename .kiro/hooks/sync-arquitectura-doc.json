@@ -1,0 +1,14 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Actualizar documento de arquitectura",
+      "trigger": "PostFileSave",
+      "matcher": "(backend[\\\\/]src[\\\\/].*\\.js|frontend[\\\\/]src[\\\\/].*\\.(jsx|js|css))$",
+      "action": {
+        "type": "agent",
+        "prompt": "RECORDATORIO DE DOCUMENTACIÓN — MEMORIA ACTIVA.\n\nSe guardó un archivo de código del sistema Óptica. Si este cambio agrega o modifica una funcionalidad relevante (una \"adhesión\": nuevo módulo, endpoint, tabla, integración, página, hook, cambio de arquitectura o despliegue), DEBÉS actualizar el documento `ARQUITECTURA.md` en la raíz del proyecto EN EL MISMO cambio, para mantenerlo sincronizado.\n\nQué actualizar según corresponda:\n1. La sección pertinente (Tecnologías, Despliegue, Módulos, API, Accesos, Modelo de datos, Integraciones, IA/agentes, Frontend o Deuda técnica).\n2. La fecha en \"_Última actualización:_\".\n3. Agregar una línea nueva al final, en \"## Registro de cambios\", con: fecha, qué cambió y los archivos clave tocados.\n\nSi el cambio es trivial (typo, formato, refactor sin impacto funcional), NO hace falta tocar el documento. Este es un recordatorio, no un bloqueo."
+      }
+    }
+  ]
+}
