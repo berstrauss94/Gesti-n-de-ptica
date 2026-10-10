@@ -5,12 +5,15 @@
 // =====================================================================
 
 import { useEffect, useState, useCallback } from 'react';
+import { Navigate } from 'react-router-dom';
 import {
   obtenerConfigNotif, guardarConfigNotif, listarNotificaciones, enviarPrueba,
 } from '../api/notificaciones';
 import InfoBtn from '../components/InfoBtn';
+import { useEsAdmin } from '../hooks/useEsAdmin';
 
 export default function ConfiguracionPage() {
+  const esAdmin = useEsAdmin();
   const [cfg, setCfg] = useState(null);
   const [form, setForm] = useState({
     telegram_token: '', telegram_chat_default: '', whatsapp_token: '', whatsapp_phone_id: '',
@@ -56,6 +59,10 @@ export default function ConfiguracionPage() {
       cargar();
     } catch (err) { setError(err.response?.data?.error || 'No se pudo enviar la prueba'); }
   }
+
+  // Defensa en profundidad: si no es admin, no debería estar acá (el backend
+  // igual bloquea guardar). Redirige a Inicio.
+  if (!esAdmin) return <Navigate to="/" replace />;
 
   return (
     <div className="stack">

@@ -22,16 +22,24 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Interceptor de respuesta: maneja expiración/invalidez del token
+// Interceptor de respuesta: maneja expiración/invalidez del token (401) y
+// falta de permisos (403).
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status;
+    if (status === 401) {
       localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem('optica_user');
       // Evita bucle si ya estamos en login
       if (!window.location.pathname.startsWith('/login')) {
         window.location.assign('/login');
       }
+    }
+    // 403: sin permiso. Normalizamos un mensaje claro si el backend no lo trae,
+    // para que las páginas muestren algo entendible en vez de un error genérico.
+    if (status === 403 && error.response?.data && !error.response.data.error) {
+      error.response.data.error = 'No tenés permiso para realizar esta acción.';
     }
     return Promise.reject(error);
   }

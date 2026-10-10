@@ -101,9 +101,18 @@ function TabCompras({ sucursalId, setError, setOk }) {
   function agregar() {
     const p = productos.find((x) => x.id === prodSel);
     if (!p) return;
-    setItems((prev) => [...prev, {
-      producto_id: p.id, nombre: p.nombre, cantidad: 1, costo_unitario: Number(p.costo_base) || 0,
-    }]);
+    setItems((prev) => {
+      // Si el producto ya está en la lista, sumamos cantidad (evita filas
+      // duplicadas con la misma key y datos cruzados).
+      const existe = prev.find((it) => it.producto_id === p.id);
+      if (existe) {
+        return prev.map((it) => it.producto_id === p.id
+          ? { ...it, cantidad: it.cantidad + 1 } : it);
+      }
+      return [...prev, {
+        producto_id: p.id, nombre: p.nombre, cantidad: 1, costo_unitario: Number(p.costo_base) || 0,
+      }];
+    });
     setProdSel('');
   }
   function setItem(i, campo, val) {

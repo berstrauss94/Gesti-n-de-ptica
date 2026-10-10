@@ -11,6 +11,7 @@ import {
   LogOut, KeyRound, Menu, X,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useEsAdmin } from '../hooks/useEsAdmin';
 import CambiarPasswordModal from './CambiarPasswordModal';
 import logo from '../assets/logo.png';
 
@@ -21,16 +22,21 @@ const MENU = [
   { name: 'Stock', path: '/stock', icon: Package },
   { name: 'TPV / Ventas', path: '/tpv', icon: ShoppingCart },
   { name: 'Compras', path: '/compras', icon: Truck },
-  { name: 'Configuración', path: '/configuracion', icon: Settings },
+  // Configuración (tokens, credenciales): solo admin
+  { name: 'Configuración', path: '/configuracion', icon: Settings, adminOnly: true },
 ];
 
 const MARCA = 'Centro De Contactología';
 
 export default function Layout() {
   const { usuario, logout } = useAuth();
+  const esAdmin = useEsAdmin();
   const location = useLocation();
   const [cambiandoPass, setCambiandoPass] = useState(false);
   const [abiertoMovil, setAbiertoMovil] = useState(false); // control táctil
+
+  // Filtra las secciones solo-admin para los usuarios no-admin
+  const menuVisible = MENU.filter((item) => !item.adminOnly || esAdmin);
 
   return (
     <div className="app-shell">
@@ -52,7 +58,7 @@ export default function Layout() {
           </div>
 
           <nav className="nav-menu">
-            {MENU.map((item) => {
+            {menuVisible.map((item) => {
               const Icon = item.icon;
               return (
                 <NavLink
@@ -72,10 +78,6 @@ export default function Layout() {
         </div>
 
         <div className="sidebar__bottom">
-          <div className="sidebar__sucursal">
-            <span className="sidebar__suc-label">Sucursal activa</span>
-            <span className="sidebar__suc-value">Casa Central</span>
-          </div>
           <div className="sidebar__user">
             <span className="sidebar__user-name">{usuario?.usuario}</span>
             <span className="sidebar__user-rol">{usuario?.rol}</span>
