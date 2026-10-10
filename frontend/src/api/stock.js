@@ -13,6 +13,10 @@ export async function crearSucursal(payload) {
   const { data } = await api.post('/api/sucursales', payload);
   return data.sucursal;
 }
+export async function actualizarSucursal(id, payload) {
+  const { data } = await api.put(`/api/sucursales/${id}`, payload);
+  return data.sucursal;
+}
 
 // --- Productos ---
 export async function listarProductos(params = {}) {

@@ -10,6 +10,7 @@ import {
   listarFotos,
   subirFotos,
   eliminarUsuario,
+  eliminarFoto,
 } from '../api/usuarios';
 import GraduacionesSeccion from '../components/GraduacionesSeccion';
 import { useEsAdmin } from '../hooks/useEsAdmin';
@@ -71,6 +72,17 @@ export default function ClienteDetallePage() {
     }
   }
 
+  async function handleEliminarFoto(fotoId) {
+    if (!window.confirm('¿Eliminar esta foto?')) return;
+    setError('');
+    try {
+      await eliminarFoto(id, fotoId);
+      await cargar();
+    } catch (err) {
+      setError(err.response?.data?.error || 'No se pudo eliminar la foto');
+    }
+  }
+
   if (cargando) return <p className="muted">Cargando…</p>;
   if (error && !cliente) return <p className="alert alert--error">{error}</p>;
   if (!cliente) return null;
@@ -110,7 +122,10 @@ export default function ClienteDetallePage() {
           {fotos.map((foto) => (
             <figure key={foto.id} className="foto-item">
               <img src={`${API_BASE}${foto.ruta_local}`} alt={`Foto ${foto.orden_foto}`} />
-              <figcaption>Foto {foto.orden_foto}</figcaption>
+              <figcaption>
+                Foto {foto.orden_foto}
+                <button type="button" className="link-btn" onClick={() => handleEliminarFoto(foto.id)}>Eliminar</button>
+              </figcaption>
             </figure>
           ))}
           {fotos.length === 0 && <p className="muted">Sin fotos cargadas.</p>}

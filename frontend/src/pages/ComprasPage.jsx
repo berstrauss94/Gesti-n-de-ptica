@@ -10,11 +10,12 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { listarSucursales, listarProductos } from '../api/stock';
 import { listarUsuarios } from '../api/usuarios';
 import {
-  listarProveedores, crearProveedor,
-  listarCompras, crearCompra, confirmarCompra,
+  listarProveedores, crearProveedor, actualizarProveedor,
+  listarCompras, obtenerCompra, crearCompra, confirmarCompra,
   listarOrdenes, crearOrden, cambiarEstadoOrden,
 } from '../api/compras';
 import InfoBtn from '../components/InfoBtn';
+import Modal from '../components/Modal';
 import { useEsAdmin } from '../hooks/useEsAdmin';
 
 const ESTADOS_ORDEN = ['enviado', 'en_proceso', 'recibido_sucursal', 'listo_entrega', 'entregado'];
@@ -83,6 +84,7 @@ function TabCompras({ sucursalId, setError, setOk }) {
   const [recalc, setRecalc] = useState(true);
   const [items, setItems] = useState([]);
   const [prodSel, setProdSel] = useState('');
+  const [detalle, setDetalle] = useState(null); // { compra, items } de una compra
 
   const cargar = useCallback(async () => {
     if (!sucursalId) return;
@@ -139,6 +141,12 @@ function TabCompras({ sucursalId, setError, setOk }) {
   async function confirmar(id) {
     try { await confirmarCompra(id); setOk('Compra confirmada: stock y precios actualizados.'); cargar(); }
     catch (err) { setError(err.response?.data?.error || 'No se pudo confirmar'); }
+  }
+
+  async function verDetalle(id) {
+    setError('');
+    try { setDetalle(await obtenerCompra(id)); }
+    catch (err) { setError(err.response?.data?.error || 'No se pudo cargar el detalle'); }
   }
 
   return (
@@ -204,12 +212,39 @@ function TabCompras({ sucursalId, setError, setOk }) {
                 <td>{c.nro_factura || '—'}</td>
                 <td>${Number(c.total).toFixed(2)}</td>
                 <td><span className="badge">{c.estado}</span></td>
-                <td>{esAdmin && c.estado === 'borrador' && <button className="btn-mini btn-mini--wide" onClick={() => confirmar(c.id)}>Confirmar</button>}</td>
+                <td>
+                  <button className="btn-mini btn-mini--wide" onClick={() => verDetalle(c.id)}>Ver</button>
+                  {esAdmin && c.estado === 'borrador' && <button className="btn-mini btn-mini--wide" onClick={() => confirmar(c.id)}>Confirmar</button>}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {/* Modal: detalle de compra (ítems y costos) */}
+      {detalle && (
+        <Modal titulo={`Compra #${detalle.compra.numero}`} onCerrar={() => setDetalle(null)}>
+          <p className="muted small">
+            Estado: <strong>{detalle.compra.estado}</strong>
+            {detalle.compra.nro_factura ? ` · Factura: ${detalle.compra.nro_factura}` : ''}
+          </p>
+          <table className="data-table">
+            <thead><tr><th>Producto</th><th>Cantidad</th><th>Costo unit.</th><th>Subtotal</th></tr></thead>
+            <tbody>
+              {detalle.items.map((it) => (
+                <tr key={it.id}>
+                  <td>{it.producto_nombre}</td>
+                  <td>{it.cantidad}</td>
+                  <td>$ {Number(it.costo_unitario).toFixed(2)}</td>
+                  <td>$ {Number(it.subtotal).toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="venta-total"><strong>Total: $ {Number(detalle.compra.total).toFixed(2)}</strong></p>
+        </Modal>
+      )}
     </>
   );
 }
@@ -218,7 +253,9 @@ function TabCompras({ sucursalId, setError, setOk }) {
 function TabProveedores({ setError, setOk }) {
   const esAdmin = useEsAdmin();
   const [lista, setLista] = useState([]);
-  const [form, setForm] = useState({ nombre: '', tipo: 'proveedor', cuit: '', telefono: '', email: '' });
+  const FORM_VACIO = { nombre: '', tipo: 'proveedor', cuit: '', telefono: '', email: '' };
+  const [form, setForm] = useState(FORM_VACIO);
+  const [editId, setEditId] = useState(null); // id del proveedor en edición
 
   const cargar = useCallback(async () => {
     try { setLista(await listarProveedores()); }
@@ -229,10 +266,24 @@ function TabProveedores({ setError, setOk }) {
   async function guardar(e) {
     e.preventDefault(); setError(''); setOk('');
     try {
-      await crearProveedor(form);
-      setOk('Proveedor creado.'); setForm({ nombre: '', tipo: 'proveedor', cuit: '', telefono: '', email: '' });
+      if (editId) {
+        await actualizarProveedor(editId, form);
+        setOk('Proveedor actualizado.');
+      } else {
+        await crearProveedor(form);
+        setOk('Proveedor creado.');
+      }
+      setForm(FORM_VACIO); setEditId(null);
       cargar();
-    } catch (err) { setError(err.response?.data?.error || 'No se pudo crear'); }
+    } catch (err) { setError(err.response?.data?.error || 'No se pudo guardar'); }
+  }
+
+  function editar(p) {
+    setEditId(p.id);
+    setForm({
+      nombre: p.nombre || '', tipo: p.tipo || 'proveedor',
+      cuit: p.cuit || '', telefono: p.telefono || '', email: p.email || '',
+    });
   }
 
   return (
@@ -252,13 +303,16 @@ function TabProveedores({ setError, setOk }) {
             <input value={form.telefono} onChange={(e) => setForm({ ...form, telefono: e.target.value })} /></label>
           <label className="field"><span>Email</span>
             <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></label>
-          <div className="form-actions"><button className="btn btn--primary btn--inline">Agregar</button></div>
+          <div className="form-actions">
+            {editId && <button type="button" className="btn btn--ghost btn--inline" onClick={() => { setEditId(null); setForm(FORM_VACIO); }}>Cancelar</button>}
+            <button className="btn btn--primary btn--inline">{editId ? 'Actualizar' : 'Agregar'}</button>
+          </div>
         </form>
       )}
 
       <div className="card no-pad">
         <table className="table">
-          <thead><tr><th>Nombre</th><th>Tipo</th><th>CUIT</th><th>Contacto</th></tr></thead>
+          <thead><tr><th>Nombre</th><th>Tipo</th><th>CUIT</th><th>Contacto</th>{esAdmin && <th></th>}</tr></thead>
           <tbody>
             {lista.map((p) => (
               <tr key={p.id}>
@@ -266,6 +320,7 @@ function TabProveedores({ setError, setOk }) {
                 <td><span className="badge">{p.tipo}</span></td>
                 <td>{p.cuit || '—'}</td>
                 <td className="muted small">{p.telefono || ''} {p.email || ''}</td>
+                {esAdmin && <td><button type="button" className="btn-mini btn-mini--wide" onClick={() => editar(p)}>Editar</button></td>}
               </tr>
             ))}
           </tbody>

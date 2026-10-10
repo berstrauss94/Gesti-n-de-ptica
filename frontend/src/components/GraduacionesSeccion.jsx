@@ -7,6 +7,7 @@ import { useEffect, useState, useCallback } from 'react';
 import {
   listarGraduaciones,
   crearGraduacion,
+  actualizarGraduacion,
   eliminarGraduacion,
 } from '../api/graduaciones';
 
@@ -48,6 +49,7 @@ export default function GraduacionesSeccion({ usuarioId }) {
   const [cargando, setCargando] = useState(true);
   const [mostrarForm, setMostrarForm] = useState(false);
   const [form, setForm] = useState(FORM_VACIO);
+  const [editandoId, setEditandoId] = useState(null); // id de receta en edición
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
 
@@ -76,8 +78,13 @@ export default function GraduacionesSeccion({ usuarioId }) {
     setError('');
     setGuardando(true);
     try {
-      await crearGraduacion(usuarioId, normalizar(form));
+      if (editandoId) {
+        await actualizarGraduacion(editandoId, normalizar(form));
+      } else {
+        await crearGraduacion(usuarioId, normalizar(form));
+      }
       setForm(FORM_VACIO);
+      setEditandoId(null);
       setMostrarForm(false);
       await cargar();
     } catch (err) {
@@ -85,6 +92,27 @@ export default function GraduacionesSeccion({ usuarioId }) {
     } finally {
       setGuardando(false);
     }
+  }
+
+  // Precarga el formulario con una receta existente para editarla
+  function editar(g) {
+    setEditandoId(g.id);
+    setForm({
+      tipo_lente: g.tipo_lente || 'Monofocal',
+      fecha_emision: g.fecha_emision ? g.fecha_emision.slice(0, 10) : '',
+      od_esfera: g.od_esfera ?? '',
+      od_cilindro: g.od_cilindro ?? '',
+      od_eje: g.od_eje ?? '',
+      od_adicion: g.od_adicion ?? '',
+      oi_esfera: g.oi_esfera ?? '',
+      oi_cilindro: g.oi_cilindro ?? '',
+      oi_eje: g.oi_eje ?? '',
+      oi_adicion: g.oi_adicion ?? '',
+      distancia_interpupilar: g.distancia_interpupilar ?? '',
+      tratamiento_vidrio: g.tratamiento_vidrio || '',
+      medico_oftalmologo: g.medico_oftalmologo || '',
+    });
+    setMostrarForm(true);
   }
 
   async function handleEliminar(id) {
@@ -104,7 +132,12 @@ export default function GraduacionesSeccion({ usuarioId }) {
         <button
           type="button"
           className="btn btn--primary btn--inline"
-          onClick={() => setMostrarForm((v) => !v)}
+          onClick={() => {
+            setMostrarForm((v) => !v);
+            // Al cerrar/abrir manualmente, salir del modo edición
+            setEditandoId(null);
+            setForm(FORM_VACIO);
+          }}
         >
           {mostrarForm ? 'Cerrar' : '+ Nueva receta'}
         </button>
@@ -166,7 +199,7 @@ export default function GraduacionesSeccion({ usuarioId }) {
 
           <div className="form-actions">
             <button type="submit" className="btn btn--primary btn--inline" disabled={guardando}>
-              {guardando ? 'Guardando…' : 'Guardar receta'}
+              {guardando ? 'Guardando…' : (editandoId ? 'Actualizar receta' : 'Guardar receta')}
             </button>
           </div>
         </form>
@@ -183,6 +216,7 @@ export default function GraduacionesSeccion({ usuarioId }) {
               <div className="grad-item__head">
                 <span className="badge">{g.tipo_lente}</span>
                 <span className="muted">{g.fecha_emision?.slice(0, 10)}</span>
+                <button type="button" className="link-btn" onClick={() => editar(g)}>Editar</button>
                 <button type="button" className="link-btn" onClick={() => handleEliminar(g.id)}>Eliminar</button>
               </div>
               <table className="grad-table-view">

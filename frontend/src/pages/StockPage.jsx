@@ -12,12 +12,16 @@ import {
   listarSucursales,
   listarProductos,
   crearProducto,
+  actualizarProducto,
+  eliminarProducto,
   listarStock,
   registrarMovimiento,
+  listarMovimientos,
   recalcularPrecios,
 } from '../api/stock';
 import fondoStock from '../assets/fondo-stock.jpg';
 import InfoBtn from '../components/InfoBtn';
+import Modal from '../components/Modal';
 import { useEsAdmin } from '../hooks/useEsAdmin';
 
 const CATEGORIAS = ['armazon', 'cristal', 'lente_contacto', 'accesorio', 'otro'];
@@ -41,6 +45,10 @@ export default function StockPage() {
     codigo: '', codigo_barras: '', nombre: '', categoria: 'armazon',
     marca: '', costo_base: '', margen_pct: '', cantidad: '',
   });
+
+  // Edición de producto (modal) e historial de movimientos (modal)
+  const [editando, setEditando] = useState(null); // producto en edición
+  const [historial, setHistorial] = useState(null); // { producto, movimientos } | null
 
   // Carga inicial de sucursales
   useEffect(() => {
@@ -129,6 +137,63 @@ export default function StockPage() {
       cargarStock(sucursalId, q);
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo recalcular');
+    }
+  }
+
+  // Abrir el modal de edición con los datos de la fila
+  function abrirEdicion(s) {
+    setEditando({
+      id: s.producto_id,
+      codigo: s.codigo || '',
+      codigo_barras: s.codigo_barras || '',
+      nombre: s.nombre || '',
+      categoria: s.categoria || 'armazon',
+      marca: s.marca || '',
+      costo_base: s.costo_base ?? '',
+      margen_pct: s.margen_pct ?? '',
+    });
+  }
+
+  async function guardarEdicion(e) {
+    e.preventDefault();
+    setError(''); setOk('');
+    try {
+      await actualizarProducto(editando.id, {
+        codigo: editando.codigo.trim(),
+        codigo_barras: editando.codigo_barras.trim() || undefined,
+        nombre: editando.nombre.trim(),
+        categoria: editando.categoria,
+        marca: editando.marca.trim() || undefined,
+        costo_base: Number(editando.costo_base) || 0,
+        margen_pct: Number(editando.margen_pct) || 0,
+      });
+      setOk(`Producto "${editando.nombre}" actualizado.`);
+      setEditando(null);
+      cargarStock(sucursalId, q);
+    } catch (err) {
+      setError(err.response?.data?.error || 'No se pudo actualizar el producto');
+    }
+  }
+
+  async function handleEliminarProducto(s) {
+    if (!window.confirm(`¿Eliminar el producto "${s.nombre}"? Esta acción no se puede deshacer.`)) return;
+    setError(''); setOk('');
+    try {
+      await eliminarProducto(s.producto_id);
+      setOk(`Producto "${s.nombre}" eliminado.`);
+      cargarStock(sucursalId, q);
+    } catch (err) {
+      setError(err.response?.data?.error || 'No se pudo eliminar el producto');
+    }
+  }
+
+  async function verHistorial(s) {
+    setError('');
+    try {
+      const movimientos = await listarMovimientos({ producto_id: s.producto_id, sucursal_id: sucursalId });
+      setHistorial({ producto: s, movimientos });
+    } catch (err) {
+      setError(err.response?.data?.error || 'No se pudo cargar el historial');
     }
   }
 
@@ -226,12 +291,70 @@ export default function StockPage() {
                   <td className="col-mov">
                     <button type="button" className="btn-mini" onClick={() => mover(s.producto_id, 'salida', 1)}>−</button>
                     <button type="button" className="btn-mini" onClick={() => mover(s.producto_id, 'entrada', 1)}>+</button>
+                    <button type="button" className="btn-mini btn-mini--wide" onClick={() => verHistorial(s)}>Historial</button>
+                    {esAdmin && (
+                      <>
+                        <button type="button" className="btn-mini btn-mini--wide" onClick={() => abrirEdicion(s)}>Editar</button>
+                        <button type="button" className="btn-mini btn-mini--wide" onClick={() => handleEliminarProducto(s)}>Eliminar</button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Modal: editar producto (solo admin) */}
+      {editando && (
+        <Modal titulo={`Editar producto`} onCerrar={() => setEditando(null)}>
+          <form className="form-grid" onSubmit={guardarEdicion}>
+            <label className="field"><span>Código *</span>
+              <input value={editando.codigo} onChange={(e) => setEditando({ ...editando, codigo: e.target.value })} required /></label>
+            <label className="field"><span>Código de barras</span>
+              <input value={editando.codigo_barras} onChange={(e) => setEditando({ ...editando, codigo_barras: e.target.value })} placeholder="EAN/UPC" /></label>
+            <label className="field"><span>Nombre *</span>
+              <input value={editando.nombre} onChange={(e) => setEditando({ ...editando, nombre: e.target.value })} required /></label>
+            <label className="field"><span>Categoría *</span>
+              <select value={editando.categoria} onChange={(e) => setEditando({ ...editando, categoria: e.target.value })}>
+                {CATEGORIAS.map((c) => <option key={c} value={c}>{CAT_LABEL[c]}</option>)}
+              </select></label>
+            <label className="field"><span>Marca</span>
+              <input value={editando.marca} onChange={(e) => setEditando({ ...editando, marca: e.target.value })} /></label>
+            <label className="field"><span>Costo base ($)</span>
+              <input type="number" step="0.01" min="0" value={editando.costo_base} onChange={(e) => setEditando({ ...editando, costo_base: e.target.value })} /></label>
+            <label className="field"><span>Margen (%)</span>
+              <input type="number" step="0.1" min="0" value={editando.margen_pct} onChange={(e) => setEditando({ ...editando, margen_pct: e.target.value })} /></label>
+            <div className="form-actions">
+              <button type="button" className="btn btn--ghost btn--inline" onClick={() => setEditando(null)}>Cancelar</button>
+              <button type="submit" className="btn btn--primary btn--inline">Guardar cambios</button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* Modal: historial de movimientos del producto */}
+      {historial && (
+        <Modal titulo={`Movimientos · ${historial.producto.nombre}`} onCerrar={() => setHistorial(null)}>
+          {historial.movimientos.length === 0 ? (
+            <p className="muted">Sin movimientos registrados para este producto en la sucursal.</p>
+          ) : (
+            <table className="data-table">
+              <thead><tr><th>Fecha</th><th>Tipo</th><th>Cantidad</th><th>Motivo</th></tr></thead>
+              <tbody>
+                {historial.movimientos.map((m) => (
+                  <tr key={m.id}>
+                    <td>{new Date(m.created_at).toLocaleString()}</td>
+                    <td>{m.tipo}</td>
+                    <td>{m.cantidad}</td>
+                    <td>{m.motivo || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Modal>
       )}
     </div>
   );

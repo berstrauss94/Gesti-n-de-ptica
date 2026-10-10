@@ -4,19 +4,23 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { listarMarcos } from '../api/marcos';
+import { listarMarcos, eliminarMarco } from '../api/marcos';
 import InfoBtn from '../components/InfoBtn';
+import EditarMarcoModal from '../components/tryon/EditarMarcoModal';
+import { useEsAdmin } from '../hooks/useEsAdmin';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
 const ESTILOS = ['OVALADO', 'RECTANGULAR', 'AVIADOR', 'CAT-EYE'];
 
 export default function MarcosPage() {
+  const esAdmin = useEsAdmin();
   const [marcos, setMarcos] = useState([]);
   const [q, setQ] = useState('');
   const [estilo, setEstilo] = useState('');
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
+  const [editando, setEditando] = useState(null); // marco en edición
 
   const cargar = useCallback(async (busqueda, estiloForma) => {
     setCargando(true);
@@ -38,6 +42,17 @@ export default function MarcosPage() {
   function handleBuscar(e) {
     e.preventDefault();
     cargar(q, estilo);
+  }
+
+  async function handleEliminar(m) {
+    if (!window.confirm(`¿Eliminar el marco "${m.nombre_modelo}" del catálogo?`)) return;
+    setError('');
+    try {
+      await eliminarMarco(m.id);
+      cargar(q, estilo);
+    } catch (err) {
+      setError(err.response?.data?.error || 'No se pudo eliminar el marco');
+    }
   }
 
   return (
@@ -95,10 +110,25 @@ export default function MarcosPage() {
                 <span className="muted">{m.marca || '—'}</span>
                 <span className="badge">{m.codigo}</span>
                 {m.estilo_forma && <span className="tag">{m.estilo_forma}</span>}
+                {esAdmin && (
+                  <div className="form-actions" style={{ gap: '0.4rem' }}>
+                    <button type="button" className="btn-mini btn-mini--wide" onClick={() => setEditando(m)}>Editar</button>
+                    <button type="button" className="btn-mini btn-mini--wide" onClick={() => handleEliminar(m)}>Eliminar</button>
+                  </div>
+                )}
               </div>
             </article>
           ))}
         </div>
+      )}
+
+      {/* Modal: editar marco (reutiliza el componente existente) */}
+      {editando && (
+        <EditarMarcoModal
+          marco={editando}
+          onCerrar={() => setEditando(null)}
+          onGuardado={() => { setEditando(null); cargar(q, estilo); }}
+        />
       )}
     </div>
   );

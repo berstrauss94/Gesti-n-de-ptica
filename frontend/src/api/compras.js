@@ -13,11 +13,19 @@ export async function crearProveedor(payload) {
   const { data } = await api.post('/api/proveedores', payload);
   return data.proveedor;
 }
+export async function actualizarProveedor(id, payload) {
+  const { data } = await api.put(`/api/proveedores/${id}`, payload);
+  return data.proveedor;
+}
 
 // --- Compras ---
 export async function listarCompras(params = {}) {
   const { data } = await api.get('/api/compras', { params });
   return data.compras;
+}
+export async function obtenerCompra(id) {
+  const { data } = await api.get(`/api/compras/${id}`);
+  return data; // { compra, items }
 }
 export async function crearCompra(payload) {
   const { data } = await api.post('/api/compras', payload);

@@ -10,10 +10,12 @@ import { listarSucursales, listarProductos } from '../api/stock';
 import { listarUsuarios } from '../api/usuarios';
 import {
   cajaActual, abrirCaja, cerrarCaja,
-  listarVentas, crearVenta, entregarVenta, anularVenta,
+  listarVentas, obtenerVenta, crearVenta, agregarPago, entregarVenta, anularVenta,
+  cuentaCorriente,
 } from '../api/ventas';
 import { estadoFiscal, emitirComprobante } from '../api/fiscal';
 import InfoBtn from '../components/InfoBtn';
+import Modal from '../components/Modal';
 import { useEsAdmin } from '../hooks/useEsAdmin';
 
 const MEDIOS = ['efectivo', 'tarjeta', 'transferencia'];
@@ -41,6 +43,10 @@ export default function TpvPage() {
   const [prodSel, setProdSel] = useState('');
   const [fiscal, setFiscal] = useState(null); // estado del módulo fiscal
   const [tipoComp, setTipoComp] = useState({}); // tipo elegido por venta
+  const [detalle, setDetalle] = useState(null); // { venta, items, pagos }
+  const [pagoMonto, setPagoMonto] = useState('');
+  const [pagoMedio, setPagoMedio] = useState('efectivo');
+  const [cuenta, setCuenta] = useState(null); // { cliente, saldo, movimientos }
 
   useEffect(() => {
     (async () => {
@@ -165,6 +171,34 @@ export default function TpvPage() {
     catch (err) { setError(err.response?.data?.error || 'No se pudo anular'); }
   }
 
+  async function verDetalle(id) {
+    setError('');
+    try { setDetalle(await obtenerVenta(id)); setPagoMonto(''); setPagoMedio('efectivo'); }
+    catch (err) { setError(err.response?.data?.error || 'No se pudo cargar el detalle'); }
+  }
+
+  async function handleRegistrarPago() {
+    if (!(Number(pagoMonto) > 0)) { setError('Ingresá un monto válido'); return; }
+    setError(''); setOk('');
+    try {
+      await agregarPago(detalle.venta.id, { medio: pagoMedio, monto: Number(pagoMonto) });
+      setOk('Pago registrado.');
+      // Recargar el detalle y la lista
+      setDetalle(await obtenerVenta(detalle.venta.id));
+      setPagoMonto('');
+      refrescar(sucursalId);
+    } catch (err) { setError(err.response?.data?.error || 'No se pudo registrar el pago'); }
+  }
+
+  async function verCuentaCorriente(clienteId, nombre) {
+    if (!clienteId) return;
+    setError('');
+    try {
+      const r = await cuentaCorriente(clienteId);
+      setCuenta({ cliente: nombre, saldo: r.saldo, movimientos: r.movimientos });
+    } catch (err) { setError(err.response?.data?.error || 'No se pudo cargar la cuenta corriente'); }
+  }
+
   return (
     <div className="stack">
       <div className="page-header">
@@ -274,6 +308,10 @@ export default function TpvPage() {
                 <td>${Number(v.total).toFixed(2)}</td>
                 <td>${Number(v.total_pagado).toFixed(2)}</td>
                 <td className="col-mov">
+                  <button type="button" className="btn-mini btn-mini--wide" onClick={() => verDetalle(v.id)}>Ver</button>
+                  {v.cliente_id && (
+                    <button type="button" className="btn-mini btn-mini--wide" onClick={() => verCuentaCorriente(v.cliente_id, v.cliente_nombre)}>Cta cte</button>
+                  )}
                   {['presupuesto', 'senada'].includes(v.estado) && (
                     <button type="button" className="btn-mini btn-mini--wide" onClick={() => handleEntregar(v.id)}>Entregar</button>
                   )}
@@ -301,6 +339,88 @@ export default function TpvPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Modal: detalle de venta (ítems + pagos) + registrar pago */}
+      {detalle && (
+        <Modal titulo={`Venta #${detalle.venta.numero}`} onCerrar={() => setDetalle(null)}>
+          <p className="muted small">
+            Estado: <strong>{ESTADO_LABEL[detalle.venta.estado]}</strong>
+            {' · '}Total: <strong>${Number(detalle.venta.total).toFixed(2)}</strong>
+            {' · '}Pagado: <strong>${Number(detalle.venta.total_pagado).toFixed(2)}</strong>
+            {' · '}Saldo: <strong>${(Number(detalle.venta.total) - Number(detalle.venta.total_pagado)).toFixed(2)}</strong>
+          </p>
+
+          <h3 className="section-title">Ítems</h3>
+          <table className="data-table">
+            <thead><tr><th>Descripción</th><th>Cant.</th><th>P. Unit.</th><th>Subtotal</th></tr></thead>
+            <tbody>
+              {detalle.items.map((it) => (
+                <tr key={it.id}>
+                  <td>{it.descripcion}</td>
+                  <td>{it.cantidad}</td>
+                  <td>$ {Number(it.precio_unitario).toFixed(2)}</td>
+                  <td>$ {Number(it.subtotal).toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <h3 className="section-title">Pagos</h3>
+          {detalle.pagos && detalle.pagos.length > 0 ? (
+            <table className="data-table">
+              <thead><tr><th>Fecha</th><th>Medio</th><th>Monto</th><th>Seña</th></tr></thead>
+              <tbody>
+                {detalle.pagos.map((p) => (
+                  <tr key={p.id}>
+                    <td>{new Date(p.created_at).toLocaleString()}</td>
+                    <td>{p.medio}</td>
+                    <td>$ {Number(p.monto).toFixed(2)}</td>
+                    <td>{p.es_sena ? 'Sí' : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : <p className="muted">Sin pagos registrados.</p>}
+
+          {/* Registrar pago (si la venta no está anulada y queda saldo) */}
+          {detalle.venta.estado !== 'anulada'
+            && Number(detalle.venta.total_pagado) < Number(detalle.venta.total) && (
+            <div className="venta-form__row" style={{ marginTop: '1rem' }}>
+              <label className="field"><span>Monto del pago</span>
+                <input type="number" min="0" step="0.01" value={pagoMonto} onChange={(e) => setPagoMonto(e.target.value)} placeholder="0.00" /></label>
+              <label className="field"><span>Medio</span>
+                <select value={pagoMedio} onChange={(e) => setPagoMedio(e.target.value)}>
+                  {MEDIOS.map((m) => <option key={m} value={m}>{m}</option>)}
+                </select></label>
+              <button type="button" className="btn btn--primary btn--inline" onClick={handleRegistrarPago}>Registrar pago</button>
+            </div>
+          )}
+        </Modal>
+      )}
+
+      {/* Modal: cuenta corriente del cliente */}
+      {cuenta && (
+        <Modal titulo={`Cuenta corriente · ${cuenta.cliente || 'Cliente'}`} onCerrar={() => setCuenta(null)}>
+          <p className="venta-total"><strong>Saldo actual: $ {Number(cuenta.saldo).toFixed(2)}</strong></p>
+          {cuenta.movimientos.length === 0 ? (
+            <p className="muted">Sin movimientos en la cuenta corriente.</p>
+          ) : (
+            <table className="data-table">
+              <thead><tr><th>Fecha</th><th>Tipo</th><th>Monto</th><th>Detalle</th></tr></thead>
+              <tbody>
+                {cuenta.movimientos.map((m) => (
+                  <tr key={m.id}>
+                    <td>{new Date(m.created_at).toLocaleString()}</td>
+                    <td>{m.tipo}</td>
+                    <td>$ {Number(m.monto).toFixed(2)}</td>
+                    <td>{m.detalle || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Modal>
+      )}
     </div>
   );
 }
