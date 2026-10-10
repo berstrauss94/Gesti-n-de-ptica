@@ -18,6 +18,7 @@ import {
 } from '../api/stock';
 import fondoStock from '../assets/fondo-stock.jpg';
 import InfoBtn from '../components/InfoBtn';
+import { useEsAdmin } from '../hooks/useEsAdmin';
 
 const CATEGORIAS = ['armazon', 'cristal', 'lente_contacto', 'accesorio', 'otro'];
 const CAT_LABEL = {
@@ -26,6 +27,7 @@ const CAT_LABEL = {
 };
 
 export default function StockPage() {
+  const esAdmin = useEsAdmin();
   const [sucursales, setSucursales] = useState([]);
   const [sucursalId, setSucursalId] = useState('');
   const [stock, setStock] = useState([]);
@@ -149,12 +151,16 @@ export default function StockPage() {
           <select value={sucursalId} onChange={(e) => setSucursalId(e.target.value)}>
             {sucursales.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
           </select>
-          <button type="button" className="btn btn--ghost btn--inline" onClick={handleRecalcular}>
-            Recalcular precios
-          </button>
-          <button type="button" className="btn btn--primary btn--inline" onClick={() => setMostrarAlta((v) => !v)}>
-            {mostrarAlta ? 'Cerrar' : '+ Nuevo producto'}
-          </button>
+          {esAdmin && (
+            <>
+              <button type="button" className="btn btn--ghost btn--inline" onClick={handleRecalcular}>
+                Recalcular precios
+              </button>
+              <button type="button" className="btn btn--primary btn--inline" onClick={() => setMostrarAlta((v) => !v)}>
+                {mostrarAlta ? 'Cerrar' : '+ Nuevo producto'}
+              </button>
+            </>
+          )}
         </div>
       </div>
 

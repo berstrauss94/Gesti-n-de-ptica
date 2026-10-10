@@ -12,6 +12,7 @@ import {
   eliminarUsuario,
 } from '../api/usuarios';
 import GraduacionesSeccion from '../components/GraduacionesSeccion';
+import { useEsAdmin } from '../hooks/useEsAdmin';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 const MAX_FOTOS = 3;
@@ -19,6 +20,7 @@ const MAX_FOTOS = 3;
 export default function ClienteDetallePage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const esAdmin = useEsAdmin();
 
   const [cliente, setCliente] = useState(null);
   const [fotos, setFotos] = useState([]);
@@ -82,9 +84,11 @@ export default function ClienteDetallePage() {
           <Link to="/clientes" className="back-link">← Clientes</Link>
           <h1>{cliente.nombre_completo}</h1>
         </div>
-        <button type="button" className="btn btn--danger" onClick={handleEliminar}>
-          Eliminar
-        </button>
+        {esAdmin && (
+          <button type="button" className="btn btn--danger" onClick={handleEliminar}>
+            Eliminar
+          </button>
+        )}
       </div>
 
       {error && <p className="alert alert--error" role="alert">{error}</p>}

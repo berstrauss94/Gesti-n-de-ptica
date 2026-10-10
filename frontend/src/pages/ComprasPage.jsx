@@ -15,6 +15,7 @@ import {
   listarOrdenes, crearOrden, cambiarEstadoOrden,
 } from '../api/compras';
 import InfoBtn from '../components/InfoBtn';
+import { useEsAdmin } from '../hooks/useEsAdmin';
 
 const ESTADOS_ORDEN = ['enviado', 'en_proceso', 'recibido_sucursal', 'listo_entrega', 'entregado'];
 const ORDEN_LABEL = {
@@ -73,6 +74,7 @@ export default function ComprasPage() {
 
 // --------------------------------------------------------------------
 function TabCompras({ sucursalId, setError, setOk }) {
+  const esAdmin = useEsAdmin();
   const [proveedores, setProveedores] = useState([]);
   const [productos, setProductos] = useState([]);
   const [compras, setCompras] = useState([]);
@@ -193,7 +195,7 @@ function TabCompras({ sucursalId, setError, setOk }) {
                 <td>{c.nro_factura || '—'}</td>
                 <td>${Number(c.total).toFixed(2)}</td>
                 <td><span className="badge">{c.estado}</span></td>
-                <td>{c.estado === 'borrador' && <button className="btn-mini btn-mini--wide" onClick={() => confirmar(c.id)}>Confirmar</button>}</td>
+                <td>{esAdmin && c.estado === 'borrador' && <button className="btn-mini btn-mini--wide" onClick={() => confirmar(c.id)}>Confirmar</button>}</td>
               </tr>
             ))}
           </tbody>
@@ -205,6 +207,7 @@ function TabCompras({ sucursalId, setError, setOk }) {
 
 // --------------------------------------------------------------------
 function TabProveedores({ setError, setOk }) {
+  const esAdmin = useEsAdmin();
   const [lista, setLista] = useState([]);
   const [form, setForm] = useState({ nombre: '', tipo: 'proveedor', cuit: '', telefono: '', email: '' });
 
@@ -225,22 +228,24 @@ function TabProveedores({ setError, setOk }) {
 
   return (
     <>
-      <form className="card form-grid" onSubmit={guardar}>
-        <label className="field"><span>Nombre *</span>
-          <input value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required /></label>
-        <label className="field"><span>Tipo</span>
-          <select value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })}>
-            <option value="proveedor">Proveedor</option>
-            <option value="laboratorio">Laboratorio</option>
-          </select></label>
-        <label className="field"><span>CUIT</span>
-          <input value={form.cuit} onChange={(e) => setForm({ ...form, cuit: e.target.value })} /></label>
-        <label className="field"><span>Teléfono</span>
-          <input value={form.telefono} onChange={(e) => setForm({ ...form, telefono: e.target.value })} /></label>
-        <label className="field"><span>Email</span>
-          <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></label>
-        <div className="form-actions"><button className="btn btn--primary btn--inline">Agregar</button></div>
-      </form>
+      {esAdmin && (
+        <form className="card form-grid" onSubmit={guardar}>
+          <label className="field"><span>Nombre *</span>
+            <input value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required /></label>
+          <label className="field"><span>Tipo</span>
+            <select value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })}>
+              <option value="proveedor">Proveedor</option>
+              <option value="laboratorio">Laboratorio</option>
+            </select></label>
+          <label className="field"><span>CUIT</span>
+            <input value={form.cuit} onChange={(e) => setForm({ ...form, cuit: e.target.value })} /></label>
+          <label className="field"><span>Teléfono</span>
+            <input value={form.telefono} onChange={(e) => setForm({ ...form, telefono: e.target.value })} /></label>
+          <label className="field"><span>Email</span>
+            <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></label>
+          <div className="form-actions"><button className="btn btn--primary btn--inline">Agregar</button></div>
+        </form>
+      )}
 
       <div className="card no-pad">
         <table className="table">

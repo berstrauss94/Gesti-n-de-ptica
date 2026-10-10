@@ -14,6 +14,7 @@ import {
 } from '../api/ventas';
 import { estadoFiscal, emitirComprobante } from '../api/fiscal';
 import InfoBtn from '../components/InfoBtn';
+import { useEsAdmin } from '../hooks/useEsAdmin';
 
 const MEDIOS = ['efectivo', 'tarjeta', 'transferencia'];
 const ESTADO_LABEL = {
@@ -21,6 +22,7 @@ const ESTADO_LABEL = {
 };
 
 export default function TpvPage() {
+  const esAdmin = useEsAdmin();
   const [sucursales, setSucursales] = useState([]);
   const [sucursalId, setSucursalId] = useState('');
   const [caja, setCaja] = useState(null);
@@ -275,7 +277,7 @@ export default function TpvPage() {
                   {['presupuesto', 'senada'].includes(v.estado) && (
                     <button type="button" className="btn-mini btn-mini--wide" onClick={() => handleEntregar(v.id)}>Entregar</button>
                   )}
-                  {v.estado !== 'anulada' && v.estado !== 'entregada' && (
+                  {esAdmin && v.estado !== 'anulada' && v.estado !== 'entregada' && (
                     <button type="button" className="btn-mini btn-mini--wide" onClick={() => handleAnular(v.id)}>Anular</button>
                   )}
                   {v.estado !== 'anulada' && (
