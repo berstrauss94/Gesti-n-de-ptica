@@ -364,6 +364,50 @@ const MIGRACIONES = [
   // En la venta: a cuánto cubre la obra social (si corresponde)
   `ALTER TABLE ventas ADD COLUMN IF NOT EXISTS obra_social_id UUID REFERENCES obras_sociales(id)`,
   `ALTER TABLE ventas ADD COLUMN IF NOT EXISTS cobertura_os NUMERIC(12,2) NOT NULL DEFAULT 0`,
+
+  // --- Sobres / Órdenes de trabajo óptica ---
+  // El "Sobre" es la orden de trabajo central de la óptica: une paciente,
+  // receta (lejos + cerca, por ojo), armazón, cristal, médico, obra social
+  // y fecha de entrega. Puede vincularse a una venta del TPV.
+  `CREATE TABLE IF NOT EXISTS sobres (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     numero SERIAL,
+     sucursal_id UUID NOT NULL REFERENCES sucursales(id),
+     cliente_id UUID REFERENCES usuarios(id),
+     venta_id UUID REFERENCES ventas(id) ON DELETE SET NULL,
+     obra_social_id UUID REFERENCES obras_sociales(id),
+     medico VARCHAR(150),
+     fecha_receta DATE,
+     fecha_entrega DATE,
+     estado VARCHAR(15) NOT NULL DEFAULT 'pendiente'
+       CHECK (estado IN ('pendiente','reserva','en_taller','entregado','anulado')),
+     -- Receta LEJOS (por ojo): esfera, cilindro, eje, adición, prisma, base, diámetro
+     lejos_od_esf NUMERIC(5,2), lejos_od_cil NUMERIC(5,2), lejos_od_eje INT CHECK (lejos_od_eje BETWEEN 0 AND 180),
+     lejos_od_add NUMERIC(5,2), lejos_od_prisma NUMERIC(5,2), lejos_od_base VARCHAR(10), lejos_od_diam NUMERIC(5,2),
+     lejos_oi_esf NUMERIC(5,2), lejos_oi_cil NUMERIC(5,2), lejos_oi_eje INT CHECK (lejos_oi_eje BETWEEN 0 AND 180),
+     lejos_oi_add NUMERIC(5,2), lejos_oi_prisma NUMERIC(5,2), lejos_oi_base VARCHAR(10), lejos_oi_diam NUMERIC(5,2),
+     -- Receta CERCA (por ojo)
+     cerca_od_esf NUMERIC(5,2), cerca_od_cil NUMERIC(5,2), cerca_od_eje INT CHECK (cerca_od_eje BETWEEN 0 AND 180),
+     cerca_od_prisma NUMERIC(5,2), cerca_od_base VARCHAR(10), cerca_od_diam NUMERIC(5,2),
+     cerca_oi_esf NUMERIC(5,2), cerca_oi_cil NUMERIC(5,2), cerca_oi_eje INT CHECK (cerca_oi_eje BETWEEN 0 AND 180),
+     cerca_oi_prisma NUMERIC(5,2), cerca_oi_base VARCHAR(10), cerca_oi_diam NUMERIC(5,2),
+     dip NUMERIC(5,1),
+     -- Productos y descripción libre
+     armazon_producto_id UUID REFERENCES productos(id),
+     armazon_descripcion VARCHAR(200),
+     cristal_descripcion VARCHAR(200),
+     notas TEXT,
+     total NUMERIC(12,2) NOT NULL DEFAULT 0,
+     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+   )`,
+  `CREATE INDEX IF NOT EXISTS idx_sobres_cliente ON sobres(cliente_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_sobres_estado ON sobres(estado)`,
+  `CREATE INDEX IF NOT EXISTS idx_sobres_sucursal ON sobres(sucursal_id)`,
+
+  // --- Campos avanzados de armazón/producto (filtros tipo Optix) ---
+  `ALTER TABLE productos ADD COLUMN IF NOT EXISTS genero VARCHAR(15)`,
+  `ALTER TABLE productos ADD COLUMN IF NOT EXISTS material VARCHAR(40)`,
+  `ALTER TABLE productos ADD COLUMN IF NOT EXISTS ubicacion VARCHAR(40)`,
 ];
 
 async function ejecutarMigraciones() {

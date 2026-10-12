@@ -22,6 +22,9 @@ async function listar(req, res) {
   }
   if (categoria) { params.push(categoria); cond.push(`p.categoria = $${params.length}`); }
   if (req.query.marca) { params.push(req.query.marca); cond.push(`p.marca = $${params.length}`); }
+  if (req.query.genero) { params.push(req.query.genero); cond.push(`p.genero = $${params.length}`); }
+  if (req.query.material) { params.push(req.query.material); cond.push(`p.material = $${params.length}`); }
+  if (req.query.ubicacion_prod) { params.push(req.query.ubicacion_prod); cond.push(`p.ubicacion = $${params.length}`); }
   if (req.query.bajo_minimo === 'true') { cond.push(`ss.cantidad <= ss.stock_minimo`); }
   const where = cond.length ? `WHERE ${cond.join(' AND ')}` : '';
   params.push(lim, off);
@@ -31,6 +34,7 @@ async function listar(req, res) {
       `SELECT ss.id, ss.producto_id, ss.sucursal_id, ss.cantidad, ss.stock_minimo,
               ss.ubicacion, ss.updated_at,
               p.codigo, p.codigo_barras, p.nombre, p.categoria, p.marca,
+              p.genero, p.material, p.ubicacion AS ubicacion_prod,
               p.precio_venta, p.costo_base,
               s.nombre AS sucursal_nombre,
               (ss.cantidad <= ss.stock_minimo) AS bajo_minimo

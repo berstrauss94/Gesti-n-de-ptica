@@ -8,7 +8,7 @@
 > cambio. Hay un hook de Kiro (`.kiro/hooks/sync-arquitectura-doc.json`) que lo
 > recuerda automáticamente. Al final está el **Registro de cambios**.
 
-_Última actualización: 2026-10-10 (importación de listas de precios por CSV)_
+_Última actualización: 2026-10-10 (Sobres/órdenes de trabajo, Comisiones, filtros de armazón)_
 
 ---
 
@@ -106,6 +106,8 @@ Optica/
 | **TPV / Ventas** | Caja (apertura/cierre con arqueo), ventas, pagos, señas, entrega, anulación, reintegros/retiros de caja, cuenta corriente, **descuentos/promociones por venta**. |
 | **Promociones / Descuentos** | El comercio crea sus propios descuentos (porcentaje o monto), los activa/desactiva y los aplica en el TPV. |
 | **Obras sociales / Convenios** | Alta de convenios con % de cobertura por defecto; en el TPV se aplica la cobertura y el total refleja lo que paga el paciente. Gestión en Configuración (admin). |
+| **Sobres / Órdenes de trabajo** | Orden central de la óptica: paciente + receta completa (lejos/cerca por ojo, con esfera/cilindro/eje/adición/prisma/base/diámetro) + armazón + cristal + médico + obra social + fecha de entrega; estados pendiente/reserva/en taller/entregado/anulado. |
+| **Comisiones** | Reporte del acumulado de comisiones por vendedor en un período (ventas entregadas), con resumen y detalle. Solo admin. |
 | **Compras** | Proveedores, laboratorios, compras (confirmar impacta stock/costos), órdenes de laboratorio, **exportación contable CITI Compras (AFIP) por período**. |
 | **Turnos / Agenda** | Alta de turnos, filtro por rango, estados (asistió/ausente/cancelado). |
 | **Fiscal (AFIP/ARCA)** | Comprobantes A/B/C/interno con numeración correlativa y QR oficial; modo real listo para activar con certificado. |
@@ -128,6 +130,9 @@ lentes, quitar fondo, 3 vistas de marcos, logo). No corren en producción.
 - **TPV:** `/cajas/*` (actual/abrir/cerrar/movimientos), `/ventas/*` (acepta `descuento` al crear), pagos, entregar, anular, `/cuenta-corriente/:id`.
 - **Promociones:** `GET /promociones`, `POST /promociones` (admin), `PATCH /promociones/:id` (admin), `DELETE /promociones/:id` (admin).
 - **Obras sociales:** `GET /obras-sociales`, `POST /obras-sociales` (admin), `PUT /obras-sociales/:id` (admin), `DELETE /obras-sociales/:id` (admin).
+- **Sobres:** `GET /sobres`, `POST /sobres`, `GET /sobres/:id`, `PUT /sobres/:id`, `PATCH /sobres/:id/estado`, `DELETE /sobres/:id`.
+- **Comisiones:** `GET /comisiones` (admin; filtros desde/hasta/sucursal/vendedor).
+- **Stock:** el listado acepta además filtros `genero`, `material`, `ubicacion_prod`.
 - **Compras:** `/proveedores`, `/compras`, `/ordenes-laboratorio`, `GET /compras-citi?periodo=YYYY-MM` (admin, descarga .txt).
 - **Fiscal:** `/fiscal/estado`, `GET/PUT /fiscal/config` (admin; config AFIP sin exponer cert/clave), `/fiscal/emitir`, `/fiscal/comprobantes`.
 - **Notificaciones:** `/notificaciones/config`, `/notificaciones`, `/notificaciones/prueba`.
@@ -164,7 +169,8 @@ integraciones NO se devuelven al frontend (solo flags `_configurado`).
 - **Compras:** `proveedores`, `compras`, `compra_items`, `ordenes_laboratorio`.
 - **Fiscal/avisos/agenda:** `comprobantes_fiscales` (con `payload` JSONB para el QR),
   `config_fiscal` (CUIT/punto de venta/certificado/clave, fila única),
-  `config_notificaciones`, `notificaciones`, `turnos`, `graduaciones`, fotos.
+  `config_notificaciones`, `notificaciones`, `turnos`, `graduaciones`, `sobres`
+  (receta lejos/cerca por ojo), fotos. `productos` tiene además `genero`/`material`/`ubicacion`.
 
 Operaciones críticas (traslados, cierre de caja, confirmar compra) usan
 **transacciones con `FOR UPDATE`**.
@@ -277,3 +283,14 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
   `api/stock.js` (`importarListaPrecios`). Cubre el punto de "sincronización con
   proveedores" de la comparativa Optix. Con esto se cerró la lista de pendientes
   implementables; CAE AFIP real y WhatsApp quedan a la espera de credenciales.
+- **2026-10-10** — Brecha vs. Optix (segunda tanda, imágenes "ÓPTICA - concept"):
+  - **Sobres / Órdenes de trabajo** (módulo nuevo): tabla `sobres` con receta
+    completa lejos/cerca por ojo (esf/cil/eje/add/prisma/base/diámetro) + armazón +
+    cristal + médico + obra social + fecha de entrega + estados;
+    `sobresController` + `sobresRoutes`; `pages/SobresPage.jsx` + `api/sobres.js`;
+    ruta `/sobres` y menú.
+  - **Comisiones** (reporte, admin): `comisionesController` + `comisionesRoutes`;
+    `pages/ComisionesPage.jsx`; ruta `/comisiones` y menú.
+  - **Filtros avanzados de armazón**: columnas `genero`/`material`/`ubicacion` en
+    `productos` y filtros en `stockController.listar`.
+  - La auditoría/exportación de stock ya estaba cubierta por el export CSV + filtros.

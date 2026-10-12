@@ -19,6 +19,8 @@ import StockPage from './pages/StockPage';
 import TpvPage from './pages/TpvPage';
 import ComprasPage from './pages/ComprasPage';
 import TurnosPage from './pages/TurnosPage';
+import SobresPage from './pages/SobresPage';
+import ComisionesPage from './pages/ComisionesPage';
 import ConfiguracionPage from './pages/ConfiguracionPage';
 
 export default function App() {
@@ -44,6 +46,8 @@ export default function App() {
         <Route path="/tpv" element={<TpvPage />} />
         <Route path="/compras" element={<ComprasPage />} />
         <Route path="/turnos" element={<TurnosPage />} />
+        <Route path="/sobres" element={<SobresPage />} />
+        <Route path="/comisiones" element={<ComisionesPage />} />
         <Route path="/configuracion" element={<ConfiguracionPage />} />
       </Route>
 
