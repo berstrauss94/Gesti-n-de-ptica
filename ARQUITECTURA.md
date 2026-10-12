@@ -308,4 +308,10 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
   `UNIQUE(marca, modelo)`). `mercadoGeminiService` (fetch nativo, key desde env o DB),
   `mercadoController` + `mercadoRoutes` (`GET /mercado`, `POST /mercado/enriquecer`
   admin). Queda cableado y listo; funcionará cuando el plan de Gemini pase a pago
-  (hoy el tier gratuito devuelve 429). Falta la UI (pendiente).
+  (hoy el tier gratuito devuelve 429).
+- **2026-10-10** — UI del agente Mercado dentro de Prueba Virtual: debajo del
+  "Catálogo de marcos" (lo que hay en el local) se agregó la sección separada
+  "En el mercado" (modelos que NO están en el local; buscar por marca+modelo
+  dispara el agente y lista las specs). `frontend/src/api/mercado.js` +
+  `frontend/src/pages/TryOnPage.jsx`. La búsqueda es admin-only y usa el mismo
+  Gemini que da 429 hasta activar el plan pago.

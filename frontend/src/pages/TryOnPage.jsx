@@ -19,6 +19,8 @@ import EditarMarcoModal from '../components/tryon/EditarMarcoModal';
 import Modal from '../components/Modal';
 import useFaceLandmarker from '../hooks/useFaceLandmarker';
 import { estadoTryonIA, generarTryonIA } from '../api/tryonIA';
+import { listarMercado, enriquecerMercado } from '../api/mercado';
+import { useEsAdmin } from '../hooks/useEsAdmin';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -54,6 +56,35 @@ export default function TryOnPage() {
   const [iaImagen, setIaImagen] = useState('');
   const [iaCargando, setIaCargando] = useState(false);
   const [iaMsg, setIaMsg] = useState(''); // mensaje de resultado/err en el panel
+
+  // Sección "En el mercado": modelos que NO están en el local (consulta IA)
+  const esAdmin = useEsAdmin();
+  const [mercado, setMercado] = useState([]);
+  const [mercadoBusca, setMercadoBusca] = useState({ marca: '', modelo: '' });
+  const [mercadoMsg, setMercadoMsg] = useState('');
+  const [mercadoCargando, setMercadoCargando] = useState(false);
+
+  useEffect(() => {
+    listarMercado().then(setMercado).catch(() => setMercado([]));
+  }, []);
+
+  async function buscarEnMercado(e) {
+    e.preventDefault();
+    if (!mercadoBusca.marca || !mercadoBusca.modelo) { setMercadoMsg('Completá marca y modelo.'); return; }
+    setMercadoMsg(''); setMercadoCargando(true);
+    try {
+      const reg = await enriquecerMercado(mercadoBusca.marca, mercadoBusca.modelo);
+      setMercado((prev) => [reg, ...prev.filter((m) => m.id !== reg.id)]);
+      setMercadoMsg('✓ Modelo encontrado y agregado a "En el mercado".');
+      setMercadoBusca({ marca: '', modelo: '' });
+    } catch (err) {
+      const d = err.response?.data || {};
+      const detalle = d.detalle ? ` (${d.detalle})` : '';
+      setMercadoMsg(`${d.error || 'No se pudo consultar el modelo'}${detalle}`);
+    } finally {
+      setMercadoCargando(false);
+    }
+  }
 
   useEffect(() => {
     estadoTryonIA().then((e) => setIaHabilitada(e.habilitado)).catch(() => setIaHabilitada(false));
@@ -361,6 +392,7 @@ export default function TryOnPage() {
 
           <div className="card">
             <h2 className="section-title">Catálogo de marcos</h2>
+            <p className="muted small">Lo que tenés en el local, listo para probar y vender.</p>
             <MarcosCarrusel
               marcos={marcosFiltrados}
               seleccionadoId={marcoSel?.id}
@@ -368,6 +400,69 @@ export default function TryOnPage() {
               q={qMarco}
               onBuscar={setQMarco}
             />
+          </div>
+
+          {/* Sección separada: modelos que NO están en el local, para consultar
+              al proveedor. Diferenciada del catálogo para que el usuario sepa
+              qué tiene en su local vs. qué puede traer. */}
+          <div className="card">
+            <h2 className="section-title">En el mercado</h2>
+            <p className="muted small">
+              Modelos que <strong>no</strong> tenés en el local. Buscá por marca y modelo para
+              traer sus especificaciones y saber qué pedirle al proveedor si al cliente le interesa.
+            </p>
+
+            {esAdmin && (
+              <form className="searchbar" onSubmit={buscarEnMercado} style={{ marginTop: '0.75rem' }}>
+                <input
+                  type="search"
+                  placeholder="Marca (ej: Ray-Ban)"
+                  value={mercadoBusca.marca}
+                  onChange={(e) => setMercadoBusca((m) => ({ ...m, marca: e.target.value }))}
+                />
+                <input
+                  type="search"
+                  placeholder="Modelo (ej: Aviator RB3025)"
+                  value={mercadoBusca.modelo}
+                  onChange={(e) => setMercadoBusca((m) => ({ ...m, modelo: e.target.value }))}
+                />
+                <button type="submit" className="btn btn--primary" disabled={mercadoCargando}>
+                  {mercadoCargando ? 'Buscando…' : '✨ Buscar en el mercado'}
+                </button>
+              </form>
+            )}
+            {mercadoMsg && (
+              <p className={`small ${mercadoMsg.startsWith('✓') ? 'ok-text' : 'alert alert--error'}`} role="status">
+                {mercadoMsg}
+              </p>
+            )}
+
+            {mercado.length === 0 ? (
+              <p className="muted small">Todavía no consultaste modelos del mercado.</p>
+            ) : (
+              <div className="card no-pad" style={{ marginTop: '0.75rem' }}>
+                <table className="table">
+                  <thead><tr><th>Marca</th><th>Modelo</th><th>Estilo</th><th>Material</th><th>Medidas</th><th>Tratamientos</th></tr></thead>
+                  <tbody>
+                    {mercado.map((m) => (
+                      <tr key={m.id}>
+                        <td><strong>{m.marca}</strong></td>
+                        <td>{m.modelo}</td>
+                        <td className="small">{m.estilo || '—'}</td>
+                        <td className="small">{m.material || '—'}</td>
+                        <td className="small">
+                          {m.calibre_ancho ? `${m.calibre_ancho}▢${m.puente ?? '—'} ${m.patilla ?? '—'}` : '—'}
+                        </td>
+                        <td className="small">
+                          {Array.isArray(m.tratamientos) && m.tratamientos.length
+                            ? m.tratamientos.join(', ') : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </>
       )}
