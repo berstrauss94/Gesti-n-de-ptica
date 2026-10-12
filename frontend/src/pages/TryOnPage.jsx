@@ -53,19 +53,28 @@ export default function TryOnPage() {
   const [iaHabilitada, setIaHabilitada] = useState(false);
   const [iaImagen, setIaImagen] = useState('');
   const [iaCargando, setIaCargando] = useState(false);
+  const [iaMsg, setIaMsg] = useState(''); // mensaje de resultado/err en el panel
 
   useEffect(() => {
     estadoTryonIA().then((e) => setIaHabilitada(e.habilitado)).catch(() => setIaHabilitada(false));
   }, []);
 
   async function handleGenerarIA() {
-    if (!fotoSel || !marcoSel) return;
-    setError(''); setIaImagen(''); setIaCargando(true);
+    if (!fotoSel || !marcoSel) { setIaMsg('Elegí una foto y un marco primero.'); return; }
+    setError(''); setIaImagen(''); setIaMsg(''); setIaCargando(true);
     try {
       const r = await generarTryonIA(fotoSel.ruta_local, marcoSel.ruta_imagen_png);
-      setIaImagen(r.imagen);
+      if (r?.imagen) {
+        setIaImagen(r.imagen);
+        setIaMsg('✓ Imagen generada con IA.');
+      } else {
+        setIaMsg('La IA respondió pero no devolvió una imagen.');
+      }
     } catch (err) {
-      setError(err.response?.data?.error || 'No se pudo generar la imagen con IA');
+      // Mostramos el detalle real que manda el backend (motivo de Google, etc.)
+      const data = err.response?.data || {};
+      const detalle = data.detalle ? ` (${data.detalle})` : '';
+      setIaMsg(`${data.error || 'No se pudo generar la imagen con IA'}${detalle}`);
     } finally {
       setIaCargando(false);
     }
@@ -335,6 +344,14 @@ export default function TryOnPage() {
                   {!iaHabilitada && (
                     <p className="muted small">
                       Requiere configurar la API key de Google en Configuración.
+                    </p>
+                  )}
+                  {iaCargando && (
+                    <p className="muted small">Generando la imagen con IA… puede tardar unos segundos.</p>
+                  )}
+                  {iaMsg && !iaCargando && (
+                    <p className={`small ${iaMsg.startsWith('✓') ? 'ok-text' : 'alert alert--error'}`} role="status">
+                      {iaMsg}
                     </p>
                   )}
                 </div>

@@ -50,11 +50,23 @@ async function generar({ fotoB64, marcoB64, fotoMime = 'image/jpeg', marcoMime =
   const endpoint =
     `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent?key=${key}`;
 
+  // Instrucción detallada para que el modelo COMPONGA (no superponga) el
+  // anteojo sobre el rostro, de forma fotorrealista. Es el "cómo" que guía
+  // a la IA en cada generación, con cualquier cliente y cualquier anteojo.
   const prompt =
-    'Colocá de forma realista los anteojos de la segunda imagen sobre el rostro ' +
-    'de la primera imagen, respetando el ángulo de la cara, el tamaño y la ' +
-    'perspectiva. No cambies el rostro de la persona ni la forma ni el color de ' +
-    'los anteojos. Devolvé solo la imagen compuesta.';
+    'Sos un editor de fotos experto en pruebas de anteojos para ópticas. ' +
+    'La PRIMERA imagen es la foto real de una persona. La SEGUNDA imagen es un ' +
+    'anteojo/armazón recortado sobre fondo transparente. ' +
+    'Generá una ÚNICA foto nueva, fotorrealista, en la que esa misma persona ' +
+    'tenga puesto ese anteojo de verdad. Requisitos: ' +
+    '1) Ubicá el anteojo apoyado en el puente de la nariz y las patillas hacia ' +
+    'las orejas, siguiendo el ángulo exacto del rostro (frontal, 3/4 o perfil). ' +
+    '2) Ajustá tamaño, inclinación y perspectiva del anteojo al rostro. ' +
+    '3) Integrá sombras suaves, reflejos y la refracción del lente para que se ' +
+    'vea realmente puesto, no pegado encima. ' +
+    '4) NO modifiques la identidad, la piel, el peinado ni el fondo de la persona. ' +
+    '5) NO cambies la forma ni el color del anteojo. ' +
+    'Devolvé solo la imagen final compuesta, sin texto.';
 
   const body = {
     contents: [{
