@@ -294,3 +294,5 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
   - **Filtros avanzados de armazón**: columnas `genero`/`material`/`ubicacion` en
     `productos` y filtros en `stockController.listar`.
   - La auditoría/exportación de stock ya estaba cubierta por el export CSV + filtros.
+- **2026-10-10** — Se agregó "Prueba Virtual" (`/try-on`) al menú lateral
+  (`Layout.jsx`); la página ya existía pero no tenía acceso directo desde el sidebar.

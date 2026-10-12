@@ -8,7 +8,7 @@ import { useState } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import {
   Home, Users, Glasses, Package, ShoppingCart, Truck, Settings,
-  CalendarClock, FileText, Percent, LogOut, KeyRound, Menu, X,
+  CalendarClock, FileText, Percent, Sparkles, LogOut, KeyRound, Menu, X,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useEsAdmin } from '../hooks/useEsAdmin';
@@ -19,6 +19,7 @@ const MENU = [
   { name: 'Inicio', path: '/', icon: Home, end: true },
   { name: 'Clientes', path: '/clientes', icon: Users },
   { name: 'Marcos', path: '/marcos', icon: Glasses },
+  { name: 'Prueba Virtual', path: '/try-on', icon: Sparkles },
   { name: 'Stock', path: '/stock', icon: Package },
   { name: 'TPV / Ventas', path: '/tpv', icon: ShoppingCart },
   { name: 'Compras', path: '/compras', icon: Truck },
