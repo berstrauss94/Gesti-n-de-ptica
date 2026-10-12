@@ -302,3 +302,10 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
   Prueba Virtual ahora muestra el resultado o el error real de la IA en pantalla
   (`backend/src/config/env.js`, `backend/src/services/tryonIAService.js`,
   `frontend/src/pages/TryOnPage.jsx`).
+- **2026-10-10** — Agente "Mercado": enriquecimiento de catálogo con IA. Dado
+  marca+modelo, consulta a Gemini (`gemini-2.5-flash` con `googleSearch`) las specs
+  técnicas y las guarda en la tabla nueva `mercado_catalogo` (upsert por
+  `UNIQUE(marca, modelo)`). `mercadoGeminiService` (fetch nativo, key desde env o DB),
+  `mercadoController` + `mercadoRoutes` (`GET /mercado`, `POST /mercado/enriquecer`
+  admin). Queda cableado y listo; funcionará cuando el plan de Gemini pase a pago
+  (hoy el tier gratuito devuelve 429). Falta la UI (pendiente).

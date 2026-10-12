@@ -408,6 +408,31 @@ const MIGRACIONES = [
   `ALTER TABLE productos ADD COLUMN IF NOT EXISTS genero VARCHAR(15)`,
   `ALTER TABLE productos ADD COLUMN IF NOT EXISTS material VARCHAR(40)`,
   `ALTER TABLE productos ADD COLUMN IF NOT EXISTS ubicacion VARCHAR(40)`,
+
+  // --- Catálogo de mercado enriquecido con IA (agente Gemini + búsqueda) ---
+  // Guarda specs técnicas de modelos de anteojos obtenidas por el agente.
+  // UNIQUE (marca, modelo) habilita el ON CONFLICT del upsert.
+  `CREATE TABLE IF NOT EXISTS mercado_catalogo (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     marca VARCHAR(120) NOT NULL,
+     modelo VARCHAR(120) NOT NULL,
+     tipo VARCHAR(40),
+     estilo VARCHAR(40),
+     genero VARCHAR(20),
+     material VARCHAR(40),
+     calibre_ancho INT,
+     puente INT,
+     patilla INT,
+     altura_cristal INT,
+     colores JSONB DEFAULT '[]'::jsonb,
+     tratamientos JSONB DEFAULT '[]'::jsonb,
+     aptitud_graduacion BOOLEAN DEFAULT TRUE,
+     metadata JSONB DEFAULT '{}'::jsonb,
+     actualizado_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+     CONSTRAINT mercado_catalogo_marca_modelo_unico UNIQUE (marca, modelo)
+   )`,
+  `CREATE INDEX IF NOT EXISTS idx_mercado_marca ON mercado_catalogo(marca)`,
 ];
 
 async function ejecutarMigraciones() {
