@@ -296,3 +296,9 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
   - La auditoría/exportación de stock ya estaba cubierta por el export CSV + filtros.
 - **2026-10-10** — Se agregó "Prueba Virtual" (`/try-on`) al menú lateral
   (`Layout.jsx`); la página ya existía pero no tenía acceso directo desde el sidebar.
+- **2026-10-10** — Try-On con IA: se corrigió el nombre del modelo de Gemini a
+  `gemini-2.5-flash-image` (el anterior `-image-preview` devolvía 404 NOT_FOUND);
+  el prompt de composición se detalló para resultado fotorrealista; y la UI de
+  Prueba Virtual ahora muestra el resultado o el error real de la IA en pantalla
+  (`backend/src/config/env.js`, `backend/src/services/tryonIAService.js`,
+  `frontend/src/pages/TryOnPage.jsx`).

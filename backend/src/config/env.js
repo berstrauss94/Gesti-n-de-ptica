@@ -39,5 +39,5 @@ module.exports = {
   // --- IA generativa de imágenes (Try-On realista) ---
   // Si falta, el Try-On con IA queda deshabilitado (sigue la superposición 2D).
   GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
-  GEMINI_IMAGE_MODEL: process.env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image-preview',
+  GEMINI_IMAGE_MODEL: process.env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image',
 };
