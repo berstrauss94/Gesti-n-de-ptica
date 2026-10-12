@@ -8,7 +8,7 @@
 > cambio. Hay un hook de Kiro (`.kiro/hooks/sync-arquitectura-doc.json`) que lo
 > recuerda automáticamente. Al final está el **Registro de cambios**.
 
-_Última actualización: 2026-10-10 (módulo de Obras Sociales / Convenios)_
+_Última actualización: 2026-10-10 (importación de listas de precios por CSV)_
 
 ---
 
@@ -102,7 +102,7 @@ Optica/
 | **Clientes/Pacientes** | CRUD, fotos de seguimiento (hasta 3), graduaciones/recetas anidadas. |
 | **Marcos (catálogo)** | CRUD de armazones con 3 vistas (frontal/45°/perfil) en PNG transparente. |
 | **Virtual Try-On** | Superposición 2D con escalado antropométrico (DIP + MediaPipe) + composición realista con IA (Gemini). |
-| **Stock / Inventario** | Multisucursal: existencias, movimientos, alta, recálculo de precios, filtro por marca, traslados entre sucursales, export CSV, **impresión de etiquetas con código de barras (Code128)**. |
+| **Stock / Inventario** | Multisucursal: existencias, movimientos, alta, recálculo de precios, filtro por marca, traslados entre sucursales, export CSV, impresión de etiquetas con código de barras (Code128), **importación de listas de precios de proveedor por CSV**. |
 | **TPV / Ventas** | Caja (apertura/cierre con arqueo), ventas, pagos, señas, entrega, anulación, reintegros/retiros de caja, cuenta corriente, **descuentos/promociones por venta**. |
 | **Promociones / Descuentos** | El comercio crea sus propios descuentos (porcentaje o monto), los activa/desactiva y los aplica en el TPV. |
 | **Obras sociales / Convenios** | Alta de convenios con % de cobertura por defecto; en el TPV se aplica la cobertura y el total refleja lo que paga el paciente. Gestión en Configuración (admin). |
@@ -124,7 +124,7 @@ lentes, quitar fondo, 3 vistas de marcos, logo). No corren en producción.
 - **Clientes:** CRUD `/usuarios` + fotos y graduaciones anidadas.
 - **Marcos:** CRUD `/marcos` (subida multiparte de 3 vistas).
 - **Try-On IA:** `GET /tryon-ia/estado`, `POST /tryon-ia/generar`.
-- **Stock:** `/sucursales`, `/productos`, `/stock`, `/stock/marcas`, movimientos, `/traslados`.
+- **Stock:** `/sucursales`, `/productos`, `POST /productos/importar` (admin, lista de precios CSV), `/stock`, `/stock/marcas`, movimientos, `/traslados`.
 - **TPV:** `/cajas/*` (actual/abrir/cerrar/movimientos), `/ventas/*` (acepta `descuento` al crear), pagos, entregar, anular, `/cuenta-corriente/:id`.
 - **Promociones:** `GET /promociones`, `POST /promociones` (admin), `PATCH /promociones/:id` (admin), `DELETE /promociones/:id` (admin).
 - **Obras sociales:** `GET /obras-sociales`, `POST /obras-sociales` (admin), `PUT /obras-sociales/:id` (admin), `DELETE /obras-sociales/:id` (admin).
@@ -269,4 +269,11 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
   `obrasSocialesRoutes` (listar para todos, ABM admin); `ventasController.crear` aplica
   la cobertura sobre el total; selector de obra social en el TPV con desglose del total
   (`TpvPage.jsx`) y gestión de convenios en Configuración (`ConfiguracionPage.jsx`,
-  `api/obrasSociales.js`). Queda pendiente la importación de listas de precios por CSV.
+  `api/obrasSociales.js`).
+- **2026-10-10** — Importación de listas de precios de proveedor por CSV:
+  `productosController.importar` (transaccional, match por código, actualiza o crea)
+  + ruta `POST /productos/importar` (admin); el CSV se parsea en el front
+  (`StockPage.jsx`: botón "Importar precios" + modal con resumen de resultados),
+  `api/stock.js` (`importarListaPrecios`). Cubre el punto de "sincronización con
+  proveedores" de la comparativa Optix. Con esto se cerró la lista de pendientes
+  implementables; CAE AFIP real y WhatsApp quedan a la espera de credenciales.

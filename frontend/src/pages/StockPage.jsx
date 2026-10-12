@@ -20,6 +20,7 @@ import {
   recalcularPrecios,
   listarMarcas,
   crearTraslado,
+  importarListaPrecios,
 } from '../api/stock';
 import fondoStock from '../assets/fondo-stock.jpg';
 import { barcodeSVG } from '../utils/barcode';
@@ -58,6 +59,10 @@ export default function StockPage() {
   const [marcaFiltro, setMarcaFiltro] = useState('');
   const [traslado, setTraslado] = useState(null); // { producto } en traslado
   const [trasladoForm, setTrasladoForm] = useState({ destino_id: '', cantidad: '', motivo: '' });
+
+  // Importación de lista de precios (CSV de proveedor)
+  const [importar, setImportar] = useState(null); // { filas, crearNuevos } | null
+  const [importResultado, setImportResultado] = useState(null);
 
   // Carga inicial de sucursales y marcas (para el filtro)
   useEffect(() => {
@@ -243,6 +248,72 @@ export default function StockPage() {
     setOk('Stock exportado a CSV.');
   }
 
+  // Parsea un CSV simple (coma o punto y coma) con encabezados y mapea las
+  // columnas conocidas a los campos de producto. Abre el modal de importación.
+  function parsearCSV(texto) {
+    const lineas = String(texto || '').trim().split(/\r?\n/).filter((l) => l.trim() !== '');
+    if (lineas.length < 2) { setError('El CSV debe tener encabezado y al menos una fila.'); return; }
+    const sep = lineas[0].includes(';') ? ';' : ',';
+    const encabezados = lineas[0].split(sep).map((h) => h.trim().toLowerCase());
+    // Alias aceptados por campo
+    const alias = {
+      codigo: ['codigo', 'código', 'code', 'sku'],
+      nombre: ['nombre', 'descripcion', 'descripción', 'detalle', 'producto'],
+      categoria: ['categoria', 'categoría', 'rubro'],
+      marca: ['marca'],
+      costo_base: ['costo', 'costo_base', 'precio_costo', 'costounitario'],
+      margen_pct: ['margen', 'margen_pct', 'markup'],
+      precio_venta: ['precio', 'precio_venta', 'pvp', 'precioventa'],
+    };
+    const idx = {};
+    Object.entries(alias).forEach(([campo, nombres]) => {
+      idx[campo] = encabezados.findIndex((h) => nombres.includes(h));
+    });
+    if (idx.codigo < 0) { setError('El CSV debe tener una columna "codigo".'); return; }
+
+    const filas = [];
+    for (let i = 1; i < lineas.length; i += 1) {
+      const celdas = lineas[i].split(sep).map((c) => c.trim());
+      const get = (campo) => (idx[campo] >= 0 ? celdas[idx[campo]] : undefined);
+      const num = (v) => {
+        if (v === undefined || v === '') return undefined;
+        return Number(String(v).replace(/\./g, '').replace(',', '.')) || Number(v) || undefined;
+      };
+      filas.push({
+        codigo: get('codigo'),
+        nombre: get('nombre') || undefined,
+        categoria: get('categoria') || undefined,
+        marca: get('marca') || undefined,
+        costo_base: num(get('costo_base')),
+        margen_pct: num(get('margen_pct')),
+        precio_venta: num(get('precio_venta')),
+      });
+    }
+    setImportResultado(null);
+    setImportar({ filas, crearNuevos: true });
+  }
+
+  function onArchivoCSV(file) {
+    if (!file) return;
+    setError('');
+    const reader = new FileReader();
+    reader.onload = () => parsearCSV(String(reader.result || ''));
+    reader.readAsText(file);
+  }
+
+  async function confirmarImportacion() {
+    if (!importar?.filas?.length) return;
+    setError(''); setOk('');
+    try {
+      const r = await importarListaPrecios(importar.filas, importar.crearNuevos);
+      setImportResultado(r);
+      setOk(`Importación: ${r.actualizados} actualizados, ${r.creados} creados, ${r.errores.length} con error.`);
+      cargarStock(sucursalId, q, marcaFiltro);
+    } catch (err) {
+      setError(err.response?.data?.error || 'No se pudo importar la lista de precios');
+    }
+  }
+
   // Genera e imprime una etiqueta con código de barras del producto.
   // Usa el código de barras si existe; si no, el código interno.
   function imprimirEtiqueta(s) {
@@ -328,6 +399,11 @@ export default function StockPage() {
               <button type="button" className="btn btn--ghost btn--inline" onClick={handleRecalcular}>
                 Recalcular precios
               </button>
+              <label className="btn btn--ghost btn--inline" style={{ cursor: 'pointer', margin: 0 }}>
+                Importar precios
+                <input type="file" accept=".csv,.txt" style={{ display: 'none' }}
+                  onChange={(e) => { onArchivoCSV(e.target.files?.[0]); e.target.value = ''; }} />
+              </label>
               <button type="button" className="btn btn--primary btn--inline" onClick={() => setMostrarAlta((v) => !v)}>
                 {mostrarAlta ? 'Cerrar' : '+ Nuevo producto'}
               </button>
@@ -492,6 +568,48 @@ export default function StockPage() {
               <button type="submit" className="btn btn--primary btn--inline">Trasladar</button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {/* Modal: importar lista de precios (solo admin) */}
+      {importar && (
+        <Modal titulo="Importar lista de precios" onCerrar={() => { setImportar(null); setImportResultado(null); }}>
+          <p className="muted small">
+            Se leyeron <strong>{importar.filas.length}</strong> filas del CSV. Se actualizan los productos
+            por <strong>código</strong>; los que no existan se crean si está tildada la opción de abajo.
+            Columnas reconocidas: codigo, nombre, categoria, marca, costo, margen, precio.
+          </p>
+          <label className="field field--check">
+            <input type="checkbox" checked={importar.crearNuevos}
+              onChange={(e) => setImportar((im) => ({ ...im, crearNuevos: e.target.checked }))} />
+            <span>Crear productos nuevos si el código no existe</span>
+          </label>
+
+          {importResultado ? (
+            <div className="card" style={{ marginTop: '0.5rem' }}>
+              <p><strong>Resultado:</strong> {importResultado.actualizados} actualizados, {importResultado.creados} creados.</p>
+              {importResultado.errores.length > 0 && (
+                <>
+                  <p className="muted small">{importResultado.errores.length} fila(s) con error:</p>
+                  <ul className="muted small" style={{ maxHeight: 160, overflow: 'auto' }}>
+                    {importResultado.errores.slice(0, 50).map((e, i) => (
+                      <li key={i}>Fila {e.fila}{e.codigo ? ` (${e.codigo})` : ''}: {e.error}</li>
+                    ))}
+                  </ul>
+                </>
+              )}
+              <div className="form-actions">
+                <button type="button" className="btn btn--primary btn--inline" onClick={() => { setImportar(null); setImportResultado(null); }}>Cerrar</button>
+              </div>
+            </div>
+          ) : (
+            <div className="form-actions">
+              <button type="button" className="btn btn--ghost btn--inline" onClick={() => setImportar(null)}>Cancelar</button>
+              <button type="button" className="btn btn--primary btn--inline" onClick={confirmarImportacion}>
+                Importar {importar.filas.length} productos
+              </button>
+            </div>
+          )}
         </Modal>
       )}
     </div>

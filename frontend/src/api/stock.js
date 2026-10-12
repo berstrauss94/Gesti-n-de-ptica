@@ -42,6 +42,11 @@ export async function recalcularPrecios(payload) {
   const { data } = await api.post('/api/productos/recalcular-precios', payload);
   return data; // { actualizados }
 }
+// Importa una lista de precios de proveedor ya parseada del CSV.
+export async function importarListaPrecios(filas, crearNuevos = true) {
+  const { data } = await api.post('/api/productos/importar', { filas, crear_nuevos: crearNuevos });
+  return data; // { actualizados, creados, errores }
+}
 
 // --- Stock por sucursal ---
 export async function listarStock(params = {}) {

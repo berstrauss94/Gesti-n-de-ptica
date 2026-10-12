@@ -22,6 +22,8 @@ router.put('/sucursales/:id', requireRole('admin'), suc.actualizar);
 router.get('/productos', prod.listar);
 router.post('/productos', requireRole('admin'), prod.crear);
 router.post('/productos/recalcular-precios', requireRole('admin'), prod.recalcularMasivo);
+// Importación de lista de precios de proveedor (CSV parseado en el front): admin
+router.post('/productos/importar', requireRole('admin'), prod.importar);
 router.get('/productos/:id', prod.obtener);
 router.put('/productos/:id', requireRole('admin'), prod.actualizar);
 router.delete('/productos/:id', requireRole('admin'), prod.eliminar);
