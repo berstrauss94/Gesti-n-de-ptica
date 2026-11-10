@@ -107,6 +107,13 @@ export default function useFaceLandmarker() {
     const menton = px(pts[152]);
     const alturaCara = Math.hypot(menton.x - frente.x, menton.y - frente.y);
 
+    // Bordes laterales del rostro (contorno del óvalo facial) a la altura de
+    // las sienes/pómulos: landmark 234 (lado izq. de la imagen) y 454 (der.).
+    // Se usan para recortar las patillas del marco que sobresalen de la cara.
+    const sienIzq = px(pts[234]);
+    const sienDer = px(pts[454]);
+    const anchoCara = Math.hypot(sienDer.x - sienIzq.x, sienDer.y - sienIzq.y);
+
     // Punto de anclaje del anteojo (línea de ojos / nasion).
     // En frontal: centro entre ojos. En 45/perfil: el ojo visible desplazado
     // levemente hacia la nariz, que es donde apoya el anteojo.
@@ -125,7 +132,7 @@ export default function useFaceLandmarker() {
     return {
       ojoIzq, ojoDer, centro, anchoOjos, anguloRad,
       asimetria, vista, lado, esFrontal,
-      alturaCara, anclaOjos, nariz,
+      alturaCara, anchoCara, sienIzq, sienDer, anclaOjos, nariz,
       imgW: W, imgH: H,
     };
   }, []);

@@ -12,7 +12,10 @@ export async function listarMercado(q) {
 }
 
 // Dispara el agente: busca specs del modelo con IA y las guarda.
-export async function enriquecerMercado(marca, modelo) {
-  const { data } = await api.post('/api/mercado/enriquecer', { marca, modelo });
-  return data.registro;
+// El backend usa caché: si el modelo ya existe NO consulta a la IA (cache=true),
+// salvo que se pida refrescar con `forzar`.
+// Devuelve { registro, cache }.
+export async function enriquecerMercado(marca, modelo, forzar = false) {
+  const { data } = await api.post('/api/mercado/enriquecer', { marca, modelo, forzar });
+  return { registro: data.registro, cache: Boolean(data.cache) };
 }

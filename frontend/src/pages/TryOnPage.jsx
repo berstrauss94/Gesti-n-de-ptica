@@ -19,7 +19,10 @@ import EditarMarcoModal from '../components/tryon/EditarMarcoModal';
 import Modal from '../components/Modal';
 import useFaceLandmarker from '../hooks/useFaceLandmarker';
 import { estadoTryonIA, generarTryonIA } from '../api/tryonIA';
-import { listarMercado, enriquecerMercado } from '../api/mercado';
+import { listarMercado } from '../api/mercado';
+import InfoBtn from '../components/InfoBtn';
+import MercadoTabla from '../components/MercadoTabla';
+import MercadoFormIA from '../components/MercadoFormIA';
 import { useEsAdmin } from '../hooks/useEsAdmin';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
@@ -60,30 +63,14 @@ export default function TryOnPage() {
   // Sección "En el mercado": modelos que NO están en el local (consulta IA)
   const esAdmin = useEsAdmin();
   const [mercado, setMercado] = useState([]);
-  const [mercadoBusca, setMercadoBusca] = useState({ marca: '', modelo: '' });
-  const [mercadoMsg, setMercadoMsg] = useState('');
-  const [mercadoCargando, setMercadoCargando] = useState(false);
 
   useEffect(() => {
     listarMercado().then(setMercado).catch(() => setMercado([]));
   }, []);
 
-  async function buscarEnMercado(e) {
-    e.preventDefault();
-    if (!mercadoBusca.marca || !mercadoBusca.modelo) { setMercadoMsg('Completá marca y modelo.'); return; }
-    setMercadoMsg(''); setMercadoCargando(true);
-    try {
-      const reg = await enriquecerMercado(mercadoBusca.marca, mercadoBusca.modelo);
-      setMercado((prev) => [reg, ...prev.filter((m) => m.id !== reg.id)]);
-      setMercadoMsg('✓ Modelo encontrado y agregado a "En el mercado".');
-      setMercadoBusca({ marca: '', modelo: '' });
-    } catch (err) {
-      const d = err.response?.data || {};
-      const detalle = d.detalle ? ` (${d.detalle})` : '';
-      setMercadoMsg(`${d.error || 'No se pudo consultar el modelo'}${detalle}`);
-    } finally {
-      setMercadoCargando(false);
-    }
+  // Un modelo recién consultado (o devuelto por la caché) va al tope, sin duplicar.
+  function handleMercadoAgregado(reg) {
+    setMercado((prev) => [reg, ...prev.filter((m) => m.id !== reg.id)]);
   }
 
   useEffect(() => {
@@ -210,6 +197,9 @@ export default function TryOnPage() {
       // del canvas. Es estable en cualquier ángulo (no colapsa en perfil).
       const escalaFoto = imagenACanvas({ x: 0, y: 0 }, r.imgW, r.imgH).escala;
       const alturaCanvas = r.alturaCara * escalaFoto;
+      // Ancho del rostro (sien a sien) en px del canvas: define hasta dónde
+      // puede verse el marco antes de recortar las patillas que lo exceden.
+      const anchoCaraPx = (r.anchoCara || 0) * escalaFoto;
 
       // Altura facial media adulto frente-mentón ≈ 185 mm -> px/mm.
       const pxPorMm = alturaCanvas / 185;
@@ -226,6 +216,7 @@ export default function TryOnPage() {
         cx: ancla.x,
         cy: ancla.y,
         anchoMarcoPx,
+        anchoCaraPx,
         anguloRad,
         vista: r.vista,
         lado: r.lado,
@@ -282,7 +273,14 @@ export default function TryOnPage() {
   return (
     <div className="stack tryon">
       <div className="page-header">
-        <h1>Prueba Virtual</h1>
+        <h1>
+          Prueba Virtual
+          <InfoBtn
+            paraQue="Te deja probar los armazones del catálogo sobre la foto de un cliente, a escala real."
+            comoFunciona="Elegí un cliente y una foto, seleccioná un marco y el sistema lo ajusta al rostro. También podés generar una versión realista con IA o consultar modelos del mercado."
+            conQueFin="Ayudar al cliente a decidir su armazón sin probarse cada modelo, y cerrar la venta con más seguridad."
+          />
+        </h1>
         <div className="tryon-toolbar">
           <select value={clienteId} onChange={(e) => setClienteId(e.target.value)}>
             <option value="">Seleccionar cliente…</option>
@@ -412,55 +410,14 @@ export default function TryOnPage() {
               traer sus especificaciones y saber qué pedirle al proveedor si al cliente le interesa.
             </p>
 
-            {esAdmin && (
-              <form className="searchbar" onSubmit={buscarEnMercado} style={{ marginTop: '0.75rem' }}>
-                <input
-                  type="search"
-                  placeholder="Marca (ej: Ray-Ban)"
-                  value={mercadoBusca.marca}
-                  onChange={(e) => setMercadoBusca((m) => ({ ...m, marca: e.target.value }))}
-                />
-                <input
-                  type="search"
-                  placeholder="Modelo (ej: Aviator RB3025)"
-                  value={mercadoBusca.modelo}
-                  onChange={(e) => setMercadoBusca((m) => ({ ...m, modelo: e.target.value }))}
-                />
-                <button type="submit" className="btn btn--primary" disabled={mercadoCargando}>
-                  {mercadoCargando ? 'Buscando…' : '✨ Buscar en el mercado'}
-                </button>
-              </form>
-            )}
-            {mercadoMsg && (
-              <p className={`small ${mercadoMsg.startsWith('✓') ? 'ok-text' : 'alert alert--error'}`} role="status">
-                {mercadoMsg}
-              </p>
-            )}
+            {/* Mismo formulario y misma tabla que la página /mercado */}
+            {esAdmin && <MercadoFormIA onAgregado={handleMercadoAgregado} />}
 
             {mercado.length === 0 ? (
               <p className="muted small">Todavía no consultaste modelos del mercado.</p>
             ) : (
-              <div className="card no-pad" style={{ marginTop: '0.75rem' }}>
-                <table className="table">
-                  <thead><tr><th>Marca</th><th>Modelo</th><th>Estilo</th><th>Material</th><th>Medidas</th><th>Tratamientos</th></tr></thead>
-                  <tbody>
-                    {mercado.map((m) => (
-                      <tr key={m.id}>
-                        <td><strong>{m.marca}</strong></td>
-                        <td>{m.modelo}</td>
-                        <td className="small">{m.estilo || '—'}</td>
-                        <td className="small">{m.material || '—'}</td>
-                        <td className="small">
-                          {m.calibre_ancho ? `${m.calibre_ancho}▢${m.puente ?? '—'} ${m.patilla ?? '—'}` : '—'}
-                        </td>
-                        <td className="small">
-                          {Array.isArray(m.tratamientos) && m.tratamientos.length
-                            ? m.tratamientos.join(', ') : '—'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div style={{ marginTop: '0.75rem' }}>
+                <MercadoTabla items={mercado} />
               </div>
             )}
           </div>

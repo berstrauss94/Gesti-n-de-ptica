@@ -9,14 +9,15 @@ const { rastrearYEnriquecerModelo } = require('../services/mercadoGeminiService'
 
 // POST /api/mercado/enriquecer  { marca, modelo }
 async function enriquecer(req, res) {
-  const { marca, modelo } = req.body || {};
-  const r = await rastrearYEnriquecerModelo({ marca, modelo });
+  const { marca, modelo, forzar } = req.body || {};
+  const r = await rastrearYEnriquecerModelo({ marca, modelo, forzar: forzar === true });
   if (!r.ok) {
     // 409 cuando es un tema de cuota/credenciales (no es error de nuestro server)
     const status = ['sin_credenciales', 'error_api'].includes(r.motivo) ? 409 : 400;
     return res.status(status).json({ error: 'No se pudo enriquecer el modelo', motivo: r.motivo, detalle: r.detalle });
   }
-  return res.status(201).json({ registro: r.registro });
+  // 200 si salió de la caché (sin gastar cuota de IA); 201 si se creó/actualizó.
+  return res.status(r.cache ? 200 : 201).json({ registro: r.registro, cache: Boolean(r.cache) });
 }
 
 // GET /api/mercado?q=

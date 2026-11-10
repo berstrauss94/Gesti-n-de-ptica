@@ -87,6 +87,31 @@ const TryOnCanvas = forwardRef(function TryOnCanvas(
       ctx.globalAlpha = OPACIDAD_CRISTAL; // cristales/marco semitransparentes
       ctx.translate(cx, cy);
       ctx.rotate(anchor.anguloRad);
+
+      // Recorte del marco al ancho del rostro: las patillas (o cualquier
+      // exceso lateral del PNG) que sobresalen de la cara se descartan, para
+      // que el anteojo no "flote" más ancho que el rostro del cliente.
+      // Trabajamos en el sistema ya rotado/centrado en la línea de ojos.
+      // SOLO en vista frontal: en 45°/perfil el ancho sien a sien se acorta por
+      // el giro de la cabeza y recortaría de más; ahí el PNG ya viene girado.
+      const anchoCara = anchor.anchoCaraPx || 0;
+      if (anchoCara > 0 && anchor.vista === 'frontal') {
+        // Margen sobre el ancho de la cara: deja ver el frente completo del
+        // marco y un poco de las bisagras, recortando el resto de la patilla.
+        const anchoClip = Math.min(w, anchoCara * 1.04);
+        const x0 = -anchoClip / 2;
+        const y0 = -h / 2;
+        const radio = Math.min(h, anchoClip) * 0.18; // esquinas suaves
+        ctx.beginPath();
+        if (typeof ctx.roundRect === 'function') {
+          ctx.roundRect(x0, y0, anchoClip, h, radio);
+        } else {
+          // Fallback para navegadores sin roundRect
+          ctx.rect(x0, y0, anchoClip, h);
+        }
+        ctx.clip();
+      }
+
       ctx.drawImage(marcoImg, -w / 2, -h / 2, w, h);
       ctx.restore();
     }

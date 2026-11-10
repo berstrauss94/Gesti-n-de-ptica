@@ -121,3 +121,35 @@ CREATE TRIGGER update_configuracion_agentes_ia_updated_at
 BEFORE UPDATE ON configuracion_agentes_ia
 FOR EACH ROW
 EXECUTE FUNCTION update_updated_at_column();
+
+-- =====================================================================
+-- 7. Catálogo de Mercado enriquecido con IA (agente Gemini + búsqueda)
+-- Guarda specs técnicas de modelos que NO están en el local. Funciona
+-- además como CACHÉ: si el modelo ya existe, no se vuelve a consultar a
+-- la IA (evita agotar la cuota y los errores HTTP 429).
+-- Debe mantenerse idéntica a la definición de backend/src/config/migrate.js
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS mercado_catalogo (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    marca VARCHAR(120) NOT NULL,
+    modelo VARCHAR(120) NOT NULL,
+    tipo VARCHAR(40),
+    estilo VARCHAR(40),
+    genero VARCHAR(20),
+    material VARCHAR(40),
+    calibre_ancho INT,
+    puente INT,
+    patilla INT,
+    altura_cristal INT,
+    colores JSONB DEFAULT '[]'::jsonb,
+    tratamientos JSONB DEFAULT '[]'::jsonb,
+    aptitud_graduacion BOOLEAN DEFAULT TRUE,
+    metadata JSONB DEFAULT '{}'::jsonb,
+    actualizado_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT mercado_catalogo_marca_modelo_unico UNIQUE (marca, modelo)
+);
+CREATE INDEX IF NOT EXISTS idx_mercado_marca ON mercado_catalogo(marca);
+-- Índice para la búsqueda de caché sin distinguir mayúsculas
+CREATE INDEX IF NOT EXISTS idx_mercado_marca_modelo_lower
+    ON mercado_catalogo (LOWER(marca), LOWER(modelo));

@@ -13,6 +13,7 @@ import {
   eliminarFoto,
 } from '../api/usuarios';
 import GraduacionesSeccion from '../components/GraduacionesSeccion';
+import InfoBtn from '../components/InfoBtn';
 import { useEsAdmin } from '../hooks/useEsAdmin';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
@@ -94,7 +95,14 @@ export default function ClienteDetallePage() {
       <div className="page-header">
         <div>
           <Link to="/clientes" className="back-link">← Clientes</Link>
-          <h1>{cliente.nombre_completo}</h1>
+          <h1>
+            {cliente.nombre_completo}
+            <InfoBtn
+              paraQue="Muestra la ficha completa del paciente: datos, fotos de seguimiento y graduaciones."
+              comoFunciona="Revisá sus datos, subí las fotos que falten hasta completar 3 y cargá o consultá sus recetas."
+              conQueFin="Tener todo el historial óptico del cliente en un solo lugar para atenderlo y venderle mejor."
+            />
+          </h1>
         </div>
         {esAdmin && (
           <button type="button" className="btn btn--danger" onClick={handleEliminar}>

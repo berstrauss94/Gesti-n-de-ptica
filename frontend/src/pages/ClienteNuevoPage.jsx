@@ -84,7 +84,14 @@ export default function ClienteNuevoPage() {
   return (
     <div className="stack">
       <div className="page-header">
-        <h1>Nuevo cliente</h1>
+        <h1>
+          Nuevo cliente
+          <InfoBtn
+            paraQue="Da de alta a un paciente nuevo con sus datos básicos y las 3 fotos de seguimiento."
+            comoFunciona="Completá nombre, DNI y obra social, y subí las fotos frontal, de 45° y de perfil; el sistema crea el cliente y guarda las fotos."
+            conQueFin="Tener la ficha del paciente lista para recetas, ventas y la prueba virtual de armazones."
+          />
+        </h1>
       </div>
 
       {error && <p className="alert alert--error" role="alert">{error}</p>}

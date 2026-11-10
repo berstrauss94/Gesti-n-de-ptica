@@ -15,6 +15,7 @@ import ClienteDetallePage from './pages/ClienteDetallePage';
 import MarcosPage from './pages/MarcosPage';
 import MarcoNuevoPage from './pages/MarcoNuevoPage';
 import TryOnPage from './pages/TryOnPage';
+import MercadoPage from './pages/MercadoPage';
 import StockPage from './pages/StockPage';
 import TpvPage from './pages/TpvPage';
 import ComprasPage from './pages/ComprasPage';
@@ -42,6 +43,7 @@ export default function App() {
         <Route path="/marcos" element={<MarcosPage />} />
         <Route path="/marcos/nuevo" element={<MarcoNuevoPage />} />
         <Route path="/try-on" element={<TryOnPage />} />
+        <Route path="/mercado" element={<MercadoPage />} />
         <Route path="/stock" element={<StockPage />} />
         <Route path="/tpv" element={<TpvPage />} />
         <Route path="/compras" element={<ComprasPage />} />

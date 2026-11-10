@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { crearMarco } from '../api/marcos';
+import InfoBtn from '../components/InfoBtn';
 
 const ESTILOS = ['OVALADO', 'RECTANGULAR', 'AVIADOR', 'CAT-EYE'];
 
@@ -69,7 +70,14 @@ export default function MarcoNuevoPage() {
   return (
     <div className="stack">
       <div className="page-header">
-        <h1>Nuevo marco</h1>
+        <h1>
+          Nuevo marco
+          <InfoBtn
+            paraQue="Carga un armazón nuevo al catálogo con sus imágenes y medidas reales."
+            comoFunciona="Completá código, modelo y medidas en mm, y subí el PNG transparente frontal (los de 45° y perfil son opcionales)."
+            conQueFin="Que el marco quede disponible para la prueba virtual a escala real y para la venta."
+          />
+        </h1>
       </div>
 
       {error && <p className="alert alert--error" role="alert">{error}</p>}

@@ -8,7 +8,7 @@
 > cambio. Hay un hook de Kiro (`.kiro/hooks/sync-arquitectura-doc.json`) que lo
 > recuerda automáticamente. Al final está el **Registro de cambios**.
 
-_Última actualización: 2026-10-10 (Sobres/órdenes de trabajo, Comisiones, filtros de armazón)_
+_Última actualización: 2026-10-12 (Consistencia: esquema Mercado, componentes compartidos, caché de IA, recorte solo frontal, InfoBtn en todas las páginas)_
 
 ---
 
@@ -108,6 +108,7 @@ Optica/
 | **Obras sociales / Convenios** | Alta de convenios con % de cobertura por defecto; en el TPV se aplica la cobertura y el total refleja lo que paga el paciente. Gestión en Configuración (admin). |
 | **Sobres / Órdenes de trabajo** | Orden central de la óptica: paciente + receta completa (lejos/cerca por ojo, con esfera/cilindro/eje/adición/prisma/base/diámetro) + armazón + cristal + médico + obra social + fecha de entrega; estados pendiente/reserva/en taller/entregado/anulado. |
 | **Comisiones** | Reporte del acumulado de comisiones por vendedor en un período (ventas entregadas), con resumen y detalle. Solo admin. |
+| **Catálogo de Mercado** | Modelos que NO están en el local, enriquecidos con IA (Gemini + búsqueda web): marca, modelo, estilo, material, género, medidas, colores, tratamientos y aptitud de graduación. Página `/mercado` con buscador y filtros; alta por IA solo admin. |
 | **Compras** | Proveedores, laboratorios, compras (confirmar impacta stock/costos), órdenes de laboratorio, **exportación contable CITI Compras (AFIP) por período**. |
 | **Turnos / Agenda** | Alta de turnos, filtro por rango, estados (asistió/ausente/cancelado). |
 | **Fiscal (AFIP/ARCA)** | Comprobantes A/B/C/interno con numeración correlativa y QR oficial; modo real listo para activar con certificado. |
@@ -126,6 +127,10 @@ lentes, quitar fondo, 3 vistas de marcos, logo). No corren en producción.
 - **Clientes:** CRUD `/usuarios` + fotos y graduaciones anidadas.
 - **Marcos:** CRUD `/marcos` (subida multiparte de 3 vistas).
 - **Try-On IA:** `GET /tryon-ia/estado`, `POST /tryon-ia/generar`.
+- **Mercado:** `GET /mercado?q=` (cualquier usuario), `POST /mercado/enriquecer` (admin;
+  body `{marca, modelo, forzar?}`). Usa **caché**: si el modelo ya existe responde `200` con
+  `cache: true` sin consultar a Gemini; si es nuevo (o `forzar: true`) consulta a la IA y
+  responde `201`.
 - **Stock:** `/sucursales`, `/productos`, `POST /productos/importar` (admin, lista de precios CSV), `/stock`, `/stock/marcas`, movimientos, `/traslados`.
 - **TPV:** `/cajas/*` (actual/abrir/cerrar/movimientos), `/ventas/*` (acepta `descuento` al crear), pagos, entregar, anular, `/cuenta-corriente/:id`.
 - **Promociones:** `GET /promociones`, `POST /promociones` (admin), `PATCH /promociones/:id` (admin), `DELETE /promociones/:id` (admin).
@@ -188,7 +193,10 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
   tabla `config_fiscal`, cargable desde Configuración. **Modelo A: una instalación
   por óptica**, cada óptica carga su propio certificado AFIP y sus credenciales.
 - **Try-On IA** (`tryonIAService.js`): composición foto+armazón vía **Google Gemini**
-  (`gemini-2.5-flash-image-preview`). Sin key → superposición 2D gratis.
+  (`gemini-2.5-flash-image`, configurable con `GEMINI_IMAGE_MODEL`). Sin key → superposición 2D gratis.
+- **Agente Mercado** (`mercadoGeminiService.js`): `gemini-2.5-flash` (configurable con
+  `GEMINI_TEXT_MODEL`) con `googleSearch`; devuelve specs en JSON y hace upsert en
+  `mercado_catalogo`. Con el plan gratuito de Google puede responder 429.
 - **Notificaciones** (`notificacionesService.js`): **Telegram real** (Bot API);
   WhatsApp (Meta Cloud API) pendiente de plantillas. Eventos registrados como
   `enviado`/`simulado`/`error`.
@@ -215,10 +223,13 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
 ## 11. Frontend — detalle
 
 - **Páginas:** Login, Dashboard, Clientes (lista/nuevo/detalle), Marcos (lista/nuevo),
-  Try-On, Stock, TPV, Compras, Turnos, Configuración.
+  Mercado, Try-On, Stock, TPV, Compras, Turnos, Sobres, Comisiones, Configuración.
 - **Componentes:** `Layout` (sidebar colapsable animado), `Modal`, `InfoBtn`
   (botón "!" con popover centrado), `ProtectedRoute`, `CambiarPasswordModal`,
-  `GraduacionesSeccion`, subsistema `tryon/` (canvas, carruseles, modales).
+  `GraduacionesSeccion`, subsistema `tryon/` (canvas, carruseles, modales) y los
+  compartidos de Mercado: `MercadoTabla` (visualización) y `MercadoFormIA` (alta por IA),
+  usados tanto por `MercadoPage` como por la sección "En el mercado" de `TryOnPage`.
+  Todas las páginas con título llevan `InfoBtn`.
 - **Hooks propios:** `useEsAdmin`, `useFaceLandmarker` (MediaPipe), `useImage`.
 - **Animaciones:** secuencia encadenada (sidebar → íconos → fondo → contenido),
   curvas suaves; el contenido se re-anima en cada navegación.
@@ -235,8 +246,19 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
 - **Sin tests automatizados ni ESLint propio** (verificación = build + carga + sintaxis).
 - **Sin auditoría transversal unificada** (hay trazabilidad por tabla, no un log central).
 - **CORS** debe fijarse al dominio en producción (el server advierte si queda en `*`).
-- **Bundle único grande** (~505 KB): se puede dividir con code-splitting.
-- **Imágenes en Volumen de Railway**: para escalar conviene S3/Cloudinary.
+- **Bundle único grande** (~550 KB): se puede dividir con code-splitting.
+- **Esquema SQL repartido:** `mercado_catalogo` ya está en `db/schema.sql`, pero otras
+  tablas (`config_notificaciones`, `notificaciones`, `config_fiscal`, `turnos`,
+  `movimientos_caja`, `traslados_stock`, `promociones`, `obras_sociales`, `sobres`) solo
+  existen en `backend/src/config/migrate.js`. En producción no hay problema porque las
+  migraciones corren al arrancar el servidor, pero `db/init-remoto.js` y
+  `psql -f db/schema.sql` no las crean. Pendiente: llevarlas a `db/*.sql` o hacer que
+  `init-remoto.js` ejecute las migraciones.
+- **Plan de Gemini:** el tier gratuito puede responder 429. Mercado ya cachea (no vuelve
+  a consultar un modelo guardado), pero el Try-On con IA (imágenes) no tiene caché.
+- **Imágenes en Volumen de Railway**: para escalar el catálogo de marcos (3 vistas PNG
+  por armazón) conviene migrar a S3/Cloudinary. Pendiente: requiere cuenta y credenciales
+  del servicio elegido; hoy se sirve desde `/data/uploads`.
 
 ---
 
@@ -315,3 +337,36 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
   dispara el agente y lista las specs). `frontend/src/api/mercado.js` +
   `frontend/src/pages/TryOnPage.jsx`. La búsqueda es admin-only y usa el mismo
   Gemini que da 429 hasta activar el plan pago.
+- **2026-10-12** — Catálogo de Mercado en el frontend como sección propia:
+  nueva página `pages/MercadoPage.jsx` (listado del catálogo enriquecido con
+  buscador por marca/modelo contra `GET /mercado`, filtros en memoria por
+  estilo/material/género/aptitud de graduación, y alta por IA admin-only vía
+  `POST /mercado/enriquecer`), ruta `/mercado` en `App.jsx` y pestaña "Mercado"
+  (ícono `Store` de lucide) en el sidebar `Layout.jsx`. Reutiliza el servicio
+  `api/mercado.js` ya existente y el componente `InfoBtn`.
+- **2026-10-12** — Try-On: recorte del marco al contorno del rostro. El hook
+  `useFaceLandmarker` ahora expone el ancho facial sien-a-sien (landmarks 234/454,
+  `anchoCara`); `TryOnPage` lo convierte a px del canvas (`anchoCaraPx`) y lo
+  pasa en el `anchor`; `components/tryon/TryOnCanvas.jsx` aplica un `clip`
+  (roundRect con fallback a rect) limitado a ~1.04x el ancho de la cara antes de
+  dibujar el marco, para descartar las patillas/excesos del PNG que quedaban
+  flotando por fuera del rostro del cliente.
+- **2026-10-12** — Ronda de consistencia tras la revisión de analista/programador:
+  - **Esquema:** `mercado_catalogo` agregada a `db/schema.sql` (idéntica a `migrate.js`) +
+    índice `idx_mercado_marca_modelo_lower` (búsqueda de caché sin distinguir mayúsculas)
+    en ambos lados (`db/schema.sql`, `backend/src/config/migrate.js`).
+  - **Caché de IA (Mercado):** `mercadoGeminiService.rastrearYEnriquecerModelo` consulta
+    primero la tabla; si el modelo existe NO llama a Gemini (evita el 429). Acepta
+    `forzar` para refrescar, y sirve lo guardado si no hay API key. La clave del registro
+    es la que escribió el usuario (no la que devuelve la IA), así la caché no se duplica por
+    mayúsculas. `mercadoController` responde `200` (caché) o `201` (nuevo) con `cache`.
+  - **Frontend sin duplicación:** nuevos `components/MercadoTabla.jsx` y
+    `components/MercadoFormIA.jsx`, usados por `pages/MercadoPage.jsx` y por la sección
+    "En el mercado" de `pages/TryOnPage.jsx`. `api/mercado.js` ahora devuelve
+    `{registro, cache}` y acepta `forzar`.
+  - **Try-On:** el recorte del marco (`components/tryon/TryOnCanvas.jsx`) se aplica solo
+    en vista frontal; en 45°/perfil no recorta.
+  - **UI:** `InfoBtn` agregado a las páginas que no lo tenían (`TryOnPage`,
+    `ClienteNuevoPage`, `ClienteDetallePage`, `MarcoNuevoPage`).
+  - Pendientes que requieren decisión o credenciales: migración de imágenes a S3/Cloudinary
+    y llevar el resto de las tablas de `migrate.js` a `db/*.sql` (ver Deuda técnica).

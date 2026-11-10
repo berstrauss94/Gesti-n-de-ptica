@@ -433,6 +433,9 @@ const MIGRACIONES = [
      CONSTRAINT mercado_catalogo_marca_modelo_unico UNIQUE (marca, modelo)
    )`,
   `CREATE INDEX IF NOT EXISTS idx_mercado_marca ON mercado_catalogo(marca)`,
+  // Búsqueda de caché sin distinguir mayúsculas (misma definición que db/schema.sql)
+  `CREATE INDEX IF NOT EXISTS idx_mercado_marca_modelo_lower
+     ON mercado_catalogo (LOWER(marca), LOWER(modelo))`,
 ];
 
 async function ejecutarMigraciones() {
