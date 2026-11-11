@@ -436,6 +436,14 @@ const MIGRACIONES = [
   // Búsqueda de caché sin distinguir mayúsculas (misma definición que db/schema.sql)
   `CREATE INDEX IF NOT EXISTS idx_mercado_marca_modelo_lower
      ON mercado_catalogo (LOWER(marca), LOWER(modelo))`,
+  // Búsqueda parcial / tolerante a errores de tipeo (pg_trgm). Cada sentencia
+  // va por separado: si la extensión no está disponible, la migración registra
+  // el error y sigue, y la app cae a ILIKE.
+  `CREATE EXTENSION IF NOT EXISTS pg_trgm`,
+  `CREATE INDEX IF NOT EXISTS idx_mercado_marca_trgm
+     ON mercado_catalogo USING gin (marca gin_trgm_ops)`,
+  `CREATE INDEX IF NOT EXISTS idx_mercado_modelo_trgm
+     ON mercado_catalogo USING gin (modelo gin_trgm_ops)`,
 ];
 
 // `ejecutar` permite reutilizar las mismas migraciones desde otro cliente

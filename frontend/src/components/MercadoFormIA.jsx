@@ -1,7 +1,10 @@
 // =====================================================================
-// Formulario reutilizable para agregar un modelo al Catálogo de Mercado
-// con IA (marca + modelo -> specs). Lo usan MercadoPage y TryOnPage.
-// El backend cachea: si el modelo ya existe no gasta cuota de Gemini.
+// Formulario reutilizable para buscar/agregar un modelo al Catálogo de
+// Mercado. Lo usan MercadoPage y TryOnPage.
+//
+// Se puede completar la marca, el modelo o ambos, y alcanza con texto
+// parcial (ej: "Ray-", "Hexa"). El backend primero busca en lo ya guardado
+// y solo consulta a la IA (Gemini) si no hay coincidencia, así no gasta cuota.
 //
 // Props:
 //   onAgregado(registro): se llama con el registro guardado (o el de caché)
@@ -11,6 +14,17 @@
 import { useState } from 'react';
 import { enriquecerMercado } from '../api/mercado';
 
+const MIN_TERMINO = 2;
+
+// Mensaje según de dónde salió el resultado (lo informa el backend).
+function mensajeExito(cache, coincidencia, registro) {
+  const nombre = `${registro.marca} ${registro.modelo}`;
+  if (!cache) return `✓ Modelo encontrado con IA y agregado: ${nombre}.`;
+  if (coincidencia === 'exacto') return `✓ ${nombre} ya estaba en el catálogo: se mostró lo guardado, sin consultar a la IA.`;
+  if (coincidencia === 'similar') return `✓ Te mostré el más parecido que ya estaba guardado: ${nombre}.`;
+  return `✓ Coincidencia en el catálogo: ${nombre} (sin consultar a la IA).`;
+}
+
 export default function MercadoFormIA({ onAgregado }) {
   const [busca, setBusca] = useState({ marca: '', modelo: '' });
   const [buscando, setBuscando] = useState(false);
@@ -18,20 +32,18 @@ export default function MercadoFormIA({ onAgregado }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!busca.marca.trim() || !busca.modelo.trim()) {
-      setMsg('Completá marca y modelo.');
+    const marca = busca.marca.trim();
+    const modelo = busca.modelo.trim();
+    if (marca.length < MIN_TERMINO && modelo.length < MIN_TERMINO) {
+      setMsg(`Completá la marca, el modelo o ambos (mínimo ${MIN_TERMINO} letras).`);
       return;
     }
     setMsg('');
     setBuscando(true);
     try {
-      const { registro, cache } = await enriquecerMercado(busca.marca.trim(), busca.modelo.trim());
+      const { registro, cache, coincidencia } = await enriquecerMercado(marca, modelo);
       onAgregado?.(registro);
-      setMsg(
-        cache
-          ? '✓ Ese modelo ya estaba en el catálogo: se mostró lo guardado, sin consultar a la IA.'
-          : '✓ Modelo encontrado y agregado al catálogo de mercado.'
-      );
+      setMsg(mensajeExito(cache, coincidencia, registro));
       setBusca({ marca: '', modelo: '' });
     } catch (err) {
       const d = err.response?.data || {};
@@ -47,13 +59,15 @@ export default function MercadoFormIA({ onAgregado }) {
       <form className="searchbar" onSubmit={handleSubmit}>
         <input
           type="search"
-          placeholder="Marca (ej: Ray-Ban)"
+          placeholder="Marca (ej: Ray-Ban, o solo “Ray-”)"
+          maxLength={120}
           value={busca.marca}
           onChange={(e) => setBusca((b) => ({ ...b, marca: e.target.value }))}
         />
         <input
           type="search"
-          placeholder="Modelo (ej: Aviator RB3025)"
+          placeholder="Modelo (ej: Aviator RB3025, o solo “Hexa”)"
+          maxLength={120}
           value={busca.modelo}
           onChange={(e) => setBusca((b) => ({ ...b, modelo: e.target.value }))}
         />

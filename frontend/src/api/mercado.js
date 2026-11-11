@@ -14,8 +14,9 @@ export async function listarMercado(q) {
 // Dispara el agente: busca specs del modelo con IA y las guarda.
 // El backend usa caché: si el modelo ya existe NO consulta a la IA (cache=true),
 // salvo que se pida refrescar con `forzar`.
-// Devuelve { registro, cache }.
+// Se puede enviar solo marca, solo modelo o ambos (completos o parciales).
+// Devuelve { registro, cache, coincidencia } con coincidencia = exacto | parcial | similar | ia.
 export async function enriquecerMercado(marca, modelo, forzar = false) {
   const { data } = await api.post('/api/mercado/enriquecer', { marca, modelo, forzar });
-  return { registro: data.registro, cache: Boolean(data.cache) };
+  return { registro: data.registro, cache: Boolean(data.cache), coincidencia: data.coincidencia || null };
 }

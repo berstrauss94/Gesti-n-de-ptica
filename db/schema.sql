@@ -153,3 +153,17 @@ CREATE INDEX IF NOT EXISTS idx_mercado_marca ON mercado_catalogo(marca);
 -- Índice para la búsqueda de caché sin distinguir mayúsculas
 CREATE INDEX IF NOT EXISTS idx_mercado_marca_modelo_lower
     ON mercado_catalogo (LOWER(marca), LOWER(modelo));
+
+-- Búsqueda parcial / tolerante a errores de tipeo (pg_trgm).
+-- Va dentro de un bloque con manejo de error: si el servidor no permite la
+-- extensión, el resto del esquema se aplica igual y la app cae a ILIKE.
+DO $$
+BEGIN
+    CREATE EXTENSION IF NOT EXISTS pg_trgm;
+    CREATE INDEX IF NOT EXISTS idx_mercado_marca_trgm
+        ON mercado_catalogo USING gin (marca gin_trgm_ops);
+    CREATE INDEX IF NOT EXISTS idx_mercado_modelo_trgm
+        ON mercado_catalogo USING gin (modelo gin_trgm_ops);
+EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'pg_trgm no disponible, se omite la búsqueda por similitud: %', SQLERRM;
+END $$;

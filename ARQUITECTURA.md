@@ -59,7 +59,8 @@ notificaciones. Desplegado y funcionando en la nube como un único servicio.
 ### Variables de entorno (`backend/src/config/env.js`)
 Obligatorias: `DATABASE_URL`, `JWT_SECRET`. Otras: `DB_SSL`, `JWT_EXPIRES_IN` (8h),
 `CORS_ORIGIN`, `UPLOAD_DIR`, `SERVE_FRONTEND`, `NODE_ENV`, y las de integraciones
-(`AFIP_CUIT/CERT/KEY/PUNTO_VENTA/PRODUCCION`, `GEMINI_API_KEY`, `GEMINI_IMAGE_MODEL`).
+(`AFIP_CUIT/CERT/KEY/PUNTO_VENTA/PRODUCCION`, `GEMINI_API_KEY`, `GEMINI_IMAGE_MODEL`,
+`GEMINI_TEXT_MODEL`). Los modelos de Gemini se cambian por variable de entorno, sin tocar código.
 
 ---
 
@@ -127,10 +128,13 @@ lentes, quitar fondo, 3 vistas de marcos, logo). No corren en producción.
 - **Clientes:** CRUD `/usuarios` + fotos y graduaciones anidadas.
 - **Marcos:** CRUD `/marcos` (subida multiparte de 3 vistas).
 - **Try-On IA:** `GET /tryon-ia/estado`, `POST /tryon-ia/generar`.
-- **Mercado:** `GET /mercado?q=` (cualquier usuario), `POST /mercado/enriquecer` (admin;
-  body `{marca, modelo, forzar?}`). Usa **caché**: si el modelo ya existe responde `200` con
-  `cache: true` sin consultar a Gemini; si es nuevo (o `forzar: true`) consulta a la IA y
-  responde `201`.
+- **Mercado:** `GET /mercado?q=` (cualquier usuario; texto parcial por ILIKE y, si no hay
+  resultados, por similitud con `pg_trgm`), `POST /mercado/enriquecer` (admin; body
+  `{marca?, modelo?, forzar?}`: alcanza con la marca, el modelo o ambos, completos o parciales,
+  mínimo 2 letras). Busca primero en la base (exacta → parcial → similitud si es un solo campo)
+  y responde `200` con `cache: true` y `coincidencia` (`exacto|parcial|similar`) sin consultar a
+  Gemini. Si no hay coincidencia (o `forzar: true`) consulta a la IA, que resuelve la marca/modelo
+  oficial más probable o devuelve `no_identificado` (400), y responde `201` con `coincidencia: "ia"`.
 - **Stock:** `/sucursales`, `/productos`, `POST /productos/importar` (admin, lista de precios CSV), `/stock`, `/stock/marcas`, movimientos, `/traslados`.
 - **TPV:** `/cajas/*` (actual/abrir/cerrar/movimientos), `/ventas/*` (acepta `descuento` al crear), pagos, entregar, anular, `/cuenta-corriente/:id`.
 - **Promociones:** `GET /promociones`, `POST /promociones` (admin), `PATCH /promociones/:id` (admin), `DELETE /promociones/:id` (admin).
@@ -376,3 +380,22 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
   corre esas mismas migraciones después de `schema.sql`, por lo que una base nueva queda
   con todas las tablas (turnos, promociones, sobres, obras sociales, config fiscal, etc.).
   Se aclaró en `DEPLOY.md` que `psql -f db/schema.sql` solo crea las tablas base.
+- **2026-10-12** — Modelo de texto de Gemini configurable: `GEMINI_TEXT_MODEL` pasó a
+  `backend/src/config/env.js` (default `gemini-2.5-flash`, sobreescribible por variable de
+  entorno en Railway). `mercadoGeminiService.js` lo toma de ahí y, ante un 404 de Google,
+  devuelve un mensaje claro con el nombre del modelo y cómo cambiarlo. Los modelos NO se
+  cambiaron: ante un 404 hay que elegir uno vigente de Google AI Studio (el de imágenes
+  debe ser un modelo capaz de generar imágenes).
+- **2026-10-12** — Búsqueda parcial en Mercado (marca y/o modelo, completos o parciales):
+  `mercadoGeminiService.js` reescrito con búsqueda local en 3 pasos antes de gastar IA
+  (exacta → ILIKE con comodines escapados → similitud `pg_trgm` solo si se escribe un único
+  campo, para no confundir modelos parecidos como RB3025/RB3026). Si no hay coincidencia, el
+  prompt le pide a Gemini resolver la marca/modelo oficial más probable (o `no_identificado`,
+  sin inventar). Con marca+modelo completos se respeta lo escrito; con parcial se guarda con el
+  nombre oficial, reutilizando la capitalización ya guardada. `mercadoController.js`: valida
+  largos (≤120), responde `coincidencia`, y `GET /mercado` cae a similitud si ILIKE no
+  encuentra nada. BD: extensión `pg_trgm` + índices GIN `idx_mercado_marca_trgm` /
+  `idx_mercado_modelo_trgm` en `db/schema.sql` (dentro de un bloque que no aborta si la
+  extensión no está disponible) y `backend/src/config/migrate.js`. Frontend:
+  `MercadoFormIA.jsx` acepta un solo campo o texto parcial y explica el origen del resultado;
+  `api/mercado.js` devuelve `coincidencia`.

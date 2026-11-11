@@ -40,4 +40,8 @@ module.exports = {
   // Si falta, el Try-On con IA queda deshabilitado (sigue la superposición 2D).
   GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
   GEMINI_IMAGE_MODEL: process.env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image',
+  // Modelo de TEXTO (agente Mercado, con búsqueda web). Debe ser un modelo de
+  // texto vigente; si Google lo retira la API responde 404 y se cambia acá o
+  // con la variable de entorno GEMINI_TEXT_MODEL, sin tocar código.
+  GEMINI_TEXT_MODEL: process.env.GEMINI_TEXT_MODEL || 'gemini-2.5-flash',
 };
