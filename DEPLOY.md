@@ -46,6 +46,11 @@ git push -u origin main
      -f db/seed_admin.sql
    ```
 
+   > `db/schema.sql` crea solo las tablas base. El resto (turnos, promociones, sobres, obras
+   > sociales, config fiscal, mercado, etc.) las crea el servidor al arrancar. Si querés dejar la
+   > base completa sin levantar el servidor, usá `node db/init-remoto.js` (aplica el esquema, las
+   > migraciones y el admin).
+   >
    > Cambiá la contraseña del admin por una propia. No dejes la de ejemplo en producción.
    >
    > La contraseña se puede cambiar de dos formas:

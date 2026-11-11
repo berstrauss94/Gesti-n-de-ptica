@@ -41,6 +41,17 @@ async function main() {
   await client.query(schema);
   console.log('Esquema aplicado.');
 
+  // Tablas y columnas que solo viven en las migraciones del backend
+  // (turnos, promociones, obras_sociales, sobres, config_fiscal, etc.).
+  // Se ejecutan con ESTE cliente, así el resultado es el mismo que al
+  // arrancar el servidor. Son idempotentes (IF NOT EXISTS).
+  // env.js exige estas variables al importarse; el pool no se conecta.
+  process.env.DATABASE_URL = process.env.DATABASE_URL || url;
+  process.env.JWT_SECRET = process.env.JWT_SECRET || 'init-remoto';
+  const { ejecutarMigraciones } = require(path.join(__dirname, '..', 'backend', 'src', 'config', 'migrate'));
+  await ejecutarMigraciones((sql) => client.query(sql));
+  console.log('Migraciones del backend aplicadas.');
+
   // Sembrar admin de forma parametrizada (sin exponer la contraseña en el SQL)
   await client.query(
     `INSERT INTO usuarios_sistema (usuario, password_hash, rol)

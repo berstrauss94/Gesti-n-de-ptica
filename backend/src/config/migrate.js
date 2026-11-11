@@ -438,11 +438,13 @@ const MIGRACIONES = [
      ON mercado_catalogo (LOWER(marca), LOWER(modelo))`,
 ];
 
-async function ejecutarMigraciones() {
+// `ejecutar` permite reutilizar las mismas migraciones desde otro cliente
+// (p. ej. db/init-remoto.js). Por defecto usa el pool del servidor.
+async function ejecutarMigraciones(ejecutar = query) {
   for (let i = 0; i < MIGRACIONES.length; i += 1) {
     const sql = MIGRACIONES[i];
     try {
-      await query(sql);
+      await ejecutar(sql);
     } catch (err) {
       // La primera migración (CREATE EXTENSION pgcrypto) es CRÍTICA: sin ella
       // fallan los UUID y el hashing. Avisar fuerte para no quedar con un
@@ -461,4 +463,4 @@ async function ejecutarMigraciones() {
   console.log('Migraciones de columnas verificadas.');
 }
 
-module.exports = { ejecutarMigraciones };
+module.exports = { ejecutarMigraciones, MIGRACIONES };

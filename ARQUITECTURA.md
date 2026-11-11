@@ -247,13 +247,13 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
 - **Sin auditoría transversal unificada** (hay trazabilidad por tabla, no un log central).
 - **CORS** debe fijarse al dominio en producción (el server advierte si queda en `*`).
 - **Bundle único grande** (~550 KB): se puede dividir con code-splitting.
-- **Esquema SQL repartido:** `mercado_catalogo` ya está en `db/schema.sql`, pero otras
-  tablas (`config_notificaciones`, `notificaciones`, `config_fiscal`, `turnos`,
-  `movimientos_caja`, `traslados_stock`, `promociones`, `obras_sociales`, `sobres`) solo
-  existen en `backend/src/config/migrate.js`. En producción no hay problema porque las
-  migraciones corren al arrancar el servidor, pero `db/init-remoto.js` y
-  `psql -f db/schema.sql` no las crean. Pendiente: llevarlas a `db/*.sql` o hacer que
-  `init-remoto.js` ejecute las migraciones.
+- **Esquema SQL en dos lugares:** `db/schema.sql` (+ `schema_*.sql`) y
+  `backend/src/config/migrate.js` definen tablas distintas; la fuente completa y vigente es
+  `migrate.js` (corre al arrancar el servidor). `db/init-remoto.js` ya ejecuta esas mismas
+  migraciones después de `schema.sql`, así una base nueva queda completa. Lo que sigue
+  pendiente: `psql -f db/schema.sql` por sí solo NO crea turnos, promociones, sobres,
+  obras sociales, config fiscal/notificaciones ni traslados; hay que arrancar el servidor o
+  usar `init-remoto.js`.
 - **Plan de Gemini:** el tier gratuito puede responder 429. Mercado ya cachea (no vuelve
   a consultar un modelo guardado), pero el Try-On con IA (imágenes) no tiene caché.
 - **Imágenes en Volumen de Railway**: para escalar el catálogo de marcos (3 vistas PNG
@@ -370,3 +370,9 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
     `ClienteNuevoPage`, `ClienteDetallePage`, `MarcoNuevoPage`).
   - Pendientes que requieren decisión o credenciales: migración de imágenes a S3/Cloudinary
     y llevar el resto de las tablas de `migrate.js` a `db/*.sql` (ver Deuda técnica).
+- **2026-10-12** — Inicialización de base completa: `backend/src/config/migrate.js` ahora
+  exporta `MIGRACIONES` y `ejecutarMigraciones(ejecutar)` acepta un ejecutor alternativo
+  (por defecto el pool del servidor, sin cambio de comportamiento). `db/init-remoto.js`
+  corre esas mismas migraciones después de `schema.sql`, por lo que una base nueva queda
+  con todas las tablas (turnos, promociones, sobres, obras sociales, config fiscal, etc.).
+  Se aclaró en `DEPLOY.md` que `psql -f db/schema.sql` solo crea las tablas base.
