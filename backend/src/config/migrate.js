@@ -444,6 +444,66 @@ const MIGRACIONES = [
      ON mercado_catalogo USING gin (marca gin_trgm_ops)`,
   `CREATE INDEX IF NOT EXISTS idx_mercado_modelo_trgm
      ON mercado_catalogo USING gin (modelo gin_trgm_ops)`,
+
+  // --- Sobres tipo Optix (Etapa 1) ---
+  // Médicos como entidad (se conserva sobres.medico en texto para los sobres viejos).
+  `CREATE TABLE IF NOT EXISTS medicos (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     nombre VARCHAR(150) NOT NULL,
+     matricula VARCHAR(50),
+     activo BOOLEAN DEFAULT TRUE,
+     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+   )`,
+  // Una columna por sentencia: si una falla, las demás se crean igual.
+  // armazon_producto_id (ya existente) es el armazón de LEJOS.
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS medico_id UUID REFERENCES medicos(id)`,
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS cerca_od_deg NUMERIC(5,2)`,
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS cerca_oi_deg NUMERIC(5,2)`,
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS lejos_od_cbase NUMERIC(5,2)`,
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS lejos_oi_cbase NUMERIC(5,2)`,
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS cerca_od_cbase NUMERIC(5,2)`,
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS cerca_oi_cbase NUMERIC(5,2)`,
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS armazon_cerca_producto_id UUID REFERENCES productos(id)`,
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS armazon_cerca_es_propio BOOLEAN DEFAULT FALSE`,
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS armazon_lejos_es_propio BOOLEAN DEFAULT FALSE`,
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS dnp_od NUMERIC(5,2)`,
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS dnp_oi NUMERIC(5,2)`,
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS ap_od NUMERIC(5,2)`,
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS ap_oi NUMERIC(5,2)`,
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS arm_vertical NUMERIC(5,2)`,
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS arm_horizontal NUMERIC(5,2)`,
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS arm_diagonal NUMERIC(5,2)`,
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS arm_puente NUMERIC(5,2)`,
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS arm_distancia_vertice NUMERIC(5,2)`,
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS arm_ff NUMERIC(5,2)`,
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS arm_pantoscopico NUMERIC(5,2)`,
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS arm_angulo_facial NUMERIC(5,2)`,
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS laboratorio_id UUID REFERENCES proveedores(id)`,
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS orden_laboratorio_id UUID REFERENCES ordenes_laboratorio(id)`,
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS codigo_pedido_garantia VARCHAR(100)`,
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS observacion_lab TEXT`,
+  // Sub-tablas (se usan desde la Etapa 2: ítems adicionales y pagos).
+  `CREATE TABLE IF NOT EXISTS sobre_items_adicionales (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     sobre_id UUID NOT NULL REFERENCES sobres(id) ON DELETE CASCADE,
+     producto_id UUID REFERENCES productos(id),
+     descripcion VARCHAR(200) NOT NULL,
+     dias_demora INT DEFAULT 0,
+     precio NUMERIC(12,2) NOT NULL CHECK (precio >= 0)
+   )`,
+  `CREATE INDEX IF NOT EXISTS idx_sobre_items_sobre_id ON sobre_items_adicionales(sobre_id)`,
+  `CREATE TABLE IF NOT EXISTS sobre_pagos (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     sobre_id UUID NOT NULL REFERENCES sobres(id) ON DELETE CASCADE,
+     caja_movimiento_id UUID,
+     venta_id UUID REFERENCES ventas(id),
+     fecha TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+     detalle VARCHAR(150),
+     importe NUMERIC(12,2) NOT NULL CHECK (importe > 0),
+     medio_pago VARCHAR(50) NOT NULL CHECK (medio_pago IN
+       ('Efectivo','Tarjeta de Credito','Tarjeta de Debito','Q.R.','Transferencia','Cuenta Corriente'))
+   )`,
+  `CREATE INDEX IF NOT EXISTS idx_sobre_pagos_sobre_id ON sobre_pagos(sobre_id)`,
 ];
 
 // `ejecutar` permite reutilizar las mismas migraciones desde otro cliente

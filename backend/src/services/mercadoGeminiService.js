@@ -20,11 +20,57 @@
 // =====================================================================
 
 const { query } = require('../config/db');
-const { GEMINI_API_KEY, GEMINI_TEXT_MODEL } = require('../config/env');
+const { GEMINI_API_KEY, GEMINI_TEXT_MODEL, GEMINI_TEXT_FALLBACKS } = require('../config/env');
 
-// Modelo de texto con búsqueda (distinto del de imágenes del Try-On).
-// Se configura en env.js / variable GEMINI_TEXT_MODEL.
-const MODELO_TEXTO = GEMINI_TEXT_MODEL;
+// Cadena de modelos de texto con búsqueda (distinta del modelo de imágenes del
+// Try-On): el principal (GEMINI_TEXT_MODEL) y luego los de respaldo
+// (GEMINI_TEXT_FALLBACKS). Ambos se configuran en env.js / Railway.
+const MODELOS_TEXTO = [...new Set([GEMINI_TEXT_MODEL, ...(GEMINI_TEXT_FALLBACKS || [])].filter(Boolean))];
+
+// Último modelo que respondió bien: se prueba primero en la próxima consulta,
+// así no se gastan llamadas en modelos que ya dieron 404.
+let modeloPreferido = null;
+
+// Llama a Gemini probando la cadena de modelos. Escala al siguiente SOLO ante
+// 404 (modelo retirado/no disponible) o 429 (sin cuota). Cualquier otro error
+// (clave inválida 400/403, error del servidor) corta: cambiar de modelo no lo arregla.
+// Devuelve { ok, data, modelo } o { ok:false, motivo, detalle, intentos }.
+async function llamarGemini(key, body) {
+  const orden = modeloPreferido
+    ? [modeloPreferido, ...MODELOS_TEXTO.filter((m) => m !== modeloPreferido)]
+    : MODELOS_TEXTO;
+  const intentos = [];
+  for (const modelo of orden) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${key}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (res.ok) {
+      modeloPreferido = modelo;
+      return { ok: true, data: await res.json(), modelo };
+    }
+    const texto = await res.text();
+    intentos.push(`${modelo}: ${res.status}`);
+    if (res.status === 404 || res.status === 429) {
+      console.warn(`Gemini ${res.status} con "${modelo}"; pruebo el siguiente modelo.`);
+      if (modeloPreferido === modelo) modeloPreferido = null;
+      continue;
+    }
+    return { ok: false, motivo: 'error_api', detalle: `${res.status} (${modelo}): ${texto.slice(0, 300)}`, intentos };
+  }
+  const todos429 = intentos.every((i) => i.endsWith(': 429'));
+  console.error(`Gemini: se agotaron los modelos (${intentos.join(', ')}).`);
+  return {
+    ok: false,
+    motivo: 'error_api',
+    detalle: todos429
+      ? `Sin cuota en todos los modelos (${intentos.join(', ')}). Revisá el plan de Google AI Studio.`
+      : `Ningún modelo disponible (${intentos.join(', ')}). Actualizá GEMINI_TEXT_MODEL / GEMINI_TEXT_FALLBACKS.`,
+    intentos,
+  };
+}
 
 // Largo mínimo de un término de búsqueda y umbral de similitud (pg_trgm).
 const MIN_TERMINO = 2;
@@ -170,36 +216,21 @@ async function rastrearYEnriquecerModelo({ marca, modelo, forzar = false }) {
     return { ok: false, motivo: 'sin_credenciales', detalle: 'Falta la API key de Google' };
   }
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODELO_TEXTO}:generateContent?key=${key}`;
   const body = {
     contents: [{ parts: [{ text: construirPrompt(marca, modelo) }] }],
     tools: [{ googleSearch: {} }],
   };
 
   try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      const t = await res.text();
-      // 404 = el modelo configurado no existe o fue retirado por Google.
-      // Se deja el consejo en el log y en el detalle que ve el admin.
-      if (res.status === 404) {
-        console.error(
-          `Gemini 404: el modelo de texto "${MODELO_TEXTO}" no está disponible para esta API key. ` +
-          'Cambiá la variable GEMINI_TEXT_MODEL en Railway por un modelo vigente de Google AI Studio.'
-        );
-        return {
-          ok: false,
-          motivo: 'error_api',
-          detalle: `404: el modelo "${MODELO_TEXTO}" no está disponible. Cambiá GEMINI_TEXT_MODEL por uno vigente.`,
-        };
-      }
-      return { ok: false, motivo: 'error_api', detalle: `${res.status}: ${t.slice(0, 300)}` };
+    // Recorre la cadena de modelos ANTES de tocar la base: si todos fallan,
+    // no se escribe nada.
+    const rIA = await llamarGemini(key, body);
+    if (!rIA.ok) {
+      // Sin IA disponible pero con dato previo (forzar): se sirve lo guardado.
+      if (enCache) return { ok: true, registro: enCache, cache: true, coincidencia: local.coincidencia };
+      return { ok: false, motivo: rIA.motivo, detalle: rIA.detalle };
     }
-    const data = await res.json();
+    const { data } = rIA;
     const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!texto) return { ok: false, motivo: 'sin_respuesta', detalle: 'La IA no devolvió texto' };
 

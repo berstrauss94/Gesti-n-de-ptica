@@ -1185,3 +1185,94 @@ body {
 .kpi-value { font-size: 1.6rem; font-weight: 700; color: var(--texto); line-height: 1.1; }
 .kpi-sub { font-size: 0.8rem; }
 .chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+
+/* ===================================================================
+   Sobres — consola de dos columnas (Etapa 1 tipo Optix)
+   Izquierda 65%: datos técnicos. Derecha 35%: resumen y acciones.
+   Sin animaciones propias: hereda la entrada del contenido de la ruta.
+   Sin z-index propio: el popover de ayuda (200) y los modales (50)
+   siempre quedan por encima.
+   =================================================================== */
+.sobre-consola {
+  display: grid;
+  grid-template-columns: minmax(0, 65fr) minmax(0, 35fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+.sobre-consola__resumen {
+  position: sticky;
+  top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+@media (max-width: 980px) {
+  .sobre-consola { grid-template-columns: 1fr; }
+  .sobre-consola__resumen { position: static; }
+}
+
+.sobre-subtitulo,
+.sobre-subtitulo--accion h3 {
+  margin: 1.25rem 0 0.5rem;
+  font-size: 0.95rem;
+  color: var(--texto);
+}
+.sobre-subtitulo--accion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* Grillas de receta: scroll horizontal en pantallas chicas */
+.tabla-scroll { overflow-x: auto; }
+.rx-table { margin-bottom: 0.5rem; min-width: 640px; }
+.rx-table th { text-align: center; white-space: nowrap; }
+.rx-table input {
+  width: 100%;
+  min-width: 3.5rem;
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+}
+
+.form-grid--compacta { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+
+/* Selector de armazón (propio del cliente / del stock) */
+.armazones-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.75rem;
+}
+.armazon-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--gris-borde);
+  border-radius: var(--radio);
+  background: #ffffff;
+}
+.armazon-selector__titulo { font-weight: 600; font-size: 0.9rem; }
+.armazon-selector__modos { display: flex; flex-wrap: wrap; gap: 1rem; }
+.armazon-selector__elegido {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+/* Resumen de la columna derecha */
+.sobre-resumen {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem 0.75rem;
+  margin: 0;
+  font-size: 0.9rem;
+}
+.sobre-resumen dt { color: var(--texto-suave); }
+.sobre-resumen dd { margin: 0; }
+
+/* Fila del listado con el sobre abierto en la consola */
+.fila-activa { background: #fdf2f8; box-shadow: inset 3px 0 0 var(--primary-accent); }

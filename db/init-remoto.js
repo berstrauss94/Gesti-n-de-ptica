@@ -31,7 +31,8 @@ async function main() {
 
   const client = new Client({
     connectionString: url,
-    ssl: { rejectUnauthorized: false }, // Railway exige SSL
+    // Railway exige SSL. Para una base local sin SSL: DB_SSL=false.
+    ssl: process.env.DB_SSL === 'false' ? false : { rejectUnauthorized: false },
   });
 
   await client.connect();

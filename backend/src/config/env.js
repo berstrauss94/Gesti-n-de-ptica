@@ -43,5 +43,12 @@ module.exports = {
   // Modelo de TEXTO (agente Mercado, con búsqueda web). Debe ser un modelo de
   // texto vigente; si Google lo retira la API responde 404 y se cambia acá o
   // con la variable de entorno GEMINI_TEXT_MODEL, sin tocar código.
-  GEMINI_TEXT_MODEL: process.env.GEMINI_TEXT_MODEL || 'gemini-2.5-flash',
+  // gemini-2.5-flash ya no está disponible para claves nuevas (Google responde
+  // 404 y recomienda gemini-3.8-flash, verificado con búsqueda web activa).
+  GEMINI_TEXT_MODEL: process.env.GEMINI_TEXT_MODEL || 'gemini-3.8-flash',
+  // Modelos de respaldo, en orden, si el principal responde 404 (retirado) o
+  // 429 (sin cuota). Lista separada por comas; se edita en Railway sin tocar
+  // código. Solo modelos verificados como vigentes para la API key.
+  GEMINI_TEXT_FALLBACKS: (process.env.GEMINI_TEXT_FALLBACKS || 'gemini-flash-latest,gemini-2.5-flash')
+    .split(',').map((m) => m.trim()).filter(Boolean),
 };

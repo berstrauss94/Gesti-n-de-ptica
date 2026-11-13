@@ -8,7 +8,7 @@
 > cambio. Hay un hook de Kiro (`.kiro/hooks/sync-arquitectura-doc.json`) que lo
 > recuerda automáticamente. Al final está el **Registro de cambios**.
 
-_Última actualización: 2026-10-12 (Consistencia: esquema Mercado, componentes compartidos, caché de IA, recorte solo frontal, InfoBtn en todas las páginas)_
+_Última actualización: 2026-10-12 (Cadena de modelos de Gemini + compuerta de calidad: pruebas, chequeo de migraciones y deploy verificado)_
 
 ---
 
@@ -107,7 +107,7 @@ Optica/
 | **TPV / Ventas** | Caja (apertura/cierre con arqueo), ventas, pagos, señas, entrega, anulación, reintegros/retiros de caja, cuenta corriente, **descuentos/promociones por venta**. |
 | **Promociones / Descuentos** | El comercio crea sus propios descuentos (porcentaje o monto), los activa/desactiva y los aplica en el TPV. |
 | **Obras sociales / Convenios** | Alta de convenios con % de cobertura por defecto; en el TPV se aplica la cobertura y el total refleja lo que paga el paciente. Gestión en Configuración (admin). |
-| **Sobres / Órdenes de trabajo** | Orden central de la óptica: paciente + receta completa (lejos/cerca por ojo, con esfera/cilindro/eje/adición/prisma/base/diámetro) + armazón + cristal + médico + obra social + fecha de entrega; estados pendiente/reserva/en taller/entregado/anulado. |
+| **Sobres / Órdenes de trabajo** | Orden central de la óptica: paciente + receta completa (lejos/cerca por ojo, con esfera/cilindro/eje/adición/prisma/base/diámetro) + C.Base y DEG por ojo + armazón de lejos y de cerca (del stock o del cliente) + cristal + médico (entidad propia) + obra social + antropometría (DIP, DNP y altura pupilar por ojo) + cotas del armazón + laboratorio + fecha de entrega; estados pendiente/reserva/en taller/entregado/anulado. Consola de dos columnas para crear y editar, con calculadoras de transposición y de adición. |
 | **Comisiones** | Reporte del acumulado de comisiones por vendedor en un período (ventas entregadas), con resumen y detalle. Solo admin. |
 | **Catálogo de Mercado** | Modelos que NO están en el local, enriquecidos con IA (Gemini + búsqueda web): marca, modelo, estilo, material, género, medidas, colores, tratamientos y aptitud de graduación. Página `/mercado` con buscador y filtros; alta por IA solo admin. |
 | **Compras** | Proveedores, laboratorios, compras (confirmar impacta stock/costos), órdenes de laboratorio, **exportación contable CITI Compras (AFIP) por período**. |
@@ -139,7 +139,8 @@ lentes, quitar fondo, 3 vistas de marcos, logo). No corren en producción.
 - **TPV:** `/cajas/*` (actual/abrir/cerrar/movimientos), `/ventas/*` (acepta `descuento` al crear), pagos, entregar, anular, `/cuenta-corriente/:id`.
 - **Promociones:** `GET /promociones`, `POST /promociones` (admin), `PATCH /promociones/:id` (admin), `DELETE /promociones/:id` (admin).
 - **Obras sociales:** `GET /obras-sociales`, `POST /obras-sociales` (admin), `PUT /obras-sociales/:id` (admin), `DELETE /obras-sociales/:id` (admin).
-- **Sobres:** `GET /sobres`, `POST /sobres`, `GET /sobres/:id`, `PUT /sobres/:id`, `PATCH /sobres/:id/estado`, `DELETE /sobres/:id`.
+- **Sobres:** `GET /sobres`, `POST /sobres`, `GET /sobres/:id`, `PUT /sobres/:id`, `PATCH /sobres/:id/estado`, `DELETE /sobres/:id`. Las lecturas devuelven además los nombres de médico, armazones (lejos/cerca) y laboratorio; los errores de datos (referencia inexistente, número inválido, eje fuera de rango) responden 400 con mensaje claro.
+- **Médicos:** `GET /medicos?activos=&q=` (cualquier usuario), `POST /medicos`, `PUT /medicos/:id`, `DELETE /medicos/:id` (admin; si el médico ya figura en sobres se desactiva en lugar de borrarse).
 - **Comisiones:** `GET /comisiones` (admin; filtros desde/hasta/sucursal/vendedor).
 - **Stock:** el listado acepta además filtros `genero`, `material`, `ubicacion_prod`.
 - **Compras:** `/proveedores`, `/compras`, `/ordenes-laboratorio`, `GET /compras-citi?periodo=YYYY-MM` (admin, descarga .txt).
@@ -198,9 +199,12 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
   por óptica**, cada óptica carga su propio certificado AFIP y sus credenciales.
 - **Try-On IA** (`tryonIAService.js`): composición foto+armazón vía **Google Gemini**
   (`gemini-2.5-flash-image`, configurable con `GEMINI_IMAGE_MODEL`). Sin key → superposición 2D gratis.
-- **Agente Mercado** (`mercadoGeminiService.js`): `gemini-2.5-flash` (configurable con
-  `GEMINI_TEXT_MODEL`) con `googleSearch`; devuelve specs en JSON y hace upsert en
-  `mercado_catalogo`. Con el plan gratuito de Google puede responder 429.
+- **Agente Mercado** (`mercadoGeminiService.js`): cadena de modelos con `googleSearch`:
+  `GEMINI_TEXT_MODEL` (default `gemini-3.8-flash`) y luego `GEMINI_TEXT_FALLBACKS` (default
+  `gemini-flash-latest,gemini-2.5-flash`). Escala al siguiente SOLO ante 404 (modelo retirado) o
+  429 (sin cuota); otros errores (clave inválida) cortan. Recuerda el último modelo que respondió
+  bien y lo prueba primero. Si todos fallan no escribe en la base. Devuelve specs en JSON y hace
+  upsert en `mercado_catalogo`.
 - **Notificaciones** (`notificacionesService.js`): **Telegram real** (Bot API);
   WhatsApp (Meta Cloud API) pendiente de plantillas. Eventos registrados como
   `enviado`/`simulado`/`error`.
@@ -217,10 +221,20 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
 **Automatizaciones de desarrollo (Kiro, en `.kiro/`, NO forman parte del producto):**
 - **Steering** (`.kiro/steering/ui-reglas-secciones.md`): regla de UI (InfoBtn
   obligatorio, mapa de z-index, capas, sombras).
+- **Steering** (`.kiro/steering/system-evolver.md`): documentación sincronizada, reglas de
+  migraciones, cómo cambiar modelos de Gemini y despliegue seguro.
 - **Hooks** (`.kiro/hooks/`):
   - `anim-sequence-rules.json`: mantiene la secuencia/tiempos de animación.
   - `info-btn-rules.json`: recuerda el InfoBtn en cada sección.
   - `sync-arquitectura-doc.json`: recuerda actualizar **este** documento en cada cambio.
+- **Compuerta de calidad** (scripts del repo):
+  - `npm run test:ci`: `migrate:check` (sentencias destructivas o no repetibles, sin base) +
+    `npm test` (`node --test` en `backend/test/`: contrato de API sin 500, cadena de Gemini,
+    migraciones y calculadoras ópticas) + build del frontend.
+  - `npm run hooks:instalar`: instala `.git/hooks/pre-commit` (local), que bloquea el commit si
+    falla `test:ci` o si hay código sin `ARQUITECTURA.md`.
+  - `npm run deploy`: exige `main` limpio, corre `test:ci` y recién ahí hace `git push origin main`.
+    Es manual: nada sube a producción solo.
 
 ---
 
@@ -235,6 +249,7 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
   usados tanto por `MercadoPage` como por la sección "En el mercado" de `TryOnPage`.
   Todas las páginas con título llevan `InfoBtn`.
 - **Hooks propios:** `useEsAdmin`, `useFaceLandmarker` (MediaPipe), `useImage`.
+- **Sobres:** `components/sobres/SobreConsola.jsx` (consola de dos columnas 65/35, alta y edición) y `components/sobres/SelectorArmazon.jsx` (armazón del cliente o búsqueda en stock por modal). Las calculadoras ópticas están en `utils/receta.js` como funciones puras (transposición con eje 1–180, nunca 0; cerca = ESF lejos + ADD).
 - **Animaciones:** secuencia encadenada (sidebar → íconos → fondo → contenido),
   curvas suaves; el contenido se re-anima en cada navegación.
 
@@ -247,7 +262,7 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
 - **WhatsApp:** en simulación hasta tener cuenta Business + plantillas de Meta.
 - **QR visual:** se guarda el string oficial de AFIP, pero no se renderiza como
   imagen todavía (activar junto con el CAE real).
-- **Sin tests automatizados ni ESLint propio** (verificación = build + carga + sintaxis).
+- **Pruebas con base simulada:** hay 40 pruebas (`npm test`), pero usan una base y servicios
 - **Sin auditoría transversal unificada** (hay trazabilidad por tabla, no un log central).
 - **CORS** debe fijarse al dominio en producción (el server advierte si queda en `*`).
 - **Bundle único grande** (~550 KB): se puede dividir con code-splitting.
@@ -399,3 +414,37 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
   extensión no está disponible) y `backend/src/config/migrate.js`. Frontend:
   `MercadoFormIA.jsx` acepta un solo campo o texto parcial y explica el origen del resultado;
   `api/mercado.js` devuelve `coincidencia`.
+- **2026-10-12** — Modelo de texto de Mercado: Google responde 404 a `gemini-2.5-flash` para
+  claves nuevas ("no longer available to new users") y recomienda `gemini-3.8-flash`. Se
+  verificó con la API de Google que la clave lista `gemini-3.8-flash` y que responde 200 con
+  búsqueda web; el default de `GEMINI_TEXT_MODEL` en `backend/src/config/env.js` pasó a
+  `gemini-3.8-flash`. El modelo de imágenes (`gemini-2.5-flash-image`) responde 200 y no se cambió.
+- **2026-10-12** — Sobres tipo Optix, Etapa 1 (datos técnicos + editar):
+  - **BD** (`backend/src/config/migrate.js`, NO en `db/schema.sql` porque `sobres` solo vive en
+    las migraciones): tabla `medicos`; 26 columnas nuevas en `sobres`, una por sentencia (`medico_id`,
+    C.Base y DEG por ojo, `armazon_cerca_producto_id`, armazón propio lejos/cerca, DNP/AP por ojo,
+    cotas del armazón, `laboratorio_id`, `orden_laboratorio_id`, código de pedido/garantía y observación
+    para el laboratorio). `armazon_producto_id` sigue siendo el de lejos y `medico` (texto) se conserva
+    para los sobres viejos. Sub-tablas `sobre_items_adicionales` y `sobre_pagos` con CHECKs e índices,
+    creadas pero sin uso hasta la Etapa 2.
+  - **Backend:** `medicosController.js` + `medicosRoutes.js` (listar para todos, ABM admin, baja lógica
+    si está en uso); `sobresController.js` acepta los campos nuevos, normaliza checkboxes y vacíos, y
+    traduce errores de PostgreSQL (23503, 22P02, 22003, 22001, 23514) a 400.
+  - **Frontend:** `SobresPage.jsx` con botón Abrir para editar; `SobreConsola.jsx`, `SelectorArmazon.jsx`,
+    `utils/receta.js`, `api/medicos.js` y estilos `.sobre-consola` en `styles.css`.
+  - Pendiente: Etapa 2 (ítems adicionales, pagos ligados a venta/caja, saldo calculado al leer) y
+    Etapa 3 (orden de laboratorio, descuento de stock, estados). El significado de `DEG` queda a confirmar.
+- **2026-10-12** — Cadena de modelos de Gemini y compuerta de calidad:
+  - **IA:** `mercadoGeminiService.js` prueba `GEMINI_TEXT_MODEL` y luego `GEMINI_TEXT_FALLBACKS`
+    (nuevo en `backend/src/config/env.js`); escala solo ante 404/429 y recuerda el modelo que
+    funcionó. No se incluyó `gemini-1.5-flash`: no figura en la lista de modelos de la clave.
+  - **Pruebas:** `backend/test/` (`apiContrato`, `geminiFallback`, `migraciones`, `receta`), 40 en
+    total con `node --test` (sin dependencias nuevas).
+  - **Migraciones:** `backend/src/config/verificarMigraciones.js` + `backend/scripts/migrate.js`
+    (`npm run migrate -- --check-only` sin base; `npm run migrate` contra `DATABASE_URL`).
+  - **Compuerta y deploy:** `scripts/git-hooks/pre-commit.js`, `scripts/instalar-git-hooks.js`,
+    `scripts/deploy.js`; scripts `test`, `migrate:check`, `test:ci`, `hooks:instalar`, `deploy` en
+    `package.json`. Steering nuevo `.kiro/steering/system-evolver.md`.
+- **2026-10-12** — `db/init-remoto.js` acepta `DB_SSL=false` para inicializar una base local sin SSL
+  (antes forzaba SSL y solo servía con Railway; con Railway sigue igual). Con eso se verificó la
+  Etapa 1 de Sobres contra PostgreSQL real (migraciones dos veces, API y pantalla en el navegador).
