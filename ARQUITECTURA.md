@@ -496,3 +496,7 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
   Nuevo `POST /uploads/tryon` (`uploadRoutes`, `uploadController`, `services/storageService.js`,
   dependencia `cloudinary`, variables `CLOUDINARY_*`). Las fotos de `fotosController` siguen en disco.
   El Try-On del front todavía no llama a este endpoint.
+- **2026-10-15** — `TryOnPage` guarda en Cloudinary cada imagen generada con IA, sin bloquear el
+  resultado (`api/uploads.js` → `POST /uploads/tryon`; sin credenciales 409 se ignora y se muestra el
+  enlace "Imagen guardada en la nube" solo si se pudo subir). `npm audit fix` en `backend`: `multer`,
+  `body-parser` y `qs` actualizados (las 3 vulnerabilidades eran previas a `cloudinary`); 0 pendientes.

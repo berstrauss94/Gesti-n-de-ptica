@@ -19,6 +19,7 @@ import EditarMarcoModal from '../components/tryon/EditarMarcoModal';
 import Modal from '../components/Modal';
 import useFaceLandmarker from '../hooks/useFaceLandmarker';
 import { estadoTryonIA, generarTryonIA } from '../api/tryonIA';
+import { subirImagenTryOn } from '../api/uploads';
 import { listarMercado } from '../api/mercado';
 import InfoBtn from '../components/InfoBtn';
 import MercadoTabla from '../components/MercadoTabla';
@@ -59,6 +60,7 @@ export default function TryOnPage() {
   const [iaImagen, setIaImagen] = useState('');
   const [iaCargando, setIaCargando] = useState(false);
   const [iaMsg, setIaMsg] = useState(''); // mensaje de resultado/err en el panel
+  const [iaUrl, setIaUrl] = useState(''); // URL en Cloudinary de la última imagen (si se pudo guardar)
 
   // Sección "En el mercado": modelos que NO están en el local (consulta IA)
   const esAdmin = useEsAdmin();
@@ -79,12 +81,13 @@ export default function TryOnPage() {
 
   async function handleGenerarIA() {
     if (!fotoSel || !marcoSel) { setIaMsg('Elegí una foto y un marco primero.'); return; }
-    setError(''); setIaImagen(''); setIaMsg(''); setIaCargando(true);
+    setError(''); setIaImagen(''); setIaMsg(''); setIaUrl(''); setIaCargando(true);
     try {
       const r = await generarTryonIA(fotoSel.ruta_local, marcoSel.ruta_imagen_png);
       if (r?.imagen) {
         setIaImagen(r.imagen);
         setIaMsg('✓ Imagen generada con IA.');
+        guardarEnNube(r.imagen);
       } else {
         setIaMsg('La IA respondió pero no devolvió una imagen.');
       }
@@ -98,6 +101,17 @@ export default function TryOnPage() {
     }
   }
 
+  // Guarda la imagen generada en Cloudinary. Es opcional: si no hay credenciales
+  // (409) o falla, el resultado se sigue mostrando y descargando igual.
+  async function guardarEnNube(dataUrl) {
+    try {
+      const blob = await (await fetch(dataUrl)).blob();
+      const { url } = await subirImagenTryOn(blob);
+      setIaUrl(url);
+    } catch (err) {
+      if (err.response?.status !== 409) console.error('No se pudo guardar la imagen en la nube:', err.message);
+    }
+  }
   // Guardamos la última imagen cargada para recalcular si cambia el marco
   const ultimaImg = useRef(null);
 
@@ -449,12 +463,15 @@ export default function TryOnPage() {
       )}
 
       {iaImagen && (
-        <Modal titulo="Prueba realista (IA)" onCerrar={() => setIaImagen('')}>
+        <Modal titulo="Prueba realista (IA)" onCerrar={() => { setIaImagen(''); setIaUrl(''); }}>
           <div className="ia-resultado">
             <img src={iaImagen} alt="Prueba con IA" />
             <a href={iaImagen} download="tryon_ia.png" className="btn btn--primary btn--inline">
               Descargar imagen
             </a>
+            {iaUrl && (
+              <a href={iaUrl} target="_blank" rel="noreferrer" className="small">Imagen guardada en la nube</a>
+            )}
           </div>
         </Modal>
       )}
