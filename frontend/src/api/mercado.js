@@ -20,3 +20,10 @@ export async function enriquecerMercado(marca, modelo, forzar = false) {
   const { data } = await api.post('/api/mercado/enriquecer', { marca, modelo, forzar });
   return { registro: data.registro, cache: Boolean(data.cache), coincidencia: data.coincidencia || null };
 }
+
+// Sugerencia de género/material según lo ya cargado para esa marca (sin IA).
+// Devuelve { genero, material } o null si no hay datos.
+export async function predecirAtributos(marca) {
+  const { data } = await api.get('/api/mercado/predict-attributes', { params: { marca } });
+  return data.predictions || null;
+}

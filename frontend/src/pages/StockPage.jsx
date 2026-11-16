@@ -28,6 +28,7 @@ import fondoStock from '../assets/fondo-stock.jpg';
 import { barcodeSVG } from '../utils/barcode';
 import { interpretarBusqueda, normalizar } from '../utils/busquedaNatural';
 import InfoBtn from '../components/InfoBtn';
+import { predecirAtributos } from '../api/mercado';
 import Modal from '../components/Modal';
 import { useEsAdmin } from '../hooks/useEsAdmin';
 
@@ -155,6 +156,37 @@ export default function StockPage() {
   // Cambiar un filtro o la cantidad por página vuelve a la primera página.
   function setFiltro(campo, valor) { setPagina(0); setInterpretado([]); setFiltros((f) => ({ ...f, [campo]: valor })); }
   function limpiarFiltros() { setPagina(0); setInterpretado([]); setFiltros(FILTROS_VACIOS); }
+  // Vuelve a ver todo el stock: sin texto, sin filtros y en la primera página.
+  function limpiarTodo() {
+    setQ(''); setPagina(0); setInterpretado([]); setFiltros(FILTROS_VACIOS);
+    cargarStock(sucursalId, '', FILTROS_VACIOS, 0, porPagina);
+  }
+  // Texto de los filtros activos para el mensaje de "sin resultados".
+  function descripcionFiltros() {
+    const partes = [];
+    if (filtros.marca) partes.push('Marca ' + filtros.marca);
+    if (filtros.genero) partes.push('Género ' + filtros.genero);
+    if (filtros.material) partes.push('Material ' + filtros.material);
+    if (filtros.ubicacion) partes.push('Ubicación ' + filtros.ubicacion);
+    if (filtros.proveedor) partes.push('Proveedor ' + filtros.proveedor);
+    return partes;
+  }
+  // Al salir del campo Marca (alta): sugiere género y material si están vacíos.
+  const [sugerido, setSugerido] = useState('');
+  async function sugerirPorMarca(marca) {
+    const m = (marca || '').trim();
+    if (m.length < 2) return;
+    try {
+      const p = await predecirAtributos(m);
+      if (!p) return;
+      setProd((x) => ({
+        ...x,
+        genero: x.genero || p.genero || '',
+        material: x.material || p.material || '',
+      }));
+      setSugerido('Sugerimos género y material según lo que ya hay de esa marca. Revisalos antes de guardar.');
+    } catch { /* la sugerencia es opcional: si falla, se carga a mano */ }
+  }
   const hayFiltros = Object.values(filtros).some(Boolean);
 
   // Buscar: primero interpreta el texto ("marcos de mujer en metal") y pasa lo
@@ -376,6 +408,7 @@ export default function StockPage() {
     // Alias aceptados por campo (ya normalizados)
     const alias = {
       codigo: ['codigo', 'code', 'sku'],
+      codigo_barras: ['codigo_barras', 'codigo_de_barras', 'ean', 'barras'],
       nombre: ['nombre', 'descripcion', 'detalle', 'producto'],
       categoria: ['categoria', 'rubro'],
       marca: ['marca'],
@@ -392,7 +425,7 @@ export default function StockPage() {
     Object.entries(alias).forEach(([campo, nombres]) => {
       idx[campo] = encabezados.findIndex((h) => nombres.includes(h));
     });
-    if (idx.codigo < 0) { setError('El CSV debe tener una columna "codigo".'); return; }
+    if (idx.codigo < 0 && idx.codigo_barras < 0) { setError('El CSV debe tener una columna "codigo" o "codigo_barras".'); return; }
 
     const filas = [];
     for (let i = 1; i < lineas.length; i += 1) {
@@ -403,7 +436,8 @@ export default function StockPage() {
         return Number(String(v).replace(/\./g, '').replace(',', '.')) || Number(v) || undefined;
       };
       filas.push({
-        codigo: get('codigo'),
+        codigo: get('codigo') || undefined,
+        codigo_barras: get('codigo_barras') || undefined,
         nombre: get('nombre') || undefined,
         categoria: get('categoria') || undefined,
         marca: get('marca') || undefined,
@@ -592,7 +626,8 @@ export default function StockPage() {
               {CATEGORIAS.map((c) => <option key={c} value={c}>{CAT_LABEL[c]}</option>)}
             </select></label>
           <label className="field"><span>Marca</span>
-            <input list="stock-marcas" value={prod.marca} onChange={(e) => setCampo('marca', e.target.value)} /></label>
+            <input list="stock-marcas" value={prod.marca} onChange={(e) => setCampo('marca', e.target.value)} onBlur={(e) => sugerirPorMarca(e.target.value)} /></label>
+          {sugerido && <p className="muted small" role="status">{sugerido}</p>}
           {camposAtributos(prod, setCampo)}
           <label className="field"><span>Costo base ($)</span>
             <input type="number" step="0.01" min="0" value={prod.costo_base} onChange={(e) => setCampo('costo_base', e.target.value)} /></label>
@@ -658,7 +693,19 @@ export default function StockPage() {
         <p className="muted">Cargando…</p>
       ) : stock.length === 0 ? (
         <div className="card empty">
-          <p>{q || hayFiltros ? 'Ningún producto coincide con la búsqueda o los filtros.' : 'Sin productos con stock en esta sucursal.'}</p>
+          <p>
+            {q || hayFiltros
+              ? (descripcionFiltros().length
+                ? 'Ningún producto tiene cargado ' + descripcionFiltros().join(' y ') + (q ? ' con la búsqueda “' + q + '”' : '') + '.'
+                : 'Ningún producto coincide con la búsqueda “' + q + '”.')
+              : 'Sin productos con stock en esta sucursal.'}
+          </p>
+          {(q || hayFiltros) && (
+            <>
+              <p className="muted small">Puede que esos productos todavía no tengan los atributos cargados: editalos o importá un CSV.</p>
+              <button type="button" className="btn" onClick={limpiarTodo}>Limpiar filtros y ver todo el stock</button>
+            </>
+          )}
         </div>
       ) : (
         <div className="card no-pad">
@@ -798,8 +845,8 @@ export default function StockPage() {
         <Modal titulo="Importar lista de precios" onCerrar={() => { setImportar(null); setImportResultado(null); }}>
           <p className="muted small">
             Se leyeron <strong>{importar.filas.length}</strong> filas del CSV. Se actualizan los productos
-            por <strong>código</strong>; los que no existan se crean si está tildada la opción de abajo.
-            Columnas reconocidas: codigo, nombre, categoria, marca, costo, margen, precio,
+            por <strong>código</strong> o, si no hay, por <strong>código de barras</strong>; los que no existan se crean si está tildada la opción de abajo.
+            Columnas reconocidas: codigo, codigo_barras, nombre, categoria, marca, costo, margen, precio,
             genero, material, ubicacion y proveedor (por nombre, tiene que existir en Compras).
             Una celda vacía no borra el dato que ya tenía el producto.
           </p>

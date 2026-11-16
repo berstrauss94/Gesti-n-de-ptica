@@ -6,6 +6,7 @@
 
 const { query } = require('../config/db');
 const { rastrearYEnriquecerModelo } = require('../services/mercadoGeminiService');
+const { generoCanonico } = require('./productosController');
 
 // Largo máximo de marca/modelo (coincide con VARCHAR(120) de la tabla).
 const MAX_TEXTO = 120;
@@ -89,4 +90,51 @@ async function listar(req, res) {
   }
 }
 
-module.exports = { enriquecer, listar };
+
+// GET /mercado/predict-attributes?marca=  (sin IA, sin costo)
+// Sugiere genero/material segun lo mas frecuente en productos de esa marca
+// y, si no hay datos, en el catalogo de mercado.
+async function masFrecuente(tabla, col, marca) {
+  const { rows } = await query(
+    `SELECT ${col} AS valor FROM ${tabla}
+      WHERE LOWER(marca) = LOWER($1) AND ${col} IS NOT NULL AND ${col} <> ''
+      GROUP BY ${col} ORDER BY COUNT(*) DESC, ${col} ASC LIMIT 1`,
+    [marca]
+  );
+  return rows[0] ? rows[0].valor : null;
+}
+
+function capitalizar(t) {
+  const x = String(t || '').trim();
+  return x ? x.charAt(0).toUpperCase() + x.slice(1).toLowerCase() : null;
+}
+
+async function predecirAtributos(req, res) {
+  try {
+    const marca = String(req.query.marca || '').trim();
+    if (marca.length > 120) return res.status(400).json({ error: 'Marca demasiado larga' });
+    if (marca.length < 2) return res.json({ predictions: null, fuente: [] });
+
+    const fuente = [];
+    let genero = await masFrecuente('productos', 'genero', marca);
+    let material = await masFrecuente('productos', 'material', marca);
+    if (genero || material) fuente.push('productos');
+
+    if (!genero || !material) {
+      const gM = !genero ? await masFrecuente('mercado_catalogo', 'genero', marca).catch(() => null) : null;
+      const mM = !material ? await masFrecuente('mercado_catalogo', 'material', marca).catch(() => null) : null;
+      if (gM || mM) fuente.push('mercado');
+      genero = genero || gM;
+      material = material || mM;
+    }
+    genero = genero ? generoCanonico(genero) || null : null;
+    material = capitalizar(material);
+    if (!genero && !material) return res.json({ predictions: null, fuente: [] });
+    res.json({ predictions: { genero, material }, fuente });
+  } catch (err) {
+    console.error('[mercado] predecirAtributos:', err.message);
+    res.status(500).json({ error: 'No se pudo sugerir atributos' });
+  }
+}
+
+module.exports = { enriquecer, listar, predecirAtributos };

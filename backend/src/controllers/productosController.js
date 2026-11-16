@@ -287,8 +287,11 @@ async function importar(req, res) {
     for (let i = 0; i < filas.length; i += 1) {
       const f = filas[i] || {};
       const fila = i + 1;
-      const codigo = String(f.codigo || '').trim();
-      if (!codigo) { resumen.errores.push({ fila, error: 'Sin código' }); continue; }
+      // Se identifica por código o, si no viene, por código de barras.
+      const codigoPropio = String(f.codigo || '').trim();
+      const codigoBarras = String(f.codigo_barras || '').trim();
+      const codigo = codigoPropio || codigoBarras; // referencia para los mensajes
+      if (!codigo) { resumen.errores.push({ fila, error: 'Sin código ni código de barras' }); continue; }
 
       // Atributos: solo los que traen valor (celda vacía = no tocar).
       const conValor = {};
@@ -321,8 +324,13 @@ async function importar(req, res) {
 
       await client.query('SAVEPOINT fila');
       try {
-        // ¿Existe el producto por código?
-        const ex = await client.query('SELECT id, costo_base, margen_pct FROM productos WHERE codigo = $1', [codigo]);
+        // ¿Existe el producto? Primero por código; si no, por código de barras.
+        const ex = await client.query(
+          `SELECT id, costo_base, margen_pct FROM productos
+            WHERE (codigo = $1 AND $1 <> '') OR (codigo_barras = $2 AND $2 <> '')
+            ORDER BY (codigo = $1) DESC LIMIT 1`,
+          [codigoPropio, codigoBarras]
+        );
         if (ex.rowCount > 0) {
           const actual = ex.rows[0];
           const nuevoCosto = costo ?? Number(actual.costo_base);
@@ -331,7 +339,8 @@ async function importar(req, res) {
           const sets = ['costo_base = $1', 'margen_pct = $2', 'precio_venta = $3', 'updated_at = CURRENT_TIMESTAMP'];
           const vals = [nuevoCosto, nuevoMargen, nuevoPrecio];
           if (f.nombre) { vals.push(f.nombre); sets.push(`nombre = $${vals.length}`); }
-          if (f.marca) { vals.push(f.marca); sets.push(`marca = $${vals.length}`); }
+          if (f.marca) { vals.push(f.marca); sets.push(`marca = ${vals.length}`); }
+          if (codigoBarras) { vals.push(codigoBarras); sets.push(`codigo_barras = ${vals.length}`); }
           Object.entries(attr).forEach(([c, v]) => { vals.push(v); sets.push(`${c} = $${vals.length}`); });
           vals.push(actual.id);
           await client.query(`UPDATE productos SET ${sets.join(', ')} WHERE id = $${vals.length}`, vals);
@@ -339,6 +348,8 @@ async function importar(req, res) {
         } else if (crearNuevos) {
           if (!f.nombre) {
             resumen.errores.push({ fila, codigo, error: 'Producto nuevo sin nombre' });
+          } else if (!codigoPropio) {
+            resumen.errores.push({ fila, codigo, error: 'Producto nuevo sin código (el código de barras solo sirve para actualizar uno existente)' });
           } else {
             const c = costo ?? 0;
             const m = margen ?? 0;
@@ -346,10 +357,11 @@ async function importar(req, res) {
             await client.query(
               `INSERT INTO productos
                  (codigo, nombre, categoria, marca, costo_base, margen_pct, precio_venta, iva_pct,
-                  genero, material, ubicacion, proveedor_id)
-               VALUES ($1,$2,$3,$4,$5,$6,$7,21,$8,$9,$10,$11)`,
-              [codigo, f.nombre, f.categoria || 'otro', f.marca || null, c, m, precio,
-               attr.genero ?? null, attr.material ?? null, attr.ubicacion ?? null, attr.proveedor_id ?? null]
+                  genero, material, ubicacion, proveedor_id, codigo_barras)
+               VALUES ($1,$2,$3,$4,$5,$6,$7,21,$8,$9,$10,$11,$12)`,
+              [codigoPropio, f.nombre, f.categoria || 'otro', f.marca || null, c, m, precio,
+               attr.genero ?? null, attr.material ?? null, attr.ubicacion ?? null, attr.proveedor_id ?? null,
+               codigoBarras || null]
             );
             resumen.creados += 1;
           }
@@ -374,4 +386,4 @@ async function importar(req, res) {
   }
 }
 
-module.exports = { listar, obtener, crear, actualizar, recalcularMasivo, eliminar, importar };
+module.exports = { listar, obtener, crear, actualizar, recalcularMasivo, eliminar, importar, generoCanonico, sinAcentos };

@@ -8,7 +8,7 @@
 > cambio. Hay un hook de Kiro (`.kiro/hooks/sync-arquitectura-doc.json`) que lo
 > recuerda automáticamente. Al final está el **Registro de cambios**.
 
-_Última actualización: 2026-10-12 (Stock: importación CSV con atributos y búsqueda en lenguaje natural sin IA)_
+_Última actualización: 2026-10-13 (Stock: importación por código de barras y sugerencia de género/material por marca)_
 
 ---
 
@@ -128,14 +128,14 @@ lentes, quitar fondo, 3 vistas de marcos, logo). No corren en producción.
 - **Clientes:** CRUD `/usuarios` + fotos y graduaciones anidadas.
 - **Marcos:** CRUD `/marcos` (subida multiparte de 3 vistas).
 - **Try-On IA:** `GET /tryon-ia/estado`, `POST /tryon-ia/generar`.
-- **Mercado:** `GET /mercado?q=` (cualquier usuario; texto parcial por ILIKE y, si no hay
+- **Mercado:** `GET /mercado/predict-attributes?marca=` (cualquier usuario; sin IA ni costo: devuelve `{predictions:{genero,material}|null, fuente}` con lo más frecuente en `productos` de esa marca y, si falta, en `mercado_catalogo`; marca de menos de 2 letras → `predictions:null`, más de 120 → 400), `GET /mercado?q=` (cualquier usuario; texto parcial por ILIKE y, si no hay
   resultados, por similitud con `pg_trgm`), `POST /mercado/enriquecer` (admin; body
   `{marca?, modelo?, forzar?}`: alcanza con la marca, el modelo o ambos, completos o parciales,
   mínimo 2 letras). Busca primero en la base (exacta → parcial → similitud si es un solo campo)
   y responde `200` con `cache: true` y `coincidencia` (`exacto|parcial|similar`) sin consultar a
   Gemini. Si no hay coincidencia (o `forzar: true`) consulta a la IA, que resuelve la marca/modelo
   oficial más probable o devuelve `no_identificado` (400), y responde `201` con `coincidencia: "ia"`.
-- **Stock:** `/sucursales`, `/productos`, `POST /productos/importar` (admin, lista de precios CSV; acepta además `genero`, `material`, `ubicacion` y `proveedor` por nombre o `proveedor_id`; celda vacía no borra; cada fila en su propio SAVEPOINT, así una fila con error no corta la importación), `/stock` (devuelve `total` y `parecidos`; `limit` hasta 1000), `/stock/marcas`, `GET /stock/filtros` (opciones de los desplegables), movimientos, `/traslados`.
+- **Stock:** `/sucursales`, `/productos`, `POST /productos/importar` (admin, lista de precios CSV; empareja por `codigo` y, si no hay, por `codigo_barras`; un producto nuevo exige `codigo`; acepta además `genero`, `material`, `ubicacion` y `proveedor` por nombre o `proveedor_id`; celda vacía no borra; cada fila en su propio SAVEPOINT, así una fila con error no corta la importación), `/stock` (devuelve `total` y `parecidos`; `limit` hasta 1000), `/stock/marcas`, `GET /stock/filtros` (opciones de los desplegables), movimientos, `/traslados`.
 - **TPV:** `/cajas/*` (actual/abrir/cerrar/movimientos), `/ventas/*` (acepta `descuento` al crear), pagos, entregar, anular, `/cuenta-corriente/:id`.
 - **Promociones:** `GET /promociones`, `POST /promociones` (admin), `PATCH /promociones/:id` (admin), `DELETE /promociones/:id` (admin).
 - **Obras sociales:** `GET /obras-sociales`, `POST /obras-sociales` (admin), `PUT /obras-sociales/:id` (admin), `DELETE /obras-sociales/:id` (admin).
@@ -480,3 +480,10 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
     importación).
   - No existen `services/importacionService.js` ni `components/ImportarPreciosModal.jsx` (nombres de la
     especificación): la importación vive en `productosController.js` y el modal en `StockPage.jsx`.
+- **2026-10-13** — Stock: la importación CSV empareja por `codigo` o, si no hay, por `codigo_barras`
+  (`productosController.importar`; el front acepta las columnas `codigo_barras`/`ean`/`barras`). Nuevo
+  `GET /mercado/predict-attributes?marca=` (`mercadoController.predecirAtributos`, sin IA): al salir del
+  campo Marca del alta, `StockPage` sugiere género y material solo si están vacíos. El mensaje de "sin
+  resultados" nombra los filtros activos y suma el botón "Limpiar filtros y ver todo el stock". La caché de
+  mercado ya existía (`mercadoGeminiService`); no existen `importacionService.js` ni `NuevoProductoModal.jsx`
+  (nombres de la especificación). Pruebas de contrato nuevas para ambos endpoints.
