@@ -8,7 +8,7 @@
 > cambio. Hay un hook de Kiro (`.kiro/hooks/sync-arquitectura-doc.json`) que lo
 > recuerda automáticamente. Al final está el **Registro de cambios**.
 
-_Última actualización: 2026-10-13 (Stock: importación por código de barras y sugerencia de género/material por marca)_
+_Última actualización: 2026-10-14 (Sobres Fase 3: estados Lentes/Listo y subida del Try-On a Cloudinary)_
 
 ---
 
@@ -59,7 +59,7 @@ notificaciones. Desplegado y funcionando en la nube como un único servicio.
 ### Variables de entorno (`backend/src/config/env.js`)
 Obligatorias: `DATABASE_URL`, `JWT_SECRET`. Otras: `DB_SSL`, `JWT_EXPIRES_IN` (8h),
 `CORS_ORIGIN`, `UPLOAD_DIR`, `SERVE_FRONTEND`, `NODE_ENV`, y las de integraciones
-(`AFIP_CUIT/CERT/KEY/PUNTO_VENTA/PRODUCCION`, `GEMINI_API_KEY`, `GEMINI_IMAGE_MODEL`,
+(`AFIP_CUIT/CERT/KEY/PUNTO_VENTA/PRODUCCION`, `CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET`, `GEMINI_API_KEY`, `GEMINI_IMAGE_MODEL`,
 `GEMINI_TEXT_MODEL`). Los modelos de Gemini se cambian por variable de entorno, sin tocar código.
 
 ---
@@ -128,6 +128,8 @@ lentes, quitar fondo, 3 vistas de marcos, logo). No corren en producción.
 - **Clientes:** CRUD `/usuarios` + fotos y graduaciones anidadas.
 - **Marcos:** CRUD `/marcos` (subida multiparte de 3 vistas).
 - **Try-On IA:** `GET /tryon-ia/estado`, `POST /tryon-ia/generar`.
+- **Subidas (Cloudinary):** `POST /uploads/tryon` (multipart, campo `imagen`, JPEG/PNG/WEBP hasta 5 MB; se guarda como WebP en la carpeta `optix_tryon` y devuelve `{url, public_id}`). Sin credenciales responde `409 sin_credenciales`. Solo para imágenes nuevas del Try-On: las fotos de `fotosController` siguen en disco local. Servicio: `services/storageService.js`.
+- **Estados de sobres:** `pendiente, reserva, en_taller, lentes, listo, entregado, anulado`. Se validan solo en `sobresController.ESTADOS` (la base ya no tiene CHECK).
 - **Mercado:** `GET /mercado/predict-attributes?marca=` (cualquier usuario; sin IA ni costo: devuelve `{predictions:{genero,material}|null, fuente}` con lo más frecuente en `productos` de esa marca y, si falta, en `mercado_catalogo`; marca de menos de 2 letras → `predictions:null`, más de 120 → 400), `GET /mercado?q=` (cualquier usuario; texto parcial por ILIKE y, si no hay
   resultados, por similitud con `pg_trgm`), `POST /mercado/enriquecer` (admin; body
   `{marca?, modelo?, forzar?}`: alcanza con la marca, el modelo o ambos, completos o parciales,
@@ -487,3 +489,10 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
   resultados" nombra los filtros activos y suma el botón "Limpiar filtros y ver todo el stock". La caché de
   mercado ya existía (`mercadoGeminiService`); no existen `importacionService.js` ni `NuevoProductoModal.jsx`
   (nombres de la especificación). Pruebas de contrato nuevas para ambos endpoints.
+- **2026-10-14** — Sobres Fase 3 y Cloudinary. Estados nuevos `lentes` y `listo` (`SobresPage`,
+  `SobreConsola`, `sobresController.ESTADOS`). Migración que quita el CHECK `sobres_estado_check`: la
+  validación queda solo en el backend (única excepción a "solo agregar", permitida por nombre en
+  `verificarMigraciones.js`). Las columnas DEG ya existían y no se tocaron (siguen en `NULL` = sin dato).
+  Nuevo `POST /uploads/tryon` (`uploadRoutes`, `uploadController`, `services/storageService.js`,
+  dependencia `cloudinary`, variables `CLOUDINARY_*`). Las fotos de `fotosController` siguen en disco.
+  El Try-On del front todavía no llama a este endpoint.

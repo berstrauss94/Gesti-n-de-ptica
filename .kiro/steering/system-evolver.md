@@ -23,7 +23,10 @@ Reglas permanentes para cualquier cambio en este repositorio. Complementan
 - Solo agregar: `CREATE ... IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`,
   `INSERT ... ON CONFLICT`, `UPDATE ... WHERE`, `DROP TRIGGER IF EXISTS` antes
   de `CREATE TRIGGER`. Nada destructivo (DROP, TRUNCATE, DELETE, RENAME,
-  cambio de tipo).
+  cambio de tipo). Única excepción: `ALTER TABLE sobres DROP CONSTRAINT IF
+  EXISTS sobres_estado_check` (los estados de sobres se validan en
+  `sobresController.ESTADOS`); está permitida por nombre en
+  `verificarMigraciones.js`.
 - Validar con `npm run migrate:check` (sin base de datos).
 
 ## 3. Modelos de IA (Gemini)

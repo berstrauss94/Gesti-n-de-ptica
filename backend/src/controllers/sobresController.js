@@ -30,7 +30,9 @@ const CAMPOS = [
 
 const BOOLEANOS = ['armazon_lejos_es_propio', 'armazon_cerca_es_propio'];
 
-const ESTADOS = ['pendiente', 'reserva', 'en_taller', 'entregado', 'anulado'];
+// 'lentes' = lentes recibidos del laboratorio; 'listo' = armado y listo para entrega.
+// La base ya no restringe el estado: esta lista es la única validación.
+const ESTADOS = ['pendiente', 'reserva', 'en_taller', 'lentes', 'listo', 'entregado', 'anulado'];
 
 // Columnas descriptivas que se suman al leer un sobre (nombres para la UI).
 const SELECT_DETALLE = `

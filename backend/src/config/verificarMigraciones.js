@@ -44,6 +44,8 @@ function verificarMigraciones(migraciones) {
     const dropTrigger = sql.match(/^DROP\s+TRIGGER\s+IF\s+EXISTS\s+(\w+)/i);
     if (dropTrigger) { triggersBorrados.add(dropTrigger[1].toLowerCase()); return; }
 
+    // Única excepción: quitar el CHECK de estados de sobres (validan en el backend).
+    if (/^ALTER TABLE sobres DROP CONSTRAINT IF EXISTS sobres_estado_check$/i.test(sql)) return;
     DESTRUCTIVAS.forEach(([re, problema]) => { if (re.test(sql)) agregar(problema); });
 
     if (/^CREATE\s+TABLE\b/i.test(sql) && !/^CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\b/i.test(sql)) {

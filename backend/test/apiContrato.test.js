@@ -103,6 +103,10 @@ const CASOS = [
   ['GET', '/api/mercado/predict-attributes?marca=', {}, [200], 'predictions'],
   ['GET', `/api/mercado/predict-attributes?marca=${'x'.repeat(121)}`, {}, [400], 'error'],
   ['POST', '/api/productos/importar', { token: tokenVendedor, body: { filas: [{ codigo: 'A1' }] } }, [403], 'error'],
+  ['PATCH', '/api/sobres/x/estado', { body: { estado: 'taller_listo' } }, [400], 'error'],
+  ['PATCH', '/api/sobres/00000000-0000-0000-0000-000000000000/estado', { body: { estado: 'lentes' } }, [404], 'error'],
+  ['POST', '/api/uploads/tryon', { body: {} }, [400], 'error'],
+  ['POST', '/api/uploads/tryon', { token: null, body: {} }, [401], 'error'],
   ['GET', '/api/sobres', { token: null }, [401], 'error'],
   ['GET', '/api/no-existe', {}, [404], 'error'],
 ];

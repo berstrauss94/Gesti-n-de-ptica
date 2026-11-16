@@ -20,9 +20,10 @@ import InfoBtn from '../components/InfoBtn';
 import SobreConsola from '../components/sobres/SobreConsola';
 import { useEsAdmin } from '../hooks/useEsAdmin';
 
-const ESTADOS = ['pendiente', 'reserva', 'en_taller', 'entregado', 'anulado'];
+const ESTADOS = ['pendiente', 'reserva', 'en_taller', 'lentes', 'listo', 'entregado', 'anulado'];
 const ESTADO_LABEL = {
   pendiente: 'Pendiente', reserva: 'Reserva', en_taller: 'En taller',
+  lentes: 'Lentes', listo: 'Listo',
   entregado: 'Entregado', anulado: 'Anulado',
 };
 

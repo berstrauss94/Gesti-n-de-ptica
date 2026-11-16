@@ -22,10 +22,10 @@ import { transponer, calcularCerca } from '../../utils/receta';
 import Modal from '../Modal';
 import SelectorArmazon from './SelectorArmazon';
 
-const ESTADOS = ['pendiente', 'reserva', 'en_taller', 'entregado', 'anulado'];
+const ESTADOS = ['pendiente', 'reserva', 'en_taller', 'lentes', 'listo', 'entregado', 'anulado'];
 const ESTADO_LABEL = {
   pendiente: 'Pendiente', reserva: 'Reserva', en_taller: 'En taller',
-  entregado: 'Entregado', anulado: 'Anulado',
+  lentes: 'Lentes', listo: 'Listo', entregado: 'Entregado', anulado: 'Anulado',
 };
 
 // Columnas de la grilla de receta. LEJOS lleva ADD; CERCA lleva DEG.

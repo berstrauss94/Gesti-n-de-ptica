@@ -49,6 +49,11 @@ module.exports = {
   // Modelos de respaldo, en orden, si el principal responde 404 (retirado) o
   // 429 (sin cuota). Lista separada por comas; se edita en Railway sin tocar
   // código. Solo modelos verificados como vigentes para la API key.
+  // --- Cloudinary (imágenes nuevas del Try-On) ---
+  // Si faltan, la subida responde 409 "sin_credenciales" y el resto sigue igual.
+  CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || '',
+  CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || '',
+  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || '',
   GEMINI_TEXT_FALLBACKS: (process.env.GEMINI_TEXT_FALLBACKS || 'gemini-flash-latest,gemini-2.5-flash')
     .split(',').map((m) => m.trim()).filter(Boolean),
 };

@@ -400,6 +400,10 @@ const MIGRACIONES = [
      total NUMERIC(12,2) NOT NULL DEFAULT 0,
      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
    )`,
+  // Fase 3: los estados (incluidos 'lentes' y 'listo') se validan en
+  // sobresController (ESTADOS). Se quita el CHECK de la base: es la única
+  // excepción a "solo agregar", permitida por nombre en verificarMigraciones.
+  `ALTER TABLE sobres DROP CONSTRAINT IF EXISTS sobres_estado_check`,
   `CREATE INDEX IF NOT EXISTS idx_sobres_cliente ON sobres(cliente_id)`,
   `CREATE INDEX IF NOT EXISTS idx_sobres_estado ON sobres(estado)`,
   `CREATE INDEX IF NOT EXISTS idx_sobres_sucursal ON sobres(sucursal_id)`,
