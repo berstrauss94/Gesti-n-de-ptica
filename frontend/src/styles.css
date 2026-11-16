@@ -1276,3 +1276,26 @@ body {
 
 /* Fila del listado con el sobre abierto en la consola */
 .fila-activa { background: #fdf2f8; box-shadow: inset 3px 0 0 var(--primary-accent); }
+
+/* ===================================================================
+   Stock — barra de filtros tipo Optix y paginado
+   Sin animaciones ni z-index propios (el popover de ayuda queda arriba).
+   =================================================================== */
+.searchbar--filtros select {
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+  min-width: 150px;
+}
+.searchbar--filtros input[type="search"] { flex-basis: 100%; }
+@media (min-width: 900px) {
+  .searchbar--filtros input[type="search"] { flex-basis: 320px; }
+}
+
+.paginado {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.paginado .muted { margin-right: auto; }

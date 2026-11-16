@@ -8,7 +8,7 @@
 > cambio. Hay un hook de Kiro (`.kiro/hooks/sync-arquitectura-doc.json`) que lo
 > recuerda automáticamente. Al final está el **Registro de cambios**.
 
-_Última actualización: 2026-10-12 (Cadena de modelos de Gemini + compuerta de calidad: pruebas, chequeo de migraciones y deploy verificado)_
+_Última actualización: 2026-10-12 (Stock: filtros tipo Optix, búsqueda parcial tolerante a errores y paginado)_
 
 ---
 
@@ -103,7 +103,7 @@ Optica/
 | **Clientes/Pacientes** | CRUD, fotos de seguimiento (hasta 3), graduaciones/recetas anidadas. |
 | **Marcos (catálogo)** | CRUD de armazones con 3 vistas (frontal/45°/perfil) en PNG transparente. |
 | **Virtual Try-On** | Superposición 2D con escalado antropométrico (DIP + MediaPipe) + composición realista con IA (Gemini). |
-| **Stock / Inventario** | Multisucursal: existencias, movimientos, alta, recálculo de precios, filtro por marca, traslados entre sucursales, export CSV, impresión de etiquetas con código de barras (Code128), **importación de listas de precios de proveedor por CSV**. |
+| **Stock / Inventario** | Multisucursal: existencias, movimientos, alta y edición con género/material/ubicación/proveedor, búsqueda parcial tolerante a errores de tipeo, filtros por marca/género/material/ubicación/proveedor, paginado (20/50/100/todos), recálculo de precios, traslados entre sucursales, export CSV, impresión de etiquetas con código de barras (Code128), **importación de listas de precios de proveedor por CSV**. |
 | **TPV / Ventas** | Caja (apertura/cierre con arqueo), ventas, pagos, señas, entrega, anulación, reintegros/retiros de caja, cuenta corriente, **descuentos/promociones por venta**. |
 | **Promociones / Descuentos** | El comercio crea sus propios descuentos (porcentaje o monto), los activa/desactiva y los aplica en el TPV. |
 | **Obras sociales / Convenios** | Alta de convenios con % de cobertura por defecto; en el TPV se aplica la cobertura y el total refleja lo que paga el paciente. Gestión en Configuración (admin). |
@@ -135,14 +135,14 @@ lentes, quitar fondo, 3 vistas de marcos, logo). No corren en producción.
   y responde `200` con `cache: true` y `coincidencia` (`exacto|parcial|similar`) sin consultar a
   Gemini. Si no hay coincidencia (o `forzar: true`) consulta a la IA, que resuelve la marca/modelo
   oficial más probable o devuelve `no_identificado` (400), y responde `201` con `coincidencia: "ia"`.
-- **Stock:** `/sucursales`, `/productos`, `POST /productos/importar` (admin, lista de precios CSV), `/stock`, `/stock/marcas`, movimientos, `/traslados`.
+- **Stock:** `/sucursales`, `/productos`, `POST /productos/importar` (admin, lista de precios CSV), `/stock` (devuelve `total` y `parecidos`; `limit` hasta 1000), `/stock/marcas`, `GET /stock/filtros` (opciones de los desplegables), movimientos, `/traslados`.
 - **TPV:** `/cajas/*` (actual/abrir/cerrar/movimientos), `/ventas/*` (acepta `descuento` al crear), pagos, entregar, anular, `/cuenta-corriente/:id`.
 - **Promociones:** `GET /promociones`, `POST /promociones` (admin), `PATCH /promociones/:id` (admin), `DELETE /promociones/:id` (admin).
 - **Obras sociales:** `GET /obras-sociales`, `POST /obras-sociales` (admin), `PUT /obras-sociales/:id` (admin), `DELETE /obras-sociales/:id` (admin).
 - **Sobres:** `GET /sobres`, `POST /sobres`, `GET /sobres/:id`, `PUT /sobres/:id`, `PATCH /sobres/:id/estado`, `DELETE /sobres/:id`. Las lecturas devuelven además los nombres de médico, armazones (lejos/cerca) y laboratorio; los errores de datos (referencia inexistente, número inválido, eje fuera de rango) responden 400 con mensaje claro.
 - **Médicos:** `GET /medicos?activos=&q=` (cualquier usuario), `POST /medicos`, `PUT /medicos/:id`, `DELETE /medicos/:id` (admin; si el médico ya figura en sobres se desactiva en lugar de borrarse).
 - **Comisiones:** `GET /comisiones` (admin; filtros desde/hasta/sucursal/vendedor).
-- **Stock:** el listado acepta además filtros `genero`, `material`, `ubicacion_prod`.
+- **Stock:** el listado acepta además filtros `genero`, `material`, `ubicacion_prod` (columna `productos.ubicacion`) y `proveedor_id`. `q` busca por texto parcial en nombre + código + código de barras + marca (índice trigram `idx_productos_busqueda_trgm`); si no hay resultados y `q` tiene 3+ letras, reintenta por parecido (`word_similarity`) y responde `parecidos: true`. `POST/PUT /productos` aceptan `genero` (Hombre/Mujer/Unisex/Niño), `material`, `ubicacion` (hasta 40) y `proveedor_id`.
 - **Compras:** `/proveedores`, `/compras`, `/ordenes-laboratorio`, `GET /compras-citi?periodo=YYYY-MM` (admin, descarga .txt).
 - **Fiscal:** `/fiscal/estado`, `GET/PUT /fiscal/config` (admin; config AFIP sin exponer cert/clave), `/fiscal/emitir`, `/fiscal/comprobantes`.
 - **Notificaciones:** `/notificaciones/config`, `/notificaciones`, `/notificaciones/prueba`.
@@ -448,3 +448,16 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
 - **2026-10-12** — `db/init-remoto.js` acepta `DB_SSL=false` para inicializar una base local sin SSL
   (antes forzaba SSL y solo servía con Railway; con Railway sigue igual). Con eso se verificó la
   Etapa 1 de Sobres contra PostgreSQL real (migraciones dos veces, API y pantalla en el navegador).
+- **2026-10-12** — Stock con filtros tipo Optix:
+  - **Hallazgo:** `genero`, `material` y `ubicacion` ya existían en `productos` y el listado ya los filtraba,
+    pero el alta y la edición nunca los guardaban, así que esos filtros siempre quedaban vacíos.
+  - **BD** (`migrate.js`): `productos.proveedor_id` + índice, e índice trigram por expresión
+    `idx_productos_busqueda_trgm`. No se creó `ubicacion_prod` (duplicaba `productos.ubicacion`).
+  - **Backend:** `productosController.js` guarda y valida los atributos; `stockController.js` reescribe
+    `listar` (búsqueda por expresión indexada, comodines escapados, filtro por proveedor, `total` con
+    `COUNT(*) OVER()`, reintento por parecido) y suma `listarFiltros`; ruta `GET /stock/filtros`.
+  - **Frontend:** `StockPage.jsx` con desplegables Marca/Género/Material/Ubicación/Proveedor/Mostrar,
+    paginado, aviso de "más parecidos", atributos en alta y edición, y export CSV de todo lo filtrado
+    (no solo la página); `api/stock.js` (`listarFiltrosStock`); estilos `.searchbar--filtros` y `.paginado`.
+  - Verificado contra PostgreSQL real de prueba (24 chequeos) y 45 pruebas en `npm test`. Pendiente la
+    interpretación de búsquedas en lenguaje natural con IA (opcional en la especificación).

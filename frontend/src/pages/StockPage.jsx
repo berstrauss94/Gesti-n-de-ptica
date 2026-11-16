@@ -1,8 +1,11 @@
 // =====================================================================
 // Módulo de Stock / Inventario (multisucursal).
 // - Selector de sucursal.
-// - Listado de existencias con búsqueda y alerta de stock bajo.
-// - Alta de producto (con código de barras y recálculo de precio).
+// - Listado de existencias con búsqueda parcial (tolera errores de tipeo),
+//   filtros tipo Optix (marca, género, material, ubicación, proveedor) y
+//   paginado (Mostrar 20 / 50 / 100 / Todos).
+// - Alta y edición de producto (con código de barras, atributos de filtro y
+//   recálculo de precio).
 // - Registro de movimientos (entrada/salida/ajuste).
 // - Recálculo masivo de precios por margen.
 // =====================================================================
@@ -10,7 +13,6 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   listarSucursales,
-  listarProductos,
   crearProducto,
   actualizarProducto,
   eliminarProducto,
@@ -18,7 +20,7 @@ import {
   registrarMovimiento,
   listarMovimientos,
   recalcularPrecios,
-  listarMarcas,
+  listarFiltrosStock,
   crearTraslado,
   importarListaPrecios,
 } from '../api/stock';
@@ -34,6 +36,44 @@ const CAT_LABEL = {
   accesorio: 'Accesorio', otro: 'Otro',
 };
 
+// Atributos de filtro. Los géneros son una lista cerrada (la valida el backend);
+// material y ubicación son texto libre con sugerencias.
+const GENEROS = ['Hombre', 'Mujer', 'Unisex', 'Niño'];
+const MATERIALES_SUGERIDOS = ['Acetato', 'Metal', 'Titanio', 'Inyección'];
+const UBICACIONES_SUGERIDAS = ['Expositor A', 'Expositor B', 'Expositor C'];
+
+// "Mostrar": filas por página. "Todos" pide el tope del backend.
+const TODOS = 1000;
+const TAMANIOS = [20, 50, 100, TODOS];
+
+const FILTROS_VACIOS = { marca: '', genero: '', material: '', ubicacion: '', proveedor: '' };
+const OPCIONES_VACIAS = { marcas: [], generos: [], materiales: [], ubicaciones: [], proveedores: [] };
+const PRODUCTO_VACIO = {
+  codigo: '', codigo_barras: '', nombre: '', categoria: 'armazon',
+  marca: '', costo_base: '', margen_pct: '', cantidad: '',
+  genero: '', material: '', ubicacion: '', proveedor_id: '',
+};
+
+// Une las opciones guardadas con las sugeridas, sin repetir y ordenadas.
+function unirOpciones(guardadas, sugeridas) {
+  return [...new Set([...(guardadas || []), ...sugeridas])].sort((a, b) => a.localeCompare(b));
+}
+
+// Parámetros del listado a partir de los filtros de la pantalla.
+function paramsListado(sucursalId, q, f, limit, offset) {
+  return {
+    sucursal_id: sucursalId,
+    q: q || undefined,
+    marca: f.marca || undefined,
+    genero: f.genero || undefined,
+    material: f.material || undefined,
+    ubicacion_prod: f.ubicacion || undefined,
+    proveedor_id: f.proveedor || undefined,
+    limit,
+    offset,
+  };
+}
+
 export default function StockPage() {
   const esAdmin = useEsAdmin();
   const [sucursales, setSucursales] = useState([]);
@@ -44,19 +84,22 @@ export default function StockPage() {
   const [error, setError] = useState('');
   const [ok, setOk] = useState('');
 
+  // Filtros, opciones de los desplegables y paginado
+  const [filtros, setFiltros] = useState(FILTROS_VACIOS);
+  const [opciones, setOpciones] = useState(OPCIONES_VACIAS);
+  const [porPagina, setPorPagina] = useState(20);
+  const [pagina, setPagina] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [parecidos, setParecidos] = useState(false);
+
   const [mostrarAlta, setMostrarAlta] = useState(false);
-  const [prod, setProd] = useState({
-    codigo: '', codigo_barras: '', nombre: '', categoria: 'armazon',
-    marca: '', costo_base: '', margen_pct: '', cantidad: '',
-  });
+  const [prod, setProd] = useState(PRODUCTO_VACIO);
 
   // Edición de producto (modal) e historial de movimientos (modal)
   const [editando, setEditando] = useState(null); // producto en edición
   const [historial, setHistorial] = useState(null); // { producto, movimientos } | null
 
-  // Filtro por marca y traslado entre sucursales
-  const [marcas, setMarcas] = useState([]);
-  const [marcaFiltro, setMarcaFiltro] = useState('');
+  // Traslado entre sucursales
   const [traslado, setTraslado] = useState(null); // { producto } en traslado
   const [trasladoForm, setTrasladoForm] = useState({ destino_id: '', cantidad: '', motivo: '' });
 
@@ -64,26 +107,36 @@ export default function StockPage() {
   const [importar, setImportar] = useState(null); // { filas, crearNuevos } | null
   const [importResultado, setImportResultado] = useState(null);
 
-  // Carga inicial de sucursales y marcas (para el filtro)
+  const cargarOpciones = useCallback(async () => {
+    try {
+      setOpciones({ ...OPCIONES_VACIAS, ...(await listarFiltrosStock()) });
+    } catch {
+      setOpciones(OPCIONES_VACIAS); // sin opciones, los filtros quedan en "Todos"
+    }
+  }, []);
+
+  // Carga inicial de sucursales y opciones de filtro
   useEffect(() => {
     (async () => {
       try {
-        const [s, m] = await Promise.all([listarSucursales(), listarMarcas().catch(() => [])]);
+        const s = await listarSucursales();
         setSucursales(s);
-        setMarcas(m);
         if (s.length) setSucursalId(s[0].id);
       } catch (err) {
         setError(err.response?.data?.error || 'No se pudieron cargar las sucursales');
       }
     })();
-  }, []);
+    cargarOpciones();
+  }, [cargarOpciones]);
 
-  const cargarStock = useCallback(async (sid, busqueda, marca) => {
+  const cargarStock = useCallback(async (sid, busqueda, f, pag, tam) => {
     if (!sid) return;
     setCargando(true); setError('');
     try {
-      const data = await listarStock({ sucursal_id: sid, q: busqueda || undefined, marca: marca || undefined });
+      const data = await listarStock(paramsListado(sid, busqueda, f, tam, pag * tam));
       setStock(data.stock);
+      setTotal(data.total ?? data.stock.length);
+      setParecidos(Boolean(data.parecidos));
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo cargar el stock');
     } finally {
@@ -91,7 +144,21 @@ export default function StockPage() {
     }
   }, []);
 
-  useEffect(() => { cargarStock(sucursalId, q, marcaFiltro); }, [sucursalId, marcaFiltro, cargarStock]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { cargarStock(sucursalId, q, filtros, pagina, porPagina); }, [sucursalId, filtros, pagina, porPagina, cargarStock]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Recarga la página actual con los filtros vigentes (tras altas, ediciones, movimientos).
+  function refrescar() { cargarStock(sucursalId, q, filtros, pagina, porPagina); }
+
+  // Cambiar un filtro o la cantidad por página vuelve a la primera página.
+  function setFiltro(campo, valor) { setPagina(0); setFiltros((f) => ({ ...f, [campo]: valor })); }
+  function limpiarFiltros() { setPagina(0); setFiltros(FILTROS_VACIOS); }
+  const hayFiltros = Object.values(filtros).some(Boolean);
+
+  function buscar(e) {
+    e.preventDefault();
+    if (pagina !== 0) setPagina(0); // el efecto recarga con la búsqueda nueva
+    else cargarStock(sucursalId, q, filtros, 0, porPagina);
+  }
 
   // Precio calculado en vivo en el form de alta
   const precioCalculado = useMemo(() => {
@@ -99,6 +166,9 @@ export default function StockPage() {
     const m = Number(prod.margen_pct) || 0;
     return Math.round(c * (1 + m / 100) * 100) / 100;
   }, [prod.costo_base, prod.margen_pct]);
+
+  const materiales = useMemo(() => unirOpciones(opciones.materiales, MATERIALES_SUGERIDOS), [opciones.materiales]);
+  const ubicaciones = useMemo(() => unirOpciones(opciones.ubicaciones, UBICACIONES_SUGERIDAS), [opciones.ubicaciones]);
 
   function setCampo(c, v) { setProd((p) => ({ ...p, [c]: v })); }
 
@@ -114,6 +184,10 @@ export default function StockPage() {
         marca: prod.marca.trim() || undefined,
         costo_base: prod.costo_base || 0,
         margen_pct: prod.margen_pct || 0,
+        genero: prod.genero || undefined,
+        material: prod.material.trim() || undefined,
+        ubicacion: prod.ubicacion.trim() || undefined,
+        proveedor_id: prod.proveedor_id || undefined,
       });
       // Si cargaron cantidad inicial, registrar entrada en la sucursal actual
       const cant = Number(prod.cantidad);
@@ -124,9 +198,10 @@ export default function StockPage() {
         });
       }
       setOk(`Producto "${nuevo.nombre}" creado.`);
-      setProd({ codigo: '', codigo_barras: '', nombre: '', categoria: 'armazon', marca: '', costo_base: '', margen_pct: '', cantidad: '' });
+      setProd(PRODUCTO_VACIO);
       setMostrarAlta(false);
-      cargarStock(sucursalId, q, marcaFiltro);
+      refrescar();
+      cargarOpciones();
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo crear el producto');
     }
@@ -137,7 +212,7 @@ export default function StockPage() {
     setError(''); setOk('');
     try {
       await registrarMovimiento({ producto_id, sucursal_id: sucursalId, tipo, cantidad, motivo: 'ajuste manual' });
-      cargarStock(sucursalId, q, marcaFiltro);
+      refrescar();
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo registrar el movimiento');
     }
@@ -149,7 +224,7 @@ export default function StockPage() {
     try {
       const r = await recalcularPrecios({ margen_pct: Number(margen) });
       setOk(`Precios recalculados: ${r.actualizados} productos.`);
-      cargarStock(sucursalId, q, marcaFiltro);
+      refrescar();
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo recalcular');
     }
@@ -166,6 +241,10 @@ export default function StockPage() {
       marca: s.marca || '',
       costo_base: s.costo_base ?? '',
       margen_pct: s.margen_pct ?? '',
+      genero: s.genero || '',
+      material: s.material || '',
+      ubicacion: s.ubicacion_prod || '',
+      proveedor_id: s.proveedor_id || '',
     });
   }
 
@@ -181,10 +260,16 @@ export default function StockPage() {
         marca: editando.marca.trim() || undefined,
         costo_base: Number(editando.costo_base) || 0,
         margen_pct: Number(editando.margen_pct) || 0,
+        // '' borra el dato (el backend lo guarda como vacío)
+        genero: editando.genero,
+        material: editando.material.trim(),
+        ubicacion: editando.ubicacion.trim(),
+        proveedor_id: editando.proveedor_id,
       });
       setOk(`Producto "${editando.nombre}" actualizado.`);
       setEditando(null);
-      cargarStock(sucursalId, q, marcaFiltro);
+      refrescar();
+      cargarOpciones();
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo actualizar el producto');
     }
@@ -196,7 +281,7 @@ export default function StockPage() {
     try {
       await eliminarProducto(s.producto_id);
       setOk(`Producto "${s.nombre}" eliminado.`);
-      cargarStock(sucursalId, q, marcaFiltro);
+      refrescar();
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo eliminar el producto');
     }
@@ -212,28 +297,41 @@ export default function StockPage() {
     }
   }
 
-  // Exporta el stock visible actualmente a un archivo CSV (sin backend).
-  function exportarCSV() {
-    if (!stock.length) {
+  // Exporta a CSV TODO lo que coincide con la búsqueda y los filtros actuales
+  // (no solo la página visible), hasta el tope del backend.
+  async function exportarCSV() {
+    setError(''); setOk('');
+    let filas;
+    try {
+      filas = (await listarStock(paramsListado(sucursalId, q, filtros, TODOS, 0))).stock;
+    } catch (err) {
+      setError(err.response?.data?.error || 'No se pudo preparar la exportación');
+      return;
+    }
+    if (!filas.length) {
       setError('No hay productos para exportar.');
       return;
     }
-    const cols = ['Código', 'Código de barras', 'Nombre', 'Categoría', 'Marca', 'Precio', 'Cantidad', 'Bajo mínimo'];
+    const cols = ['Código', 'Código de barras', 'Nombre', 'Categoría', 'Marca', 'Género', 'Material', 'Ubicación', 'Proveedor', 'Precio', 'Cantidad', 'Bajo mínimo'];
     const esc = (v) => {
       const t = v == null ? '' : String(v);
       return /[";\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
     };
-    const filas = stock.map((s) => [
+    const lineas = filas.map((s) => [
       s.codigo,
       s.codigo_barras || '',
       s.nombre,
       CAT_LABEL[s.categoria] || s.categoria,
       s.marca || '',
+      s.genero || '',
+      s.material || '',
+      s.ubicacion_prod || '',
+      s.proveedor_nombre || '',
       Number(s.precio_venta).toFixed(2),
       s.cantidad,
       s.bajo_minimo ? 'sí' : 'no',
     ].map(esc).join(';'));
-    const csv = [cols.join(';'), ...filas].join('\r\n');
+    const csv = [cols.join(';'), ...lineas].join('\r\n');
     // BOM para que Excel reconozca los acentos (UTF-8)
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -245,7 +343,7 @@ export default function StockPage() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    setOk('Stock exportado a CSV.');
+    setOk(`Stock exportado a CSV (${filas.length} productos).`);
   }
 
   // Parsea un CSV simple (coma o punto y coma) con encabezados y mapea las
@@ -308,7 +406,8 @@ export default function StockPage() {
       const r = await importarListaPrecios(importar.filas, importar.crearNuevos);
       setImportResultado(r);
       setOk(`Importación: ${r.actualizados} actualizados, ${r.creados} creados, ${r.errores.length} con error.`);
-      cargarStock(sucursalId, q, marcaFiltro);
+      refrescar();
+      cargarOpciones();
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo importar la lista de precios');
     }
@@ -366,11 +465,41 @@ export default function StockPage() {
       });
       setOk('Traslado realizado.');
       setTraslado(null);
-      cargarStock(sucursalId, q, marcaFiltro);
+      refrescar();
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo realizar el traslado');
     }
   }
+
+  // Campos de atributos (género, material, ubicación, proveedor), compartidos
+  // entre el alta y la edición. `datos` es el objeto del formulario.
+  function camposAtributos(datos, cambiar) {
+    return (
+      <>
+        <label className="field"><span>Género</span>
+          <select value={datos.genero} onChange={(e) => cambiar('genero', e.target.value)}>
+            <option value="">Sin indicar</option>
+            {GENEROS.map((g) => <option key={g} value={g}>{g}</option>)}
+          </select></label>
+        <label className="field"><span>Material</span>
+          <input list="stock-materiales" maxLength={40} value={datos.material}
+            onChange={(e) => cambiar('material', e.target.value)} placeholder="Acetato, Metal…" /></label>
+        <label className="field"><span>Ubicación</span>
+          <input list="stock-ubicaciones" maxLength={40} value={datos.ubicacion}
+            onChange={(e) => cambiar('ubicacion', e.target.value)} placeholder="Expositor A…" /></label>
+        <label className="field"><span>Proveedor</span>
+          <select value={datos.proveedor_id} onChange={(e) => cambiar('proveedor_id', e.target.value)}>
+            <option value="">Sin indicar</option>
+            {opciones.proveedores.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+          </select></label>
+      </>
+    );
+  }
+
+  const desde = total === 0 ? 0 : pagina * porPagina + 1;
+  const hasta = Math.min((pagina + 1) * porPagina, total);
+  const hayAnterior = pagina > 0;
+  const haySiguiente = (pagina + 1) * porPagina < total;
 
   return (
     <div className="stack seccion-con-fondo">
@@ -383,12 +512,12 @@ export default function StockPage() {
           Stock / Inventario
           <InfoBtn
             paraQue="Controla el inventario de productos (armazones, cristales, lentes de contacto) por sucursal."
-            comoFunciona="Elegí la sucursal, buscá productos, cargá nuevos con costo y margen, y ajustá cantidades con los botones +/−."
-            conQueFin="Saber qué hay en stock en cada local y mantener los precios de venta actualizados."
+            comoFunciona="Elegí la sucursal, buscá aunque sea con parte del nombre, filtrá por marca, género, material, ubicación o proveedor, y ajustá cantidades con los botones +/−."
+            conQueFin="Saber qué hay en stock en cada local, encontrarlo rápido y mantener los precios de venta actualizados."
           />
         </h1>
         <div className="tryon-toolbar">
-          <select value={sucursalId} onChange={(e) => setSucursalId(e.target.value)}>
+          <select value={sucursalId} onChange={(e) => { setPagina(0); setSucursalId(e.target.value); }}>
             {sucursales.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
           </select>
           <button type="button" className="btn btn--ghost btn--inline" onClick={exportarCSV}>
@@ -415,6 +544,10 @@ export default function StockPage() {
       {error && <p className="alert alert--error" role="alert">{error}</p>}
       {ok && <p className="alert alert--ok" role="status">{ok}</p>}
 
+      {/* Sugerencias para material y ubicación (alta y edición) */}
+      <datalist id="stock-materiales">{materiales.map((m) => <option key={m} value={m} />)}</datalist>
+      <datalist id="stock-ubicaciones">{ubicaciones.map((u) => <option key={u} value={u} />)}</datalist>
+
       {mostrarAlta && (
         <form className="card form-grid" onSubmit={handleAlta}>
           <label className="field"><span>Código *</span>
@@ -428,7 +561,8 @@ export default function StockPage() {
               {CATEGORIAS.map((c) => <option key={c} value={c}>{CAT_LABEL[c]}</option>)}
             </select></label>
           <label className="field"><span>Marca</span>
-            <input value={prod.marca} onChange={(e) => setCampo('marca', e.target.value)} /></label>
+            <input list="stock-marcas" value={prod.marca} onChange={(e) => setCampo('marca', e.target.value)} /></label>
+          {camposAtributos(prod, setCampo)}
           <label className="field"><span>Costo base ($)</span>
             <input type="number" step="0.01" min="0" value={prod.costo_base} onChange={(e) => setCampo('costo_base', e.target.value)} /></label>
           <label className="field"><span>Margen (%)</span>
@@ -442,20 +576,52 @@ export default function StockPage() {
           </div>
         </form>
       )}
+      <datalist id="stock-marcas">{opciones.marcas.map((m) => <option key={m} value={m} />)}</datalist>
 
-      <form className="searchbar" onSubmit={(e) => { e.preventDefault(); cargarStock(sucursalId, q, marcaFiltro); }}>
-        <input type="search" placeholder="Buscar por nombre, código o código de barras…" value={q} onChange={(e) => setQ(e.target.value)} />
-        <select value={marcaFiltro} onChange={(e) => setMarcaFiltro(e.target.value)}>
-          <option value="">Todas las marcas</option>
-          {marcas.map((m) => <option key={m} value={m}>{m}</option>)}
-        </select>
+      {/* Búsqueda parcial + filtros tipo Optix */}
+      <form className="searchbar searchbar--filtros" onSubmit={buscar}>
+        <input type="search" placeholder="Buscar por nombre, código, código de barras o marca (ej: “Ray”)…" value={q} onChange={(e) => setQ(e.target.value)} />
         <button type="submit" className="btn btn--ghost">Buscar</button>
+        <select aria-label="Marca" value={filtros.marca} onChange={(e) => setFiltro('marca', e.target.value)}>
+          <option value="">Todas las marcas</option>
+          {opciones.marcas.map((m) => <option key={m} value={m}>{m}</option>)}
+        </select>
+        <select aria-label="Género" value={filtros.genero} onChange={(e) => setFiltro('genero', e.target.value)}>
+          <option value="">Todos los géneros</option>
+          {GENEROS.map((g) => <option key={g} value={g}>{g}</option>)}
+        </select>
+        <select aria-label="Material" value={filtros.material} onChange={(e) => setFiltro('material', e.target.value)}>
+          <option value="">Todos los materiales</option>
+          {opciones.materiales.map((m) => <option key={m} value={m}>{m}</option>)}
+        </select>
+        <select aria-label="Ubicación" value={filtros.ubicacion} onChange={(e) => setFiltro('ubicacion', e.target.value)}>
+          <option value="">Todas las ubicaciones</option>
+          {opciones.ubicaciones.map((u) => <option key={u} value={u}>{u}</option>)}
+        </select>
+        <select aria-label="Proveedor" value={filtros.proveedor} onChange={(e) => setFiltro('proveedor', e.target.value)}>
+          <option value="">Todos los proveedores</option>
+          {opciones.proveedores.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+        </select>
+        <select aria-label="Mostrar" value={porPagina} onChange={(e) => { setPagina(0); setPorPagina(Number(e.target.value)); }}>
+          {TAMANIOS.map((t) => <option key={t} value={t}>{t === TODOS ? 'Mostrar todos' : `Mostrar ${t}`}</option>)}
+        </select>
+        {hayFiltros && (
+          <button type="button" className="btn btn--ghost" onClick={limpiarFiltros}>Limpiar filtros</button>
+        )}
       </form>
+
+      {parecidos && !cargando && (
+        <p className="muted small" role="status">
+          No hubo coincidencias exactas con “{q}”: te mostramos los productos más parecidos.
+        </p>
+      )}
 
       {cargando ? (
         <p className="muted">Cargando…</p>
       ) : stock.length === 0 ? (
-        <div className="card empty"><p>Sin productos con stock en esta sucursal.</p></div>
+        <div className="card empty">
+          <p>{q || hayFiltros ? 'Ningún producto coincide con la búsqueda o los filtros.' : 'Sin productos con stock en esta sucursal.'}</p>
+        </div>
       ) : (
         <div className="card no-pad">
           <table className="table">
@@ -463,35 +629,52 @@ export default function StockPage() {
               <tr><th>Producto</th><th>Categoría</th><th>Precio</th><th>Cantidad</th><th>Movimiento</th></tr>
             </thead>
             <tbody>
-              {stock.map((s) => (
-                <tr key={s.id} className={s.bajo_minimo ? 'fila-alerta' : ''}>
-                  <td>
-                    <strong>{s.nombre}</strong>
-                    <div className="muted small">{s.codigo}{s.codigo_barras ? ` · ${s.codigo_barras}` : ''}</div>
-                  </td>
-                  <td>{CAT_LABEL[s.categoria] || s.categoria}</td>
-                  <td>$ {Number(s.precio_venta).toFixed(2)}</td>
-                  <td>
-                    <strong>{s.cantidad}</strong>
-                    {s.bajo_minimo && <span className="tag tag--rojo">bajo mínimo</span>}
-                  </td>
-                  <td className="col-mov">
-                    <button type="button" className="btn-mini" onClick={() => mover(s.producto_id, 'salida', 1)}>−</button>
-                    <button type="button" className="btn-mini" onClick={() => mover(s.producto_id, 'entrada', 1)}>+</button>
-                    <button type="button" className="btn-mini btn-mini--wide" onClick={() => verHistorial(s)}>Historial</button>
-                    <button type="button" className="btn-mini btn-mini--wide" onClick={() => imprimirEtiqueta(s)}>Etiqueta</button>
-                    {esAdmin && (
-                      <>
-                        <button type="button" className="btn-mini btn-mini--wide" onClick={() => abrirEdicion(s)}>Editar</button>
-                        <button type="button" className="btn-mini btn-mini--wide" onClick={() => abrirTraslado(s)}>Trasladar</button>
-                        <button type="button" className="btn-mini btn-mini--wide" onClick={() => handleEliminarProducto(s)}>Eliminar</button>
-                      </>
-                    )}
-                  </td>
-                </tr>
-              ))}
+              {stock.map((s) => {
+                const atributos = [s.marca, s.genero, s.material, s.ubicacion_prod, s.proveedor_nombre].filter(Boolean);
+                return (
+                  <tr key={s.id} className={s.bajo_minimo ? 'fila-alerta' : ''}>
+                    <td>
+                      <strong>{s.nombre}</strong>
+                      <div className="muted small">{s.codigo}{s.codigo_barras ? ` · ${s.codigo_barras}` : ''}</div>
+                      {atributos.length > 0 && <div className="muted small">{atributos.join(' · ')}</div>}
+                    </td>
+                    <td>{CAT_LABEL[s.categoria] || s.categoria}</td>
+                    <td>$ {Number(s.precio_venta).toFixed(2)}</td>
+                    <td>
+                      <strong>{s.cantidad}</strong>
+                      {s.bajo_minimo && <span className="tag tag--rojo">bajo mínimo</span>}
+                    </td>
+                    <td className="col-mov">
+                      <button type="button" className="btn-mini" onClick={() => mover(s.producto_id, 'salida', 1)}>−</button>
+                      <button type="button" className="btn-mini" onClick={() => mover(s.producto_id, 'entrada', 1)}>+</button>
+                      <button type="button" className="btn-mini btn-mini--wide" onClick={() => verHistorial(s)}>Historial</button>
+                      <button type="button" className="btn-mini btn-mini--wide" onClick={() => imprimirEtiqueta(s)}>Etiqueta</button>
+                      {esAdmin && (
+                        <>
+                          <button type="button" className="btn-mini btn-mini--wide" onClick={() => abrirEdicion(s)}>Editar</button>
+                          <button type="button" className="btn-mini btn-mini--wide" onClick={() => abrirTraslado(s)}>Trasladar</button>
+                          <button type="button" className="btn-mini btn-mini--wide" onClick={() => handleEliminarProducto(s)}>Eliminar</button>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Paginado */}
+      {!cargando && total > 0 && (
+        <div className="paginado" role="navigation" aria-label="Paginado del stock">
+          <span className="muted small">Mostrando {desde}–{hasta} de {total}</span>
+          <button type="button" className="btn btn--ghost btn--inline" disabled={!hayAnterior} onClick={() => setPagina((p) => p - 1)}>
+            ← Anterior
+          </button>
+          <button type="button" className="btn btn--ghost btn--inline" disabled={!haySiguiente} onClick={() => setPagina((p) => p + 1)}>
+            Siguiente →
+          </button>
         </div>
       )}
 
@@ -510,7 +693,8 @@ export default function StockPage() {
                 {CATEGORIAS.map((c) => <option key={c} value={c}>{CAT_LABEL[c]}</option>)}
               </select></label>
             <label className="field"><span>Marca</span>
-              <input value={editando.marca} onChange={(e) => setEditando({ ...editando, marca: e.target.value })} /></label>
+              <input list="stock-marcas" value={editando.marca} onChange={(e) => setEditando({ ...editando, marca: e.target.value })} /></label>
+            {camposAtributos(editando, (c, v) => setEditando((ed) => ({ ...ed, [c]: v })))}
             <label className="field"><span>Costo base ($)</span>
               <input type="number" step="0.01" min="0" value={editando.costo_base} onChange={(e) => setEditando({ ...editando, costo_base: e.target.value })} /></label>
             <label className="field"><span>Margen (%)</span>

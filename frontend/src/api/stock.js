@@ -61,6 +61,13 @@ export async function listarMovimientos(params = {}) {
   const { data } = await api.get('/api/stock/movimientos', { params });
   return data.movimientos;
 }
+// Opciones para los desplegables de Stock (de los productos activos).
+// Devuelve { marcas, generos, materiales, ubicaciones, proveedores: [{ id, nombre }] }.
+export async function listarFiltrosStock() {
+  const { data } = await api.get('/api/stock/filtros');
+  return data;
+}
+
 export async function listarMarcas() {
   const { data } = await api.get('/api/stock/marcas');
   return data.marcas;

@@ -87,6 +87,11 @@ const CASOS = [
   ['GET', '/api/medicos', { token: tokenVendedor }, [200], 'medicos'],
   ['POST', '/api/medicos', { token: tokenVendedor, body: { nombre: 'Dr. X' } }, [403], 'error'],
   ['POST', '/api/medicos', { body: { nombre: '' } }, [400], 'error'],
+  ['GET', '/api/stock/filtros', { token: tokenVendedor }, [200], 'proveedores'],
+  ['GET', '/api/stock?sucursal_id=s&genero=Mujer&material=Metal&proveedor_id=p&limit=20&offset=0', {}, [200], 'total'],
+  ['GET', '/api/stock?q=Rayban', {}, [200], 'parecidos'],
+  ['POST', '/api/productos', { body: { codigo: 'X1', nombre: 'Marco', categoria: 'armazon', genero: 'Otro' } }, [400], 'error'],
+  ['POST', '/api/productos', { body: { codigo: 'X1', nombre: 'Marco', categoria: 'armazon', material: 'x'.repeat(41) } }, [400], 'error'],
   ['GET', '/api/sobres', { token: null }, [401], 'error'],
   ['GET', '/api/no-existe', {}, [404], 'error'],
 ];

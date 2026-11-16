@@ -6,8 +6,33 @@
 const { pool, query } = require('../config/db');
 
 const COLS = `id, codigo, codigo_barras, nombre, categoria, marca, descripcion,
+  genero, material, ubicacion, proveedor_id,
   costo_base, margen_pct, precio_venta, iva_pct, activo, metadatos,
   created_at, updated_at`;
+
+// Atributos de filtro (tipo Optix). Las longitudes coinciden con las columnas.
+const GENEROS = ['Hombre', 'Mujer', 'Unisex', 'Niño'];
+const MAX_ATRIBUTO = { material: 40, ubicacion: 40 };
+
+// Valida y normaliza genero/material/ubicacion/proveedor_id del body.
+// Devuelve { datos } (solo las claves presentes; '' -> null) o { error }.
+function atributos(b) {
+  const datos = {};
+  if (b.genero !== undefined) {
+    const g = b.genero === null ? '' : String(b.genero).trim();
+    if (g && !GENEROS.includes(g)) return { error: `Género inválido. Debe ser uno de: ${GENEROS.join(', ')}` };
+    datos.genero = g || null;
+  }
+  for (const campo of ['material', 'ubicacion']) {
+    if (b[campo] !== undefined) {
+      const v = b[campo] === null ? '' : String(b[campo]).trim();
+      if (v.length > MAX_ATRIBUTO[campo]) return { error: `${campo} admite hasta ${MAX_ATRIBUTO[campo]} caracteres` };
+      datos[campo] = v || null;
+    }
+  }
+  if (b.proveedor_id !== undefined) datos.proveedor_id = b.proveedor_id || null;
+  return { datos };
+}
 
 function numOrNull(v) {
   if (v === undefined || v === null || v === '') return null;
@@ -81,16 +106,20 @@ async function crear(req, res) {
   // Si mandan precio_venta explícito lo respetamos; si no, lo calculamos.
   const precio = numOrNull(b.precio_venta) ?? calcularPrecio(costo, margen);
   const iva = numOrNull(b.iva_pct) ?? 21;
+  const { datos: attr, error: errAttr } = atributos(b);
+  if (errAttr) return res.status(400).json({ error: errAttr });
 
   try {
     const r = await query(
       `INSERT INTO productos
          (codigo, codigo_barras, nombre, categoria, marca, descripcion,
-          costo_base, margen_pct, precio_venta, iva_pct)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+          costo_base, margen_pct, precio_venta, iva_pct,
+          genero, material, ubicacion, proveedor_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
        RETURNING ${COLS}`,
       [b.codigo, b.codigo_barras || null, b.nombre, b.categoria, b.marca || null,
-       b.descripcion || null, costo, margen, precio, iva]
+       b.descripcion || null, costo, margen, precio, iva,
+       attr.genero ?? null, attr.material ?? null, attr.ubicacion ?? null, attr.proveedor_id ?? null]
     );
     return res.status(201).json({ producto: r.rows[0] });
   } catch (err) {
@@ -99,6 +128,9 @@ async function crear(req, res) {
     }
     if (err.code === '23514') {
       return res.status(400).json({ error: 'Categoría inválida' });
+    }
+    if (err.code === '23503' || err.code === '22P02') {
+      return res.status(400).json({ error: 'El proveedor elegido no existe' });
     }
     console.error('Error al crear producto:', err);
     return res.status(500).json({ error: 'Error interno del servidor' });
@@ -118,6 +150,9 @@ async function actualizar(req, res) {
     if (b[c] !== undefined) { valores.push(numOrNull(b[c])); campos.push(`${c} = $${valores.length}`); }
   });
   if (b.activo !== undefined) { valores.push(Boolean(b.activo)); campos.push(`activo = $${valores.length}`); }
+  const { datos: attr, error: errAttr } = atributos(b);
+  if (errAttr) return res.status(400).json({ error: errAttr });
+  Object.entries(attr).forEach(([c, v]) => { valores.push(v); campos.push(`${c} = $${valores.length}`); });
 
   // precio: explícito o recalculado a partir de costo/margen enviados
   if (b.precio_venta !== undefined) {
@@ -144,6 +179,7 @@ async function actualizar(req, res) {
     return res.json({ producto: r.rows[0] });
   } catch (err) {
     if (err.code === '23505') return res.status(409).json({ error: 'Código o código de barras duplicado' });
+    if (err.code === '23503' || err.code === '22P02') return res.status(400).json({ error: 'El proveedor elegido no existe' });
     console.error('Error al actualizar producto:', err);
     return res.status(500).json({ error: 'Error interno del servidor' });
   }

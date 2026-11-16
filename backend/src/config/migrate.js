@@ -504,6 +504,17 @@ const MIGRACIONES = [
        ('Efectivo','Tarjeta de Credito','Tarjeta de Debito','Q.R.','Transferencia','Cuenta Corriente'))
    )`,
   `CREATE INDEX IF NOT EXISTS idx_sobre_pagos_sobre_id ON sobre_pagos(sobre_id)`,
+
+  // --- Filtros de inventario tipo Optix ---
+  // genero / material / ubicacion ya existen en productos (más arriba); la API
+  // expone productos.ubicacion como "ubicacion_prod". Acá solo se suma el proveedor.
+  `ALTER TABLE productos ADD COLUMN IF NOT EXISTS proveedor_id UUID REFERENCES proveedores(id)`,
+  `CREATE INDEX IF NOT EXISTS idx_productos_proveedor ON productos(proveedor_id)`,
+  // Búsqueda parcial/tolerante a errores de tipeo en Stock. La expresión debe ser
+  // IDÉNTICA a BUSQUEDA_PRODUCTO de stockController.js para que se use el índice.
+  // (pg_trgm ya se crea en la sección de Mercado.)
+  `CREATE INDEX IF NOT EXISTS idx_productos_busqueda_trgm ON productos USING gin
+     ((COALESCE(nombre, '') || ' ' || COALESCE(codigo, '') || ' ' || COALESCE(codigo_barras, '') || ' ' || COALESCE(marca, '')) gin_trgm_ops)`,
 ];
 
 // `ejecutar` permite reutilizar las mismas migraciones desde otro cliente

@@ -31,6 +31,7 @@ router.delete('/productos/:id', requireRole('admin'), prod.eliminar);
 // --- Stock por sucursal ---
 router.get('/stock', stock.listar);
 router.get('/stock/marcas', stock.listarMarcas);
+router.get('/stock/filtros', stock.listarFiltros);
 router.post('/stock/movimiento', stock.registrarMovimiento);
 router.get('/stock/movimientos', stock.listarMovimientos);
 

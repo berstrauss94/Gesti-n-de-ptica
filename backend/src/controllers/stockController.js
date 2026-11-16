@@ -6,49 +6,141 @@
 
 const { pool, query } = require('../config/db');
 
-// GET /api/stock?sucursal_id=&q=&categoria=  (existencias por sucursal)
+// Texto de búsqueda de un producto. Debe ser IDÉNTICO a la expresión del índice
+// idx_productos_busqueda_trgm de migrate.js (sin el alias "p.") para que
+// PostgreSQL use el índice en el ILIKE.
+const BUSQUEDA_PRODUCTO = `(COALESCE(p.nombre, '') || ' ' || COALESCE(p.codigo, '') || ' ' || COALESCE(p.codigo_barras, '') || ' ' || COALESCE(p.marca, ''))`;
+// Umbral de parecido (pg_trgm word_similarity) para tolerar errores de tipeo.
+const UMBRAL_PARECIDO = 0.45;
+// Tope de filas por página ("Todos" en la UI).
+const MAX_FILAS = 1000;
+
+// Escapa % y _ para que no actúen como comodines en ILIKE.
+function escaparLike(texto) {
+  return String(texto).replace(/[\\%_]/g, '\\$&');
+}
+
+// GET /api/stock?sucursal_id=&q=&categoria=&marca=&genero=&material=
+//                &ubicacion_prod=&proveedor_id=&bajo_minimo=&limit=&offset=
+// Existencias por sucursal. Devuelve { stock, total, limit, offset, parecidos }.
+// q busca por texto parcial en nombre, código, código de barras y marca; si no
+// hay resultados y q tiene 3+ letras, reintenta por parecido (errores de tipeo)
+// y marca parecidos = true.
 async function listar(req, res) {
-  const { sucursal_id, q, categoria, limit = 200, offset = 0 } = req.query;
-  const lim = Math.min(parseInt(limit, 10) || 200, 500);
-  const off = parseInt(offset, 10) || 0;
+  const { sucursal_id, categoria, limit = 200, offset = 0 } = req.query;
+  const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+  const lim = Math.min(Math.max(parseInt(limit, 10) || 200, 1), MAX_FILAS);
+  const off = Math.max(parseInt(offset, 10) || 0, 0);
+
+  // Filtros comunes (todo menos la búsqueda de texto).
   const cond = [];
   const params = [];
+  const igual = (valor, columna) => {
+    if (valor) { params.push(valor); cond.push(`${columna} = $${params.length}`); }
+  };
+  igual(sucursal_id, 'ss.sucursal_id');
+  igual(categoria, 'p.categoria');
+  igual(req.query.marca, 'p.marca');
+  igual(req.query.genero, 'p.genero');
+  igual(req.query.material, 'p.material');
+  igual(req.query.ubicacion_prod, 'p.ubicacion');
+  igual(req.query.proveedor_id, 'p.proveedor_id');
+  if (req.query.bajo_minimo === 'true') cond.push('ss.cantidad <= ss.stock_minimo');
 
-  if (sucursal_id) { params.push(sucursal_id); cond.push(`ss.sucursal_id = $${params.length}`); }
-  if (q) {
-    params.push(`%${q}%`);
-    const p = `$${params.length}`;
-    cond.push(`(p.nombre ILIKE ${p} OR p.codigo ILIKE ${p} OR p.codigo_barras ILIKE ${p})`);
-  }
-  if (categoria) { params.push(categoria); cond.push(`p.categoria = $${params.length}`); }
-  if (req.query.marca) { params.push(req.query.marca); cond.push(`p.marca = $${params.length}`); }
-  if (req.query.genero) { params.push(req.query.genero); cond.push(`p.genero = $${params.length}`); }
-  if (req.query.material) { params.push(req.query.material); cond.push(`p.material = $${params.length}`); }
-  if (req.query.ubicacion_prod) { params.push(req.query.ubicacion_prod); cond.push(`p.ubicacion = $${params.length}`); }
-  if (req.query.bajo_minimo === 'true') { cond.push(`ss.cantidad <= ss.stock_minimo`); }
-  const where = cond.length ? `WHERE ${cond.join(' AND ')}` : '';
-  params.push(lim, off);
-
-  try {
-    const r = await query(
+  // Ejecuta la consulta. Si se pasa texto, "$Q" se reemplaza por su parámetro
+  // tanto en la condición como en el orden.
+  async function consultar(condTexto, valorTexto, orden) {
+    const c = [...cond];
+    const p = [...params];
+    let ordenFinal = orden;
+    if (condTexto) {
+      p.push(valorTexto);
+      const marcador = `$${p.length}`;
+      c.push(condTexto.split('$Q').join(marcador));
+      ordenFinal = orden.split('$Q').join(marcador);
+    }
+    const where = c.length ? `WHERE ${c.join(' AND ')}` : '';
+    p.push(lim, off);
+    return query(
       `SELECT ss.id, ss.producto_id, ss.sucursal_id, ss.cantidad, ss.stock_minimo,
               ss.ubicacion, ss.updated_at,
               p.codigo, p.codigo_barras, p.nombre, p.categoria, p.marca,
               p.genero, p.material, p.ubicacion AS ubicacion_prod,
+              p.proveedor_id, prov.nombre AS proveedor_nombre,
               p.precio_venta, p.costo_base,
               s.nombre AS sucursal_nombre,
-              (ss.cantidad <= ss.stock_minimo) AS bajo_minimo
+              (ss.cantidad <= ss.stock_minimo) AS bajo_minimo,
+              COUNT(*) OVER() AS total_filas
        FROM stock_sucursal ss
        JOIN productos p ON p.id = ss.producto_id
        JOIN sucursales s ON s.id = ss.sucursal_id
+       LEFT JOIN proveedores prov ON prov.id = p.proveedor_id
        ${where}
-       ORDER BY p.nombre ASC
-       LIMIT $${params.length - 1} OFFSET $${params.length}`,
-      params
+       ORDER BY ${ordenFinal}
+       LIMIT $${p.length - 1} OFFSET $${p.length}`,
+      p
     );
-    return res.json({ stock: r.rows, limit: lim, offset: off });
+  }
+
+  const responder = (r, parecidos = false) => {
+    const total = r.rows.length ? Number(r.rows[0].total_filas) : 0;
+    const stock = r.rows.map(({ total_filas, ...fila }) => fila);
+    return res.json({ stock, total, limit: lim, offset: off, parecidos });
+  };
+
+  try {
+    if (!q) return responder(await consultar(null, null, 'p.nombre ASC'));
+
+    const r = await consultar(`${BUSQUEDA_PRODUCTO} ILIKE $Q`, `%${escaparLike(q)}%`, 'p.nombre ASC');
+    if (r.rows.length > 0 || q.length < 3 || off > 0) return responder(r);
+
+    // Sin coincidencias: reintento tolerante a errores de tipeo ("Rayban" -> "Ray-Ban").
+    try {
+      const sim = await consultar(
+        `word_similarity($Q, ${BUSQUEDA_PRODUCTO}) >= ${UMBRAL_PARECIDO}`,
+        q,
+        `word_similarity($Q, ${BUSQUEDA_PRODUCTO}) DESC, p.nombre ASC`
+      );
+      return responder(sim, sim.rows.length > 0);
+    } catch (err) {
+      // pg_trgm no disponible: se devuelve el resultado vacío del ILIKE.
+      console.warn('Búsqueda por parecido omitida (pg_trgm):', err.message);
+      return responder(r);
+    }
   } catch (err) {
+    if (err.code === '22P02') return res.status(400).json({ error: 'Algún filtro tiene un identificador inválido' });
     console.error('Error al listar stock:', err);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}
+
+// GET /api/stock/filtros  -> opciones para los desplegables de Stock, tomadas
+// de los productos activos: { marcas, generos, materiales, ubicaciones, proveedores }.
+async function listarFiltros(req, res) {
+  const distintos = (col) => query(
+    `SELECT DISTINCT ${col} AS v FROM productos
+      WHERE ${col} IS NOT NULL AND ${col} <> '' AND activo = TRUE
+      ORDER BY 1 ASC`
+  );
+  try {
+    const [marcas, generos, materiales, ubicaciones, proveedores] = await Promise.all([
+      distintos('marca'), distintos('genero'), distintos('material'), distintos('ubicacion'),
+      query(
+        `SELECT id, nombre FROM proveedores
+          WHERE tipo = 'proveedor' AND activo = TRUE
+          ORDER BY nombre ASC`
+      ),
+    ]);
+    const valores = (r) => r.rows.map((x) => x.v);
+    return res.json({
+      marcas: valores(marcas),
+      generos: valores(generos),
+      materiales: valores(materiales),
+      ubicaciones: valores(ubicaciones),
+      proveedores: proveedores.rows,
+    });
+  } catch (err) {
+    console.error('Error al listar filtros de stock:', err);
     return res.status(500).json({ error: 'Error interno del servidor' });
   }
 }
@@ -169,4 +261,4 @@ async function listarMarcas(req, res) {
   }
 }
 
-module.exports = { listar, registrarMovimiento, listarMovimientos, listarMarcas };
+module.exports = { listar, listarFiltros, registrarMovimiento, listarMovimientos, listarMarcas };
