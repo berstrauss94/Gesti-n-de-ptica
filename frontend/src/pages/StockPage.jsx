@@ -26,6 +26,7 @@ import {
 } from '../api/stock';
 import fondoStock from '../assets/fondo-stock.jpg';
 import { barcodeSVG } from '../utils/barcode';
+import { interpretarBusqueda, normalizar } from '../utils/busquedaNatural';
 import InfoBtn from '../components/InfoBtn';
 import Modal from '../components/Modal';
 import { useEsAdmin } from '../hooks/useEsAdmin';
@@ -91,6 +92,8 @@ export default function StockPage() {
   const [pagina, setPagina] = useState(0);
   const [total, setTotal] = useState(0);
   const [parecidos, setParecidos] = useState(false);
+  // Lo que el intérprete de búsqueda detectó en el texto ("Género Mujer", …).
+  const [interpretado, setInterpretado] = useState([]);
 
   const [mostrarAlta, setMostrarAlta] = useState(false);
   const [prod, setProd] = useState(PRODUCTO_VACIO);
@@ -150,14 +153,29 @@ export default function StockPage() {
   function refrescar() { cargarStock(sucursalId, q, filtros, pagina, porPagina); }
 
   // Cambiar un filtro o la cantidad por página vuelve a la primera página.
-  function setFiltro(campo, valor) { setPagina(0); setFiltros((f) => ({ ...f, [campo]: valor })); }
-  function limpiarFiltros() { setPagina(0); setFiltros(FILTROS_VACIOS); }
+  function setFiltro(campo, valor) { setPagina(0); setInterpretado([]); setFiltros((f) => ({ ...f, [campo]: valor })); }
+  function limpiarFiltros() { setPagina(0); setInterpretado([]); setFiltros(FILTROS_VACIOS); }
   const hayFiltros = Object.values(filtros).some(Boolean);
 
+  // Buscar: primero interpreta el texto ("marcos de mujer en metal") y pasa lo
+  // que reconoce a los desplegables, así queda a la vista y se puede cambiar.
   function buscar(e) {
     e.preventDefault();
-    if (pagina !== 0) setPagina(0); // el efecto recarga con la búsqueda nueva
-    else cargarStock(sucursalId, q, filtros, 0, porPagina);
+    const r = interpretarBusqueda(q, { materiales: [...opciones.materiales, ...MATERIALES_SUGERIDOS] });
+    const nuevos = {
+      ...filtros,
+      genero: r.genero || filtros.genero,
+      material: r.material || filtros.material,
+    };
+    const cambian = nuevos.genero !== filtros.genero || nuevos.material !== filtros.material;
+    setInterpretado(r.detectado);
+    if (r.q !== q) setQ(r.q);
+    if (cambian || pagina !== 0) {
+      setPagina(0);
+      setFiltros(nuevos); // el efecto recarga con la búsqueda y los filtros nuevos
+    } else {
+      cargarStock(sucursalId, r.q, filtros, 0, porPagina);
+    }
   }
 
   // Precio calculado en vivo en el form de alta
@@ -352,16 +370,23 @@ export default function StockPage() {
     const lineas = String(texto || '').trim().split(/\r?\n/).filter((l) => l.trim() !== '');
     if (lineas.length < 2) { setError('El CSV debe tener encabezado y al menos una fila.'); return; }
     const sep = lineas[0].includes(';') ? ';' : ',';
-    const encabezados = lineas[0].split(sep).map((h) => h.trim().toLowerCase());
-    // Alias aceptados por campo
+    // Encabezados sin acentos, en minúscula y con "_" en lugar de espacios:
+    // "Género", "genero" y "GENERO" se leen igual; "Proveedor ID" -> "proveedor_id".
+    const encabezados = lineas[0].split(sep).map((h) => normalizar(h.trim().replace(/^"|"$/g, '')).replace(/\s+/g, '_'));
+    // Alias aceptados por campo (ya normalizados)
     const alias = {
-      codigo: ['codigo', 'código', 'code', 'sku'],
-      nombre: ['nombre', 'descripcion', 'descripción', 'detalle', 'producto'],
-      categoria: ['categoria', 'categoría', 'rubro'],
+      codigo: ['codigo', 'code', 'sku'],
+      nombre: ['nombre', 'descripcion', 'detalle', 'producto'],
+      categoria: ['categoria', 'rubro'],
       marca: ['marca'],
       costo_base: ['costo', 'costo_base', 'precio_costo', 'costounitario'],
       margen_pct: ['margen', 'margen_pct', 'markup'],
       precio_venta: ['precio', 'precio_venta', 'pvp', 'precioventa'],
+      genero: ['genero', 'sexo'],
+      material: ['material'],
+      ubicacion: ['ubicacion', 'ubicacion_prod', 'exhibidor', 'expositor'],
+      proveedor: ['proveedor', 'proveedor_nombre'],
+      proveedor_id: ['proveedor_id', 'id_proveedor'],
     };
     const idx = {};
     Object.entries(alias).forEach(([campo, nombres]) => {
@@ -385,6 +410,12 @@ export default function StockPage() {
         costo_base: num(get('costo_base')),
         margen_pct: num(get('margen_pct')),
         precio_venta: num(get('precio_venta')),
+        // Atributos: celda vacía = no tocar lo guardado (lo resuelve el backend).
+        genero: get('genero') || undefined,
+        material: get('material') || undefined,
+        ubicacion: get('ubicacion') || undefined,
+        proveedor: get('proveedor') || undefined,
+        proveedor_id: get('proveedor_id') || undefined,
       });
     }
     setImportResultado(null);
@@ -592,7 +623,8 @@ export default function StockPage() {
         </select>
         <select aria-label="Material" value={filtros.material} onChange={(e) => setFiltro('material', e.target.value)}>
           <option value="">Todos los materiales</option>
-          {opciones.materiales.map((m) => <option key={m} value={m}>{m}</option>)}
+          {/* Incluye el material detectado en la búsqueda aunque todavía no esté cargado en ningún producto */}
+          {[...new Set([...opciones.materiales, filtros.material].filter(Boolean))].map((m) => <option key={m} value={m}>{m}</option>)}
         </select>
         <select aria-label="Ubicación" value={filtros.ubicacion} onChange={(e) => setFiltro('ubicacion', e.target.value)}>
           <option value="">Todas las ubicaciones</option>
@@ -609,6 +641,12 @@ export default function StockPage() {
           <button type="button" className="btn btn--ghost" onClick={limpiarFiltros}>Limpiar filtros</button>
         )}
       </form>
+
+      {interpretado.length > 0 && (
+        <p className="muted small" role="status">
+          Busqué con: <strong>{interpretado.join(' · ')}</strong>. Podés cambiarlo en los desplegables.
+        </p>
+      )}
 
       {parecidos && !cargando && (
         <p className="muted small" role="status">
@@ -761,7 +799,9 @@ export default function StockPage() {
           <p className="muted small">
             Se leyeron <strong>{importar.filas.length}</strong> filas del CSV. Se actualizan los productos
             por <strong>código</strong>; los que no existan se crean si está tildada la opción de abajo.
-            Columnas reconocidas: codigo, nombre, categoria, marca, costo, margen, precio.
+            Columnas reconocidas: codigo, nombre, categoria, marca, costo, margen, precio,
+            genero, material, ubicacion y proveedor (por nombre, tiene que existir en Compras).
+            Una celda vacía no borra el dato que ya tenía el producto.
           </p>
           <label className="field field--check">
             <input type="checkbox" checked={importar.crearNuevos}

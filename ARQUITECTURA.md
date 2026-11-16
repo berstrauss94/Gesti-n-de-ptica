@@ -8,7 +8,7 @@
 > cambio. Hay un hook de Kiro (`.kiro/hooks/sync-arquitectura-doc.json`) que lo
 > recuerda automáticamente. Al final está el **Registro de cambios**.
 
-_Última actualización: 2026-10-12 (Stock: filtros tipo Optix, búsqueda parcial tolerante a errores y paginado)_
+_Última actualización: 2026-10-12 (Stock: importación CSV con atributos y búsqueda en lenguaje natural sin IA)_
 
 ---
 
@@ -135,14 +135,14 @@ lentes, quitar fondo, 3 vistas de marcos, logo). No corren en producción.
   y responde `200` con `cache: true` y `coincidencia` (`exacto|parcial|similar`) sin consultar a
   Gemini. Si no hay coincidencia (o `forzar: true`) consulta a la IA, que resuelve la marca/modelo
   oficial más probable o devuelve `no_identificado` (400), y responde `201` con `coincidencia: "ia"`.
-- **Stock:** `/sucursales`, `/productos`, `POST /productos/importar` (admin, lista de precios CSV), `/stock` (devuelve `total` y `parecidos`; `limit` hasta 1000), `/stock/marcas`, `GET /stock/filtros` (opciones de los desplegables), movimientos, `/traslados`.
+- **Stock:** `/sucursales`, `/productos`, `POST /productos/importar` (admin, lista de precios CSV; acepta además `genero`, `material`, `ubicacion` y `proveedor` por nombre o `proveedor_id`; celda vacía no borra; cada fila en su propio SAVEPOINT, así una fila con error no corta la importación), `/stock` (devuelve `total` y `parecidos`; `limit` hasta 1000), `/stock/marcas`, `GET /stock/filtros` (opciones de los desplegables), movimientos, `/traslados`.
 - **TPV:** `/cajas/*` (actual/abrir/cerrar/movimientos), `/ventas/*` (acepta `descuento` al crear), pagos, entregar, anular, `/cuenta-corriente/:id`.
 - **Promociones:** `GET /promociones`, `POST /promociones` (admin), `PATCH /promociones/:id` (admin), `DELETE /promociones/:id` (admin).
 - **Obras sociales:** `GET /obras-sociales`, `POST /obras-sociales` (admin), `PUT /obras-sociales/:id` (admin), `DELETE /obras-sociales/:id` (admin).
 - **Sobres:** `GET /sobres`, `POST /sobres`, `GET /sobres/:id`, `PUT /sobres/:id`, `PATCH /sobres/:id/estado`, `DELETE /sobres/:id`. Las lecturas devuelven además los nombres de médico, armazones (lejos/cerca) y laboratorio; los errores de datos (referencia inexistente, número inválido, eje fuera de rango) responden 400 con mensaje claro.
 - **Médicos:** `GET /medicos?activos=&q=` (cualquier usuario), `POST /medicos`, `PUT /medicos/:id`, `DELETE /medicos/:id` (admin; si el médico ya figura en sobres se desactiva en lugar de borrarse).
 - **Comisiones:** `GET /comisiones` (admin; filtros desde/hasta/sucursal/vendedor).
-- **Stock:** el listado acepta además filtros `genero`, `material`, `ubicacion_prod` (columna `productos.ubicacion`) y `proveedor_id`. `q` busca por texto parcial en nombre + código + código de barras + marca (índice trigram `idx_productos_busqueda_trgm`); si no hay resultados y `q` tiene 3+ letras, reintenta por parecido (`word_similarity`) y responde `parecidos: true`. `POST/PUT /productos` aceptan `genero` (Hombre/Mujer/Unisex/Niño), `material`, `ubicacion` (hasta 40) y `proveedor_id`.
+- **Stock:** el listado acepta además filtros `genero`, `material`, `ubicacion_prod` (columna `productos.ubicacion`) y `proveedor_id`. `q` busca cada palabra por separado (tienen que aparecer todas) en nombre + código + código de barras + marca (índice trigram `idx_productos_busqueda_trgm`); si no hay resultados y `q` tiene 3+ letras, reintenta por parecido (`word_similarity`) y responde `parecidos: true`. `POST/PUT /productos` aceptan `genero` (Hombre/Mujer/Unisex/Niño), `material`, `ubicacion` (hasta 40) y `proveedor_id`.
 - **Compras:** `/proveedores`, `/compras`, `/ordenes-laboratorio`, `GET /compras-citi?periodo=YYYY-MM` (admin, descarga .txt).
 - **Fiscal:** `/fiscal/estado`, `GET/PUT /fiscal/config` (admin; config AFIP sin exponer cert/clave), `/fiscal/emitir`, `/fiscal/comprobantes`.
 - **Notificaciones:** `/notificaciones/config`, `/notificaciones`, `/notificaciones/prueba`.
@@ -461,3 +461,22 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
     (no solo la página); `api/stock.js` (`listarFiltrosStock`); estilos `.searchbar--filtros` y `.paginado`.
   - Verificado contra PostgreSQL real de prueba (24 chequeos) y 45 pruebas en `npm test`. Pendiente la
     interpretación de búsquedas en lenguaje natural con IA (opcional en la especificación).
+- **2026-10-12** — Importación CSV con atributos y búsqueda en lenguaje natural sin IA:
+  - **Error corregido en la importación:** una fila que fallaba al guardarse dejaba la transacción de
+    PostgreSQL cancelada y todas las filas siguientes fallaban, así que una sola fila mala devolvía 500.
+    Ahora cada fila corre en su propio `SAVEPOINT` y solo se descarta esa fila.
+  - **Importación** (`productosController.importar`): columnas `genero` (sin distinguir mayúsculas ni
+    acentos), `material`, `ubicacion`, `proveedor` (por nombre, entre los proveedores activos; no crea
+    proveedores) o `proveedor_id`. Celda vacía = no tocar el dato guardado. `atributos()` acepta el género
+    sin acentos ni mayúsculas en alta y edición. En el front, `StockPage.jsx` normaliza los encabezados del
+    CSV ("Género", "GENERO", "Proveedor ID").
+  - **Búsqueda:** `stockController.listar` busca cada palabra por separado ("ray ban" encuentra "Ray-Ban").
+  - **Lenguaje natural sin IA:** `frontend/src/utils/busquedaNatural.js` interpreta el texto antes de buscar
+    ("marcos de mujer en metal" -> Género Mujer + Material Metal), con sinónimos y plurales, y reconoce
+    cualquier material cargado en la base. Lo detectado se pasa a los desplegables y la pantalla avisa
+    "Busqué con: …". Se hizo en el front y no en el backend para que el filtro quede a la vista.
+  - Pruebas: `backend/test/busquedaNatural.test.mjs` y casos nuevos en `apiContrato.test.js` (56 en total).
+    Verificado contra PostgreSQL real de prueba (16 chequeos, incluido que una fila con error no corta la
+    importación).
+  - No existen `services/importacionService.js` ni `components/ImportarPreciosModal.jsx` (nombres de la
+    especificación): la importación vive en `productosController.js` y el modal en `StockPage.jsx`.

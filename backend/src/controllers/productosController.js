@@ -14,14 +14,26 @@ const COLS = `id, codigo, codigo_barras, nombre, categoria, marca, descripcion,
 const GENEROS = ['Hombre', 'Mujer', 'Unisex', 'Niño'];
 const MAX_ATRIBUTO = { material: 40, ubicacion: 40 };
 
+// Sin acentos y en minúscula, para comparar textos que vienen de planillas.
+function sinAcentos(t) {
+  return String(t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
+// "mujer", "MUJER", "nino" -> el valor canónico de GENEROS (o null si no es uno).
+function generoCanonico(t) {
+  const n = sinAcentos(t);
+  return GENEROS.find((g) => sinAcentos(g) === n) || null;
+}
+
 // Valida y normaliza genero/material/ubicacion/proveedor_id del body.
 // Devuelve { datos } (solo las claves presentes; '' -> null) o { error }.
 function atributos(b) {
   const datos = {};
   if (b.genero !== undefined) {
     const g = b.genero === null ? '' : String(b.genero).trim();
-    if (g && !GENEROS.includes(g)) return { error: `Género inválido. Debe ser uno de: ${GENEROS.join(', ')}` };
-    datos.genero = g || null;
+    const canonico = g ? generoCanonico(g) : null;
+    if (g && !canonico) return { error: `Género inválido. Debe ser uno de: ${GENEROS.join(', ')}` };
+    datos.genero = canonico;
   }
   for (const campo of ['material', 'ubicacion']) {
     if (b[campo] !== undefined) {
@@ -229,10 +241,27 @@ async function eliminar(req, res) {
 // Importa/actualiza una lista de precios de proveedor. El frontend parsea el
 // CSV y envía las filas ya normalizadas.
 // Body: {
-//   filas: [{ codigo, nombre?, categoria?, marca?, costo_base?, margen_pct?, precio_venta? }],
+//   filas: [{ codigo, nombre?, categoria?, marca?, costo_base?, margen_pct?, precio_venta?,
+//             genero?, material?, ubicacion?, proveedor? (nombre) | proveedor_id? }],
 //   crear_nuevos?: boolean   // si un código no existe, ¿crearlo? (default true)
 // }
 // Match por `codigo`. Si viene costo/margen sin precio explícito, recalcula precio.
+// Atributos: una celda vacía NO borra lo guardado; solo se pisa lo que trae valor.
+// El proveedor se busca por nombre (sin distinguir mayúsculas ni acentos) entre
+// los proveedores activos; desde la planilla no se crean proveedores nuevos.
+// Cada fila corre en su propio SAVEPOINT: si una falla se descarta solo esa
+// fila y el resto de la importación sigue.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function mensajeErrorFila(e) {
+  if (e.code === '23514') return 'Categoría inválida';
+  if (e.code === '23505') return 'Código o código de barras duplicado';
+  if (e.code === '22003') return 'Algún número está fuera de rango';
+  if (e.code === '22001') return 'Algún texto supera el largo permitido';
+  if (e.code === '22P02') return 'Algún valor tiene formato inválido';
+  return 'No se pudo guardar';
+}
+
 async function importar(req, res) {
   const b = req.body || {};
   const filas = Array.isArray(b.filas) ? b.filas : [];
@@ -243,52 +272,95 @@ async function importar(req, res) {
   if (filas.length > 5000) {
     return res.status(400).json({ error: 'La lista supera el máximo de 5000 filas por importación' });
   }
-
   const resumen = { actualizados: 0, creados: 0, errores: [] };
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+
+    // Proveedores activos, para resolver la columna "proveedor" por nombre.
+    const provs = await client.query(
+      `SELECT id, nombre FROM proveedores WHERE tipo = 'proveedor' AND activo = TRUE`
+    );
+    const provPorNombre = new Map(provs.rows.map((p) => [sinAcentos(p.nombre), p.id]));
+    const provIds = new Set(provs.rows.map((p) => String(p.id).toLowerCase()));
+
     for (let i = 0; i < filas.length; i += 1) {
       const f = filas[i] || {};
+      const fila = i + 1;
       const codigo = String(f.codigo || '').trim();
-      if (!codigo) { resumen.errores.push({ fila: i + 1, error: 'Sin código' }); continue; }
+      if (!codigo) { resumen.errores.push({ fila, error: 'Sin código' }); continue; }
+
+      // Atributos: solo los que traen valor (celda vacía = no tocar).
+      const conValor = {};
+      ['genero', 'material', 'ubicacion'].forEach((c) => {
+        if (f[c] !== undefined && f[c] !== null && String(f[c]).trim() !== '') conValor[c] = f[c];
+      });
+      const { datos: attr, error: errAttr } = atributos(conValor);
+      if (errAttr) { resumen.errores.push({ fila, codigo, error: errAttr }); continue; }
+
+      const provId = String(f.proveedor_id ?? '').trim().toLowerCase();
+      const provNombre = String(f.proveedor ?? '').trim();
+      if (provId) {
+        if (!UUID_RE.test(provId) || !provIds.has(provId)) {
+          resumen.errores.push({ fila, codigo, error: 'El proveedor indicado no existe' });
+          continue;
+        }
+        attr.proveedor_id = provId;
+      } else if (provNombre) {
+        const id = provPorNombre.get(sinAcentos(provNombre));
+        if (!id) {
+          resumen.errores.push({ fila, codigo, error: `Proveedor "${provNombre}" no encontrado (cargalo primero en Compras)` });
+          continue;
+        }
+        attr.proveedor_id = id;
+      }
 
       const costo = numOrNull(f.costo_base);
       const margen = numOrNull(f.margen_pct);
       const precioExplicito = numOrNull(f.precio_venta);
 
-      // ¿Existe el producto por código?
-      const ex = await client.query('SELECT id, costo_base, margen_pct FROM productos WHERE codigo = $1', [codigo]);
-
-      if (ex.rowCount > 0) {
-        const actual = ex.rows[0];
-        const nuevoCosto = costo ?? Number(actual.costo_base);
-        const nuevoMargen = margen ?? Number(actual.margen_pct);
-        const nuevoPrecio = precioExplicito ?? calcularPrecio(nuevoCosto, nuevoMargen);
-        const sets = ['costo_base = $1', 'margen_pct = $2', 'precio_venta = $3', 'updated_at = CURRENT_TIMESTAMP'];
-        const vals = [nuevoCosto, nuevoMargen, nuevoPrecio];
-        if (f.nombre) { vals.push(f.nombre); sets.push(`nombre = $${vals.length}`); }
-        if (f.marca) { vals.push(f.marca); sets.push(`marca = $${vals.length}`); }
-        vals.push(actual.id);
-        await client.query(`UPDATE productos SET ${sets.join(', ')} WHERE id = $${vals.length}`, vals);
-        resumen.actualizados += 1;
-      } else if (crearNuevos) {
-        if (!f.nombre) { resumen.errores.push({ fila: i + 1, codigo, error: 'Producto nuevo sin nombre' }); continue; }
-        const c = costo ?? 0;
-        const m = margen ?? 0;
-        const precio = precioExplicito ?? calcularPrecio(c, m);
-        try {
-          await client.query(
-            `INSERT INTO productos (codigo, nombre, categoria, marca, costo_base, margen_pct, precio_venta, iva_pct)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,21)`,
-            [codigo, f.nombre, f.categoria || 'otro', f.marca || null, c, m, precio]
-          );
-          resumen.creados += 1;
-        } catch (e) {
-          resumen.errores.push({ fila: i + 1, codigo, error: e.code === '23514' ? 'Categoría inválida' : 'No se pudo crear' });
+      await client.query('SAVEPOINT fila');
+      try {
+        // ¿Existe el producto por código?
+        const ex = await client.query('SELECT id, costo_base, margen_pct FROM productos WHERE codigo = $1', [codigo]);
+        if (ex.rowCount > 0) {
+          const actual = ex.rows[0];
+          const nuevoCosto = costo ?? Number(actual.costo_base);
+          const nuevoMargen = margen ?? Number(actual.margen_pct);
+          const nuevoPrecio = precioExplicito ?? calcularPrecio(nuevoCosto, nuevoMargen);
+          const sets = ['costo_base = $1', 'margen_pct = $2', 'precio_venta = $3', 'updated_at = CURRENT_TIMESTAMP'];
+          const vals = [nuevoCosto, nuevoMargen, nuevoPrecio];
+          if (f.nombre) { vals.push(f.nombre); sets.push(`nombre = $${vals.length}`); }
+          if (f.marca) { vals.push(f.marca); sets.push(`marca = $${vals.length}`); }
+          Object.entries(attr).forEach(([c, v]) => { vals.push(v); sets.push(`${c} = $${vals.length}`); });
+          vals.push(actual.id);
+          await client.query(`UPDATE productos SET ${sets.join(', ')} WHERE id = $${vals.length}`, vals);
+          resumen.actualizados += 1;
+        } else if (crearNuevos) {
+          if (!f.nombre) {
+            resumen.errores.push({ fila, codigo, error: 'Producto nuevo sin nombre' });
+          } else {
+            const c = costo ?? 0;
+            const m = margen ?? 0;
+            const precio = precioExplicito ?? calcularPrecio(c, m);
+            await client.query(
+              `INSERT INTO productos
+                 (codigo, nombre, categoria, marca, costo_base, margen_pct, precio_venta, iva_pct,
+                  genero, material, ubicacion, proveedor_id)
+               VALUES ($1,$2,$3,$4,$5,$6,$7,21,$8,$9,$10,$11)`,
+              [codigo, f.nombre, f.categoria || 'otro', f.marca || null, c, m, precio,
+               attr.genero ?? null, attr.material ?? null, attr.ubicacion ?? null, attr.proveedor_id ?? null]
+            );
+            resumen.creados += 1;
+          }
+        } else {
+          resumen.errores.push({ fila, codigo, error: 'No existe y no se permite crear nuevos' });
         }
-      } else {
-        resumen.errores.push({ fila: i + 1, codigo, error: 'No existe y no se permite crear nuevos' });
+        await client.query('RELEASE SAVEPOINT fila');
+      } catch (e) {
+        // Descarta solo esta fila: la transacción sigue válida para las demás.
+        await client.query('ROLLBACK TO SAVEPOINT fila');
+        resumen.errores.push({ fila, codigo, error: mensajeErrorFila(e) });
       }
     }
     await client.query('COMMIT');

@@ -47,18 +47,18 @@ async function listar(req, res) {
   igual(req.query.proveedor_id, 'p.proveedor_id');
   if (req.query.bajo_minimo === 'true') cond.push('ss.cantidad <= ss.stock_minimo');
 
-  // Ejecuta la consulta. Si se pasa texto, "$Q" se reemplaza por su parámetro
-  // tanto en la condición como en el orden.
-  async function consultar(condTexto, valorTexto, orden) {
+  // Ejecuta la consulta. `textos` es una lista de { sql, valor }: en cada sql,
+  // "$Q" se reemplaza por el parámetro de su valor (también en el orden).
+  async function consultar(textos, orden) {
     const c = [...cond];
     const p = [...params];
     let ordenFinal = orden;
-    if (condTexto) {
-      p.push(valorTexto);
+    textos.forEach(({ sql, valor }) => {
+      p.push(valor);
       const marcador = `$${p.length}`;
-      c.push(condTexto.split('$Q').join(marcador));
-      ordenFinal = orden.split('$Q').join(marcador);
-    }
+      c.push(sql.split('$Q').join(marcador));
+      ordenFinal = ordenFinal.split('$Q').join(marcador);
+    });
     const where = c.length ? `WHERE ${c.join(' AND ')}` : '';
     p.push(lim, off);
     return query(
@@ -89,16 +89,21 @@ async function listar(req, res) {
   };
 
   try {
-    if (!q) return responder(await consultar(null, null, 'p.nombre ASC'));
+    if (!q) return responder(await consultar([], 'p.nombre ASC'));
 
-    const r = await consultar(`${BUSQUEDA_PRODUCTO} ILIKE $Q`, `%${escaparLike(q)}%`, 'p.nombre ASC');
+    // Cada palabra se busca por separado y tienen que aparecer todas ("ray ban"
+    // encuentra "Ray-Ban"). Cada condición puede usar el índice trigram.
+    const palabras = q.split(/\s+/).filter(Boolean).slice(0, 8);
+    const r = await consultar(
+      palabras.map((t) => ({ sql: `${BUSQUEDA_PRODUCTO} ILIKE $Q`, valor: `%${escaparLike(t)}%` })),
+      'p.nombre ASC'
+    );
     if (r.rows.length > 0 || q.length < 3 || off > 0) return responder(r);
 
     // Sin coincidencias: reintento tolerante a errores de tipeo ("Rayban" -> "Ray-Ban").
     try {
       const sim = await consultar(
-        `word_similarity($Q, ${BUSQUEDA_PRODUCTO}) >= ${UMBRAL_PARECIDO}`,
-        q,
+        [{ sql: `word_similarity($Q, ${BUSQUEDA_PRODUCTO}) >= ${UMBRAL_PARECIDO}`, valor: q }],
         `word_similarity($Q, ${BUSQUEDA_PRODUCTO}) DESC, p.nombre ASC`
       );
       return responder(sim, sim.rows.length > 0);

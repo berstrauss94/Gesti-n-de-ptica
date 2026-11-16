@@ -92,6 +92,13 @@ const CASOS = [
   ['GET', '/api/stock?q=Rayban', {}, [200], 'parecidos'],
   ['POST', '/api/productos', { body: { codigo: 'X1', nombre: 'Marco', categoria: 'armazon', genero: 'Otro' } }, [400], 'error'],
   ['POST', '/api/productos', { body: { codigo: 'X1', nombre: 'Marco', categoria: 'armazon', material: 'x'.repeat(41) } }, [400], 'error'],
+  ['GET', '/api/stock?q=ray%20ban%20aviator', {}, [200], 'stock'],
+  ['POST', '/api/productos/importar', { body: { filas: [
+    { codigo: 'A1', nombre: 'Marco', genero: 'mujer', material: 'Metal', ubicacion: 'Expositor A' },
+    { codigo: 'A2', nombre: 'Marco', genero: 'Otro' },
+    { codigo: 'A3', nombre: 'Marco', proveedor: 'No existe SA' },
+  ] } }, [200], 'errores'],
+  ['POST', '/api/productos/importar', { token: tokenVendedor, body: { filas: [{ codigo: 'A1' }] } }, [403], 'error'],
   ['GET', '/api/sobres', { token: null }, [401], 'error'],
   ['GET', '/api/no-existe', {}, [404], 'error'],
 ];
