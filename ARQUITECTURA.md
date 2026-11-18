@@ -8,7 +8,7 @@
 > cambio. Hay un hook de Kiro (`.kiro/hooks/sync-arquitectura-doc.json`) que lo
 > recuerda automáticamente. Al final está el **Registro de cambios**.
 
-_Última actualización: 2026-10-17 (Stock: Modelo o referencia tolera errores de tipeo)_
+_Última actualización: 2026-10-18 (Stock ↔ Mercado: cargar un modelo al catálogo y simular un pedido)_
 
 ---
 
@@ -130,7 +130,7 @@ lentes, quitar fondo, 3 vistas de marcos, logo). No corren en producción.
 - **Try-On IA:** `GET /tryon-ia/estado`, `POST /tryon-ia/generar`.
 - **Subidas (Cloudinary):** `POST /uploads/tryon` (multipart, campo `imagen`, JPEG/PNG/WEBP hasta 5 MB; se guarda como WebP en la carpeta `optix_tryon` y devuelve `{url, public_id}`). Sin credenciales responde `409 sin_credenciales`. Solo para imágenes nuevas del Try-On: las fotos de `fotosController` siguen en disco local. Servicio: `services/storageService.js`.
 - **Estados de sobres:** `pendiente, reserva, en_taller, lentes, listo, entregado, anulado`. Se validan solo en `sobresController.ESTADOS` (la base ya no tiene CHECK).
-- **Mercado:** `GET /mercado/predict-attributes?marca=` (cualquier usuario; sin IA ni costo: devuelve `{predictions:{genero,material}|null, fuente}` con lo más frecuente en `productos` de esa marca y, si falta, en `mercado_catalogo`; marca de menos de 2 letras → `predictions:null`, más de 120 → 400), `GET /mercado?q=` (cualquier usuario; texto parcial por ILIKE y, si no hay
+- **Mercado:** `POST /mercado/:id/producto` (admin; pasa un modelo de `mercado_catalogo` a `productos` como armazón con sus medidas en `metadatos`, idempotente por `metadatos.mercado_id`, y si `cantidad > 0` deja un pedido simulado = compra en `borrador`; el stock no cambia hasta confirmar esa compra en Compras), `GET /mercado/predict-attributes?marca=` (cualquier usuario; sin IA ni costo: devuelve `{predictions:{genero,material}|null, fuente}` con lo más frecuente en `productos` de esa marca y, si falta, en `mercado_catalogo`; marca de menos de 2 letras → `predictions:null`, más de 120 → 400), `GET /mercado?q=` (cualquier usuario; texto parcial por ILIKE y, si no hay
   resultados, por similitud con `pg_trgm`), `POST /mercado/enriquecer` (admin; body
   `{marca?, modelo?, forzar?}`: alcanza con la marca, el modelo o ambos, completos o parciales,
   mínimo 2 letras). Busca primero en la base (exacta → parcial → similitud si es un solo campo)
@@ -512,3 +512,14 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
   `word_similarity` (umbral 0,45, el mismo de `q`) sobre nombre + código + código de barras, y marca
   `parecidos`. `q` y `modelo` se combinan; `marca` y `categoria` siguen siendo coincidencia exacta
   (son desplegables). Verificado contra PostgreSQL real de prueba (13 casos).
+- **2026-10-18** — Stock ↔ Mercado ↔ Compras. Cuando Stock no encuentra nada, el mensaje dice "No hay
+  productos que coincidan con…" y ofrece "Buscar en Mercado" (`/mercado?q=`; `MercadoPage` busca sola y
+  precarga el formulario de la IA con ese texto). En Mercado, el admin tiene "Cargar en mi catálogo" por
+  modelo (`MercadoTabla` con columna de acciones + modal): `POST /mercado/:id/producto`
+  (`mercadoController.crearProductoDesdeMercado`) crea el armazón en `productos` con marca, género,
+  material y medidas (`metadatos`), sin stock, y opcionalmente un pedido simulado: una compra en
+  `borrador` (`compras` + `compra_items`). Al llegar la mercadería se confirma en Compras
+  (`comprasController.confirmar`), que suma el stock a la sucursal, registra el movimiento y recalcula el
+  precio; desde ahí se vende por TPV y se ve en Stock. Si el modelo ya estaba cargado se reutiliza y se
+  actualizan costo y margen si vienen. Verificado contra PostgreSQL real (8 casos). Pendiente: mostrar en
+  Try-On solo lo que ya llegó (hoy `marcos` no se vincula con `productos` y exige una imagen).

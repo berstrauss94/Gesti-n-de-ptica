@@ -28,6 +28,7 @@ import fondoStock from '../assets/fondo-stock.jpg';
 import { barcodeSVG } from '../utils/barcode';
 import { interpretarBusqueda, normalizar } from '../utils/busquedaNatural';
 import InfoBtn from '../components/InfoBtn';
+import { useNavigate } from 'react-router-dom';
 import { predecirAtributos } from '../api/mercado';
 import Modal from '../components/Modal';
 import { useEsAdmin } from '../hooks/useEsAdmin';
@@ -80,6 +81,7 @@ function paramsListado(sucursalId, q, f, limit, offset) {
 
 export default function StockPage() {
   const esAdmin = useEsAdmin();
+  const navigate = useNavigate();
   const [sucursales, setSucursales] = useState([]);
   const [sucursalId, setSucursalId] = useState('');
   const [stock, setStock] = useState([]);
@@ -754,13 +756,18 @@ export default function StockPage() {
           <p>
             {q || hayFiltros
               ? (descripcionFiltros().length
-                ? 'Ningún producto tiene cargado ' + descripcionFiltros().join(' y ') + (q ? ' con la búsqueda “' + q + '”' : '') + '.'
+                ? 'No hay productos que coincidan con ' + [q && 'la búsqueda “' + q + '”', ...descripcionFiltros()].filter(Boolean).join(' · ') + '.'
                 : 'Ningún producto coincide con la búsqueda “' + q + '”.')
               : 'Sin productos con stock en esta sucursal.'}
           </p>
           {(q || hayFiltros) && (
             <>
-              <p className="muted small">Puede que esos productos todavía no tengan los atributos cargados: editalos o importá un CSV.</p>
+              <p className="muted small">Stock solo busca entre tus productos. Si es un modelo que todavía no tenés, buscalo en Mercado: ahí se trae de la web y lo podés cargar a tu catálogo o pedir.</p>
+              {[q, filtros.modelo].filter(Boolean).length > 0 && (
+                <button type="button" className="btn btn--primary" onClick={() => navigate('/mercado?q=' + encodeURIComponent([q, filtros.modelo].filter(Boolean).join(' ').slice(0, 120)))}>
+                  Buscar en Mercado
+                </button>
+              )}
               <button type="button" className="btn" onClick={limpiarTodo}>Limpiar filtros y ver todo el stock</button>
             </>
           )}

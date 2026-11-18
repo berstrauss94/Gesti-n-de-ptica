@@ -27,3 +27,10 @@ export async function predecirAtributos(marca) {
   const { data } = await api.get('/api/mercado/predict-attributes', { params: { marca } });
   return data.predictions || null;
 }
+
+// Pasa un modelo de mercado a tu catálogo y, si cantidad > 0, deja un pedido
+// simulado (compra en borrador). Devuelve { producto, reutilizado, compra }.
+export async function cargarModeloEnCatalogo(id, payload) {
+  const { data } = await api.post(`/api/mercado/${id}/producto`, payload);
+  return data;
+}

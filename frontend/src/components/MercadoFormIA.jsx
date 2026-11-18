@@ -25,8 +25,8 @@ function mensajeExito(cache, coincidencia, registro) {
   return `✓ Coincidencia en el catálogo: ${nombre} (sin consultar a la IA).`;
 }
 
-export default function MercadoFormIA({ onAgregado }) {
-  const [busca, setBusca] = useState({ marca: '', modelo: '' });
+export default function MercadoFormIA({ onAgregado, inicial }) {
+  const [busca, setBusca] = useState({ marca: inicial?.marca || '', modelo: inicial?.modelo || '' });
   const [buscando, setBuscando] = useState(false);
   const [msg, setMsg] = useState('');
 

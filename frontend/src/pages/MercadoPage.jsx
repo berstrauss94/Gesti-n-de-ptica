@@ -9,7 +9,11 @@
 // =====================================================================
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { listarMercado } from '../api/mercado';
+import { useSearchParams } from 'react-router-dom';
+import { listarMercado, cargarModeloEnCatalogo } from '../api/mercado';
+import { listarSucursales } from '../api/stock';
+import { listarProveedores } from '../api/compras';
+import Modal from '../components/Modal';
 import InfoBtn from '../components/InfoBtn';
 import MercadoTabla from '../components/MercadoTabla';
 import MercadoFormIA from '../components/MercadoFormIA';
@@ -23,7 +27,10 @@ export default function MercadoPage() {
   const [error, setError] = useState('');
 
   // Buscador (texto libre contra la API) y filtros en memoria.
-  const [q, setQ] = useState('');
+  // Si llegás desde Stock sin resultados, viene el texto en ?q= y se busca solo.
+  const [params] = useSearchParams();
+  const qInicial = (params.get('q') || '').slice(0, 120);
+  const [q, setQ] = useState(qInicial);
   const [fEstilo, setFEstilo] = useState('');
   const [fMaterial, setFMaterial] = useState('');
   const [fGenero, setFGenero] = useState('');
@@ -43,8 +50,55 @@ export default function MercadoPage() {
   }, []);
 
   useEffect(() => {
-    cargar('');
-  }, [cargar]);
+    cargar(qInicial);
+  }, [cargar]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // --- Pasar un modelo a tu catálogo / simular un pedido (solo admin) ---
+  const [carga, setCarga] = useState(null); // modelo elegido
+  const [form, setForm] = useState({ codigo: '', costo: '', margen_pct: '', cantidad: '0', sucursal_id: '', proveedor_id: '' });
+  const [sucursales, setSucursales] = useState([]);
+  const [proveedores, setProveedores] = useState([]);
+  const [enviando, setEnviando] = useState(false);
+  const [errCarga, setErrCarga] = useState('');
+  const [okCarga, setOkCarga] = useState('');
+
+  async function abrirCarga(m) {
+    setErrCarga(''); setOkCarga('');
+    setForm({ codigo: '', costo: '', margen_pct: '', cantidad: '0', sucursal_id: '', proveedor_id: '' });
+    setCarga(m);
+    try {
+      const [s, p] = await Promise.all([listarSucursales(), listarProveedores('proveedor')]);
+      setSucursales(s || []);
+      setProveedores(p || []);
+      if (s?.length) setForm((f) => ({ ...f, sucursal_id: s[0].id }));
+    } catch { /* sin listas: se puede cargar igual solo al catálogo */ }
+  }
+
+  async function confirmarCarga(e) {
+    e.preventDefault();
+    setErrCarga(''); setEnviando(true);
+    try {
+      const r = await cargarModeloEnCatalogo(carga.id, {
+        codigo: form.codigo.trim() || undefined,
+        costo: form.costo === '' ? undefined : Number(form.costo),
+        margen_pct: form.margen_pct === '' ? undefined : Number(form.margen_pct),
+        cantidad: Number(form.cantidad) || 0,
+        sucursal_id: Number(form.cantidad) > 0 ? form.sucursal_id : undefined,
+        proveedor_id: form.proveedor_id || undefined,
+      });
+      const base = r.reutilizado
+        ? `${r.producto.nombre} ya estaba en tu catálogo (código ${r.producto.codigo}).`
+        : `${r.producto.nombre} quedó cargado en tu catálogo (código ${r.producto.codigo}), con stock 0.`;
+      setOkCarga(r.compra
+        ? `${base} Pedido simulado de ${form.cantidad} u. en Compras (borrador N° ${r.compra.numero}): confirmalo cuando llegue y entra al stock.`
+        : base);
+      setCarga(null);
+    } catch (err) {
+      setErrCarga(err.response?.data?.error || 'No se pudo cargar el modelo');
+    } finally {
+      setEnviando(false);
+    }
+  }
 
   function handleBuscar(e) {
     e.preventDefault();
@@ -107,7 +161,8 @@ export default function MercadoPage() {
       {error && <p className="alert alert--error" role="alert">{error}</p>}
 
       {/* Alta por IA (solo admin): trae specs de un modelo nuevo */}
-      {esAdmin && <MercadoFormIA onAgregado={handleAgregado} />}
+      {esAdmin && <MercadoFormIA onAgregado={handleAgregado} inicial={{ marca: '', modelo: qInicial }} />}
+      {okCarga && <p className="ok-text small" role="status">✓ {okCarga}</p>}
 
       {/* Buscador (API) + filtros (en memoria) */}
       <form className="searchbar" onSubmit={handleBuscar}>
@@ -148,12 +203,61 @@ export default function MercadoPage() {
         <div className="card empty">
           <p>
             {catalogo.length === 0
-              ? 'Todavía no hay modelos en el catálogo de mercado.'
+              ? (q ? `“${q}” todavía no está en el catálogo. Usá “Buscar en el mercado” para traerlo de la web.` : 'Todavía no hay modelos en el catálogo de mercado.')
               : 'Ningún modelo coincide con la búsqueda o los filtros.'}
           </p>
         </div>
       ) : (
-        <MercadoTabla items={filtrado} />
+        <MercadoTabla
+          items={filtrado}
+          acciones={esAdmin ? (m) => (
+            <button type="button" className="btn-mini btn-mini--wide" onClick={() => abrirCarga(m)}>
+              Cargar en mi catálogo
+            </button>
+          ) : undefined}
+        />
+      )}
+      {carga && (
+        <Modal titulo={`Cargar · ${carga.marca} ${carga.modelo}`} onCerrar={() => setCarga(null)}>
+          <form className="stack" onSubmit={confirmarCarga}>
+            <p className="muted small">
+              Se guarda como armazón en tu catálogo con sus medidas, género y material, y podés
+              dejar un pedido simulado. El stock no cambia hasta que confirmes esa compra en Compras.
+            </p>
+            {errCarga && <p className="alert alert--error" role="alert">{errCarga}</p>}
+            <div className="form-grid">
+              <label className="field"><span>Código (opcional)</span>
+                <input value={form.codigo} maxLength={50} placeholder="Se arma solo si lo dejás vacío"
+                  onChange={(e) => setForm({ ...form, codigo: e.target.value })} /></label>
+              <label className="field"><span>Costo por unidad</span>
+                <input type="number" min="0" step="0.01" value={form.costo}
+                  onChange={(e) => setForm({ ...form, costo: e.target.value })} /></label>
+              <label className="field"><span>Margen %</span>
+                <input type="number" min="0" step="0.1" value={form.margen_pct}
+                  onChange={(e) => setForm({ ...form, margen_pct: e.target.value })} /></label>
+              <label className="field"><span>Cantidad a pedir (0 = solo catálogo)</span>
+                <input type="number" min="0" step="1" value={form.cantidad}
+                  onChange={(e) => setForm({ ...form, cantidad: e.target.value })} /></label>
+              {Number(form.cantidad) > 0 && (
+                <label className="field"><span>Sucursal que recibe</span>
+                  <select value={form.sucursal_id} onChange={(e) => setForm({ ...form, sucursal_id: e.target.value })} required>
+                    {sucursales.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+                  </select></label>
+              )}
+              <label className="field"><span>Proveedor (opcional)</span>
+                <select value={form.proveedor_id} onChange={(e) => setForm({ ...form, proveedor_id: e.target.value })}>
+                  <option value="">Sin proveedor</option>
+                  {proveedores.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                </select></label>
+            </div>
+            <div className="form-actions">
+              <button type="button" className="btn btn--ghost btn--inline" onClick={() => setCarga(null)}>Cancelar</button>
+              <button type="submit" className="btn btn--primary btn--inline" disabled={enviando}>
+                {enviando ? 'Guardando…' : Number(form.cantidad) > 0 ? 'Cargar y simular pedido' : 'Cargar en mi catálogo'}
+              </button>
+            </div>
+          </form>
+        </Modal>
       )}
     </div>
   );

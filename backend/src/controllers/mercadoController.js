@@ -4,9 +4,9 @@
 // lo ya enriquecido. Alta/enriquecido: solo admin (definido en la ruta).
 // =====================================================================
 
-const { query } = require('../config/db');
+const { pool, query } = require('../config/db');
 const { rastrearYEnriquecerModelo } = require('../services/mercadoGeminiService');
-const { generoCanonico } = require('./productosController');
+const { generoCanonico, sinAcentos } = require('./productosController');
 
 // Largo máximo de marca/modelo (coincide con VARCHAR(120) de la tabla).
 const MAX_TEXTO = 120;
@@ -137,4 +137,117 @@ async function predecirAtributos(req, res) {
   }
 }
 
-module.exports = { enriquecer, listar, predecirAtributos };
+// POST /mercado/:id/producto   (admin)
+// Pasa un modelo del catálogo de mercado a TU catálogo (tabla productos, con
+// sus medidas en metadatos) y, si cantidad > 0, deja un pedido SIMULADO: una
+// compra en borrador. El stock no cambia hasta que se confirma esa compra en
+// Compras (cuando la mercadería llega).
+// Body: { codigo?, costo?, margen_pct?, cantidad?, sucursal_id?, proveedor_id? }
+// Es idempotente por modelo: si ya está en el catálogo, reutiliza el producto.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const slug = (t) => sinAcentos(String(t || '')).toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+const numero = (v, def) => (v === undefined || v === null || v === '' ? def : Number(v));
+
+async function crearProductoDesdeMercado(req, res) {
+  const { id } = req.params;
+  if (!UUID_RE.test(id)) return res.status(400).json({ error: 'Id de modelo inválido' });
+  const b = req.body || {};
+  const costo = numero(b.costo, 0);
+  const margen = numero(b.margen_pct, 0);
+  const cantidad = numero(b.cantidad, 0);
+  if (![costo, margen, cantidad].every(Number.isFinite) || costo < 0 || margen < 0) {
+    return res.status(400).json({ error: 'Costo, margen y cantidad deben ser números válidos' });
+  }
+  if (!Number.isInteger(cantidad) || cantidad < 0 || cantidad > 100000) {
+    return res.status(400).json({ error: 'La cantidad debe ser un entero entre 0 y 100000' });
+  }
+  if (cantidad > 0 && !b.sucursal_id) {
+    return res.status(400).json({ error: 'Elegí la sucursal que recibe el pedido' });
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const mr = await client.query('SELECT * FROM mercado_catalogo WHERE id = $1', [id]);
+    if (mr.rowCount === 0) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Modelo no encontrado en el catálogo de mercado' }); }
+    const m = mr.rows[0];
+
+    let producto;
+    let reutilizado = false;
+    const ex = await client.query(
+      `SELECT id, codigo, nombre, costo_base, margen_pct, precio_venta FROM productos WHERE metadatos->>'mercado_id' = $1 LIMIT 1`, [id]
+    );
+    if (ex.rowCount > 0) {
+      producto = ex.rows[0];
+      reutilizado = true;
+      // Si ahora viene un costo o un margen, se aplican al producto que ya estaba.
+      const hayCosto = costo > 0;
+      const hayMargen = b.margen_pct !== undefined && b.margen_pct !== null && b.margen_pct !== '';
+      if (hayCosto || hayMargen) {
+        const costoNuevo = hayCosto ? costo : Number(producto.costo_base) || 0;
+        const margenNuevo = hayMargen ? margen : Number(producto.margen_pct) || 0;
+        const precioNuevo = Math.round(costoNuevo * (1 + margenNuevo / 100) * 100) / 100;
+        const up = await client.query(
+          `UPDATE productos SET costo_base = $1, margen_pct = $2, precio_venta = $3 WHERE id = $4
+           RETURNING id, codigo, nombre, costo_base, margen_pct, precio_venta`,
+          [costoNuevo, margenNuevo, precioNuevo, producto.id]
+        );
+        producto = up.rows[0];
+      }
+    } else {
+      const codigo = String(b.codigo || '').trim().slice(0, 50)
+        || `MER-${slug(m.marca)}-${slug(m.modelo)}`.slice(0, 50);
+      const precio = Math.round(costo * (1 + margen / 100) * 100) / 100;
+      const material = m.material ? String(m.material).slice(0, 40) : null;
+      const genero = generoCanonico(m.genero) || null;
+      const metadatos = {
+        mercado_id: id,
+        calibre_ancho: m.calibre_ancho, puente: m.puente, patilla: m.patilla, altura_cristal: m.altura_cristal,
+        estilo: m.estilo, tipo: m.tipo, colores: m.colores, tratamientos: m.tratamientos,
+        aptitud_graduacion: m.aptitud_graduacion,
+      };
+      // Solo caracteres simples: así no depende de la codificación de la base.
+      const medidas = m.calibre_ancho ? ` Medidas (calibre/puente/patilla): ${m.calibre_ancho}/${m.puente ?? '-'}/${m.patilla ?? '-'} mm.` : '';
+      const ins = await client.query(
+        `INSERT INTO productos
+           (codigo, nombre, categoria, marca, descripcion, costo_base, margen_pct, precio_venta, iva_pct,
+            genero, material, proveedor_id, metadatos)
+         VALUES ($1,$2,'armazon',$3,$4,$5,$6,$7,21,$8,$9,$10,$11)
+         RETURNING id, codigo, nombre, costo_base, precio_venta`,
+        [codigo, `${m.marca} ${m.modelo}`.slice(0, 150), m.marca,
+         `Cargado desde el catálogo de mercado.${medidas}`.slice(0, 500),
+         costo, margen, precio, genero, material, b.proveedor_id || null, JSON.stringify(metadatos)]
+      );
+      producto = ins.rows[0];
+    }
+
+    let compra = null;
+    if (cantidad > 0) {
+      const costoItem = costo > 0 ? costo : Number(producto.costo_base) || 0;
+      const total = Math.round(cantidad * costoItem * 100) / 100;
+      const cr = await client.query(
+        `INSERT INTO compras (proveedor_id, sucursal_id, recalcular_precios, total, notas, usuario_id)
+         VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, numero, estado, total`,
+        [b.proveedor_id || null, b.sucursal_id, costoItem > 0, total,
+         `Pedido simulado desde Mercado: ${m.marca} ${m.modelo}`, req.user?.id || null]
+      );
+      compra = cr.rows[0];
+      await client.query(
+        `INSERT INTO compra_items (compra_id, producto_id, cantidad, costo_unitario, subtotal)
+         VALUES ($1,$2,$3,$4,$5)`,
+        [compra.id, producto.id, cantidad, costoItem, total]
+      );
+    }
+    await client.query('COMMIT');
+    return res.status(201).json({ producto, reutilizado, compra });
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    if (err.code === '23505') return res.status(409).json({ error: 'Ya existe un producto con ese código: elegí otro' });
+    if (err.code === '23503' || err.code === '22P02') return res.status(400).json({ error: 'La sucursal o el proveedor elegido no existe' });
+    console.error('[mercado] crearProductoDesdeMercado:', err.message);
+    return res.status(500).json({ error: 'No se pudo cargar el modelo en tu catálogo' });
+  } finally {
+    client.release();
+  }
+}
+
+module.exports = { enriquecer, listar, predecirAtributos, crearProductoDesdeMercado };

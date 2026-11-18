@@ -32,7 +32,7 @@ function unir(valor) {
   return l.length ? l.join(', ') : '—';
 }
 
-export default function MercadoTabla({ items }) {
+export default function MercadoTabla({ items, acciones }) {
   return (
     <div className="card no-pad">
       <table className="table">
@@ -47,6 +47,7 @@ export default function MercadoTabla({ items }) {
             <th>Graduación</th>
             <th>Colores</th>
             <th>Tratamientos</th>
+            {acciones && <th>Acciones</th>}
           </tr>
         </thead>
         <tbody>
@@ -66,6 +67,7 @@ export default function MercadoTabla({ items }) {
               <td className="small">{m.aptitud_graduacion ? 'Apto' : 'No apto'}</td>
               <td className="small">{unir(m.colores)}</td>
               <td className="small">{unir(m.tratamientos)}</td>
+              {acciones && <td>{acciones(m)}</td>}
             </tr>
           ))}
         </tbody>
