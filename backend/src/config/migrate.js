@@ -519,6 +519,28 @@ const MIGRACIONES = [
   // (pg_trgm ya se crea en la sección de Mercado.)
   `CREATE INDEX IF NOT EXISTS idx_productos_busqueda_trgm ON productos USING gin
      ((COALESCE(nombre, '') || ' ' || COALESCE(codigo, '') || ' ' || COALESCE(codigo_barras, '') || ' ' || COALESCE(marca, '')) gin_trgm_ops)`,
+  // --- Catálogo de lentes y servicios de laboratorio ("Lentes y otros") ---
+  `CREATE TABLE IF NOT EXISTS catalogo_laboratorio (
+     id SERIAL PRIMARY KEY,
+     categoria VARCHAR(100) NOT NULL,
+     subcategoria_grupo VARCHAR(100),
+     marca_proveedor VARCHAR(100),
+     descripcion VARCHAR(255) NOT NULL,
+     esfera_min NUMERIC(5,2),
+     esfera_max NUMERIC(5,2),
+     cilindro_min NUMERIC(5,2),
+     cilindro_max NUMERIC(5,2),
+     badge_graduacion_raw VARCHAR(150),
+     dias_demora INTEGER DEFAULT 2,
+     precio_lista NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (precio_lista >= 0),
+     es_servicio BOOLEAN DEFAULT FALSE,
+     es_insumo_mostrador BOOLEAN DEFAULT FALSE,
+     activo BOOLEAN DEFAULT TRUE,
+     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+   )`,
+  `CREATE INDEX IF NOT EXISTS idx_catalogo_lab_categoria ON catalogo_laboratorio (LOWER(categoria))`,
+  `CREATE INDEX IF NOT EXISTS idx_catalogo_lab_marca ON catalogo_laboratorio (LOWER(marca_proveedor))`,
 ];
 
 // `ejecutar` permite reutilizar las mismas migraciones desde otro cliente

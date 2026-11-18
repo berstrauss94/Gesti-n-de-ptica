@@ -115,6 +115,18 @@ const CASOS = [
   ['POST', '/api/uploads/tryon', { body: {} }, [400], 'error'],
   ['POST', '/api/uploads/tryon', { token: null, body: {} }, [401], 'error'],
   ['GET', '/api/sobres', { token: null }, [401], 'error'],
+  ['GET', '/api/laboratorio/catalogo?categoria=1%20MONOFOCALES&q=blue%20tech', {}, [200], 'data'],
+  ['GET', '/api/laboratorio/categorias', { token: tokenVendedor }, [200], 'categorias'],
+  ['GET', '/api/laboratorio/catalogo', { token: null }, [401], 'error'],
+  ['POST', '/api/laboratorio/validar-receta', { body: {} }, [400], 'error'],
+  ['POST', '/api/laboratorio/validar-receta', { body: { cristal_id: 1, esfera: 'abc' } }, [400], 'error'],
+  ['POST', '/api/laboratorio/validar-receta', { body: { cristal_id: 999999, esfera: -2 } }, [404], 'error'],
+  ['PUT', '/api/laboratorio/actualizacion-masiva', { token: tokenVendedor, body: { porcentaje: 10, categoria: 'x' } }, [403], 'error'],
+  ['PUT', '/api/laboratorio/actualizacion-masiva', { body: { porcentaje: 10 } }, [400], 'error'],
+  ['PUT', '/api/laboratorio/actualizacion-masiva', { body: { porcentaje: 0, categoria: 'x' } }, [400], 'error'],
+  ['PUT', '/api/laboratorio/actualizacion-masiva', { body: { porcentaje: 900, categoria: 'x' } }, [400], 'error'],
+  ['POST', '/api/laboratorio/importar', { token: tokenVendedor, body: { filas: [{}] } }, [403], 'error'],
+  ['POST', '/api/laboratorio/importar', { body: { filas: [] } }, [400], 'error'],
   ['GET', '/api/no-existe', {}, [404], 'error'],
 ];
 

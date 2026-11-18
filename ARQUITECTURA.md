@@ -8,7 +8,7 @@
 > cambio. Hay un hook de Kiro (`.kiro/hooks/sync-arquitectura-doc.json`) que lo
 > recuerda automáticamente. Al final está el **Registro de cambios**.
 
-_Última actualización: 2026-10-18 (Stock ↔ Mercado: cargar un modelo al catálogo y simular un pedido)_
+_Última actualización: 2026-10-19 (Nuevo módulo "Lentes y otros": catálogo de laboratorio)_
 
 ---
 
@@ -128,6 +128,7 @@ lentes, quitar fondo, 3 vistas de marcos, logo). No corren en producción.
 - **Clientes:** CRUD `/usuarios` + fotos y graduaciones anidadas.
 - **Marcos:** CRUD `/marcos` (subida multiparte de 3 vistas).
 - **Try-On IA:** `GET /tryon-ia/estado`, `POST /tryon-ia/generar`.
+- **Lentes y otros** (`/lentes`, tabla `catalogo_laboratorio`): `GET /laboratorio/catalogo?categoria=&q=` (cualquier usuario; búsqueda parcial por palabras en descripción, grupo, marca e id, `categoria` sin distinguir mayúsculas), `GET /laboratorio/categorias` (cantidad por categoría), `POST /laboratorio/validar-receta` (`{cristal_id, esfera?, cilindro?}` → `{valid, alertas, dias_demora}`; acepta coma decimal), `PUT /laboratorio/actualizacion-masiva` (admin; `{porcentaje, categoria? | marca_proveedor? | todo, simular?}`; porcentaje entre -90 y 500, redondea a 2 decimales, sin filtro exige `todo: true`, `simular` solo informa el efecto) y `POST /laboratorio/importar` (admin; upsert por `id` asignado, una fila con error no corta el resto, una celda vacía no pisa lo guardado). Categorías fijas "0 CONTROL DE MIOPÍA" … "11 LENTES DE SOL" (`laboratorioController.CATEGORIAS`, el import normaliza "monofocales" → "1 MONOFOCALES").
 - **Subidas (Cloudinary):** `POST /uploads/tryon` (multipart, campo `imagen`, JPEG/PNG/WEBP hasta 5 MB; se guarda como WebP en la carpeta `optix_tryon` y devuelve `{url, public_id}`). Sin credenciales responde `409 sin_credenciales`. Solo para imágenes nuevas del Try-On: las fotos de `fotosController` siguen en disco local. Servicio: `services/storageService.js`.
 - **Estados de sobres:** `pendiente, reserva, en_taller, lentes, listo, entregado, anulado`. Se validan solo en `sobresController.ESTADOS` (la base ya no tiene CHECK).
 - **Mercado:** `POST /mercado/:id/producto` (admin; pasa un modelo de `mercado_catalogo` a `productos` como armazón con sus medidas en `metadatos`, idempotente por `metadatos.mercado_id`, y si `cantidad > 0` deja un pedido simulado = compra en `borrador`; el stock no cambia hasta confirmar esa compra en Compras), `GET /mercado/predict-attributes?marca=` (cualquier usuario; sin IA ni costo: devuelve `{predictions:{genero,material}|null, fuente}` con lo más frecuente en `productos` de esa marca y, si falta, en `mercado_catalogo`; marca de menos de 2 letras → `predictions:null`, más de 120 → 400), `GET /mercado?q=` (cualquier usuario; texto parcial por ILIKE y, si no hay
@@ -523,3 +524,14 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
   precio; desde ahí se vende por TPV y se ve en Stock. Si el modelo ya estaba cargado se reutiliza y se
   actualizan costo y margen si vienen. Verificado contra PostgreSQL real (8 casos). Pendiente: mostrar en
   Try-On solo lo que ya llegó (hoy `marcos` no se vincula con `productos` y exige una imagen).
+- **2026-10-19** — Módulo "Lentes y otros" (catálogo de cristales, tratamientos, contactología, accesorios y
+  servicios de laboratorio). Tabla nueva `catalogo_laboratorio` (3 sentencias aditivas en `migrate.js`, ids
+  asignados tipo 1283 con `SERIAL` alineado al importar), `laboratorioController` + `laboratorioRoutes`
+  (`/api/laboratorio/*`, JWT; importar y ajustar precios solo admin), `api/laboratorio.js`, página
+  `LentesPage` (`/lentes`, ítem "Lentes y otros" en `Layout`) con menú de 12 categorías a la derecha,
+  búsqueda en toda la lista, impresión, importación CSV y ajuste de precios en dos pasos (ver efecto y
+  aplicar). Adaptado del borrador en Flask/Tailwind del spec: se usa la conexión y el JWT del proyecto, el
+  ajuste masivo exige admin, redondea y no permite "todo el catálogo" sin confirmarlo, y una celda vacía en
+  la importación no borra datos. No se implementaron las pestañas "Mi Lista" y "Etiquetas" del spec ni la
+  integración de `validar-receta` con el sobre (queda el endpoint listo). Verificado contra PostgreSQL real
+  (18 casos) y con pruebas de contrato nuevas.
