@@ -743,7 +743,7 @@ export default function StockPage() {
 
       {parecidos && !cargando && (
         <p className="muted small" role="status">
-          No hubo coincidencias exactas con “{q}”: te mostramos los productos más parecidos.
+          No hubo coincidencias exactas con “{[q, filtros.modelo].filter(Boolean).join(' · ')}”: te mostramos los productos más parecidos.
         </p>
       )}
 

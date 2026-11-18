@@ -91,6 +91,8 @@ const CASOS = [
   ['GET', '/api/stock?sucursal_id=s&genero=Mujer&material=Metal&proveedor_id=p&limit=20&offset=0', {}, [200], 'total'],
   ['GET', '/api/stock?q=Rayban', {}, [200], 'parecidos'],
   ['GET', '/api/stock?sucursal_id=s&categoria=armazon&modelo=RB%2050%25_', {}, [200], 'total'],
+  ['GET', '/api/stock?sucursal_id=s&modelo=Rayban', {}, [200], 'parecidos'],
+  ['GET', '/api/stock?q=ray&modelo=aviatr&categoria=armazon', {}, [200], 'parecidos'],
   ['POST', '/api/productos', { body: { codigo: 'X1', nombre: 'Marco', categoria: 'armazon', genero: 'Otro' } }, [400], 'error'],
   ['POST', '/api/productos', { body: { codigo: 'X1', nombre: 'Marco', categoria: 'armazon', material: 'x'.repeat(41) } }, [400], 'error'],
   ['GET', '/api/stock?q=ray%20ban%20aviator', {}, [200], 'stock'],

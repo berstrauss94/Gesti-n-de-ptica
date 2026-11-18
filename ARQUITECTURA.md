@@ -8,7 +8,7 @@
 > cambio. Hay un hook de Kiro (`.kiro/hooks/sync-arquitectura-doc.json`) que lo
 > recuerda automáticamente. Al final está el **Registro de cambios**.
 
-_Última actualización: 2026-10-16 (Stock: filtros Categoría y Modelo o referencia, botón Imprimir)_
+_Última actualización: 2026-10-17 (Stock: Modelo o referencia tolera errores de tipeo)_
 
 ---
 
@@ -137,7 +137,7 @@ lentes, quitar fondo, 3 vistas de marcos, logo). No corren en producción.
   y responde `200` con `cache: true` y `coincidencia` (`exacto|parcial|similar`) sin consultar a
   Gemini. Si no hay coincidencia (o `forzar: true`) consulta a la IA, que resuelve la marca/modelo
   oficial más probable o devuelve `no_identificado` (400), y responde `201` con `coincidencia: "ia"`.
-- **Stock:** `/sucursales`, `/productos`, `POST /productos/importar` (admin, lista de precios CSV; empareja por `codigo` y, si no hay, por `codigo_barras`; un producto nuevo exige `codigo`; acepta además `genero`, `material`, `ubicacion` y `proveedor` por nombre o `proveedor_id`; celda vacía no borra; cada fila en su propio SAVEPOINT, así una fila con error no corta la importación), `/stock` (filtros `categoria`, `modelo` = texto parcial en nombre, código o código de barras, `marca`, `genero`, `material`, `ubicacion_prod`, `proveedor_id`; devuelve `total` y `parecidos`; `limit` hasta 1000), `/stock/marcas`, `GET /stock/filtros` (opciones de los desplegables), movimientos, `/traslados`.
+- **Stock:** `/sucursales`, `/productos`, `POST /productos/importar` (admin, lista de precios CSV; empareja por `codigo` y, si no hay, por `codigo_barras`; un producto nuevo exige `codigo`; acepta además `genero`, `material`, `ubicacion` y `proveedor` por nombre o `proveedor_id`; celda vacía no borra; cada fila en su propio SAVEPOINT, así una fila con error no corta la importación), `/stock` (filtros `categoria`, `modelo` = texto parcial en nombre, código o código de barras (si no hay resultados y tiene 3+ letras, reintenta por parecido, igual que `q`), `marca`, `genero`, `material`, `ubicacion_prod`, `proveedor_id`; devuelve `total` y `parecidos`; `limit` hasta 1000), `/stock/marcas`, `GET /stock/filtros` (opciones de los desplegables), movimientos, `/traslados`.
 - **TPV:** `/cajas/*` (actual/abrir/cerrar/movimientos), `/ventas/*` (acepta `descuento` al crear), pagos, entregar, anular, `/cuenta-corriente/:id`.
 - **Promociones:** `GET /promociones`, `POST /promociones` (admin), `PATCH /promociones/:id` (admin), `DELETE /promociones/:id` (admin).
 - **Obras sociales:** `GET /obras-sociales`, `POST /obras-sociales` (admin), `PUT /obras-sociales/:id` (admin), `DELETE /obras-sociales/:id` (admin).
@@ -507,3 +507,8 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
   Ambos filtros entran también en Exportar CSV, en el mensaje de "sin resultados" y en Limpiar filtros.
   No se agregó la categoría "Sol" del ejemplo: las categorías reales son armazón, cristal, lente de
   contacto, accesorio y otro.
+- **2026-10-17** — Stock: "Modelo o referencia" ahora tolera errores de tipeo (`stockController.listar`):
+  primero busca por subcadena y, si no hay resultados y el texto tiene 3+ letras, reintenta con
+  `word_similarity` (umbral 0,45, el mismo de `q`) sobre nombre + código + código de barras, y marca
+  `parecidos`. `q` y `modelo` se combinan; `marca` y `categoria` siguen siendo coincidencia exacta
+  (son desplegables). Verificado contra PostgreSQL real de prueba (13 casos).

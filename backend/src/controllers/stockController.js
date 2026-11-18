@@ -10,6 +10,8 @@ const { pool, query } = require('../config/db');
 // idx_productos_busqueda_trgm de migrate.js (sin el alias "p.") para que
 // PostgreSQL use el índice en el ILIKE.
 const BUSQUEDA_PRODUCTO = `(COALESCE(p.nombre, '') || ' ' || COALESCE(p.codigo, '') || ' ' || COALESCE(p.codigo_barras, '') || ' ' || COALESCE(p.marca, ''))`;
+// Texto del "modelo o referencia": nombre, código y código de barras (sin la marca).
+const MODELO_PRODUCTO = `(COALESCE(p.nombre, '') || ' ' || COALESCE(p.codigo, '') || ' ' || COALESCE(p.codigo_barras, ''))`;
 // Umbral de parecido (pg_trgm word_similarity) para tolerar errores de tipeo.
 const UMBRAL_PARECIDO = 0.45;
 // Tope de filas por página ("Todos" en la UI).
@@ -23,9 +25,9 @@ function escaparLike(texto) {
 // GET /api/stock?sucursal_id=&q=&modelo=&categoria=&marca=&genero=&material=
 //                &ubicacion_prod=&proveedor_id=&bajo_minimo=&limit=&offset=
 // Existencias por sucursal. Devuelve { stock, total, limit, offset, parecidos }.
-// q busca por texto parcial en nombre, código, código de barras y marca; si no
-// hay resultados y q tiene 3+ letras, reintenta por parecido (errores de tipeo)
-// y marca parecidos = true.
+// q busca por texto parcial en nombre, código, código de barras y marca; modelo,
+// en nombre, código y código de barras. Si no hay resultados y q o modelo tienen
+// 3+ letras, reintenta por parecido (errores de tipeo) y marca parecidos = true.
 async function listar(req, res) {
   const { sucursal_id, categoria, limit = 200, offset = 0 } = req.query;
   const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
@@ -45,14 +47,8 @@ async function listar(req, res) {
   igual(req.query.material, 'p.material');
   igual(req.query.ubicacion_prod, 'p.ubicacion');
   igual(req.query.proveedor_id, 'p.proveedor_id');
-  // "Modelo o referencia": texto parcial en nombre, código o código de barras
-  // (sin la marca, que ya tiene su propio filtro).
+  // "Modelo o referencia": entra como texto de búsqueda (con tolerancia a errores de tipeo).
   const modelo = typeof req.query.modelo === 'string' ? req.query.modelo.trim().slice(0, 100) : '';
-  if (modelo) {
-    params.push(`%${escaparLike(modelo)}%`);
-    const n = params.length;
-    cond.push(`(p.nombre ILIKE $${n} OR p.codigo ILIKE $${n} OR p.codigo_barras ILIKE $${n})`);
-  }
   if (req.query.bajo_minimo === 'true') cond.push('ss.cantidad <= ss.stock_minimo');
 
   // Ejecuta la consulta. `textos` es una lista de { sql, valor }: en cada sql,
@@ -97,23 +93,41 @@ async function listar(req, res) {
   };
 
   try {
-    if (!q) return responder(await consultar([], 'p.nombre ASC'));
-
-    // Cada palabra se busca por separado y tienen que aparecer todas ("ray ban"
-    // encuentra "Ray-Ban"). Cada condición puede usar el índice trigram.
+    // Condiciones exactas: cada palabra de q por separado (tienen que aparecer todas;
+    // "ray ban" encuentra "Ray-Ban") y el modelo como subcadena. Pueden usar el índice trigram.
     const palabras = q.split(/\s+/).filter(Boolean).slice(0, 8);
-    const r = await consultar(
-      palabras.map((t) => ({ sql: `${BUSQUEDA_PRODUCTO} ILIKE $Q`, valor: `%${escaparLike(t)}%` })),
-      'p.nombre ASC'
-    );
-    if (r.rows.length > 0 || q.length < 3 || off > 0) return responder(r);
-
+    const exactas = palabras.map((t) => ({ sql: `${BUSQUEDA_PRODUCTO} ILIKE $Q`, valor: `%${escaparLike(t)}%` }));
+    if (modelo) {
+      exactas.push({
+        sql: `(p.nombre ILIKE $Q OR p.codigo ILIKE $Q OR p.codigo_barras ILIKE $Q)`,
+        valor: `%${escaparLike(modelo)}%`,
+      });
+    }
+    if (!exactas.length) return responder(await consultar([], 'p.nombre ASC'));
+    const r = await consultar(exactas, 'p.nombre ASC');
+    if (r.rows.length > 0 || off > 0) return responder(r);
     // Sin coincidencias: reintento tolerante a errores de tipeo ("Rayban" -> "Ray-Ban").
+    // Cada campo de texto con 3+ letras se busca por parecido; los más cortos, exacto.
+    const hayParecido = q.length >= 3 || modelo.length >= 3;
+    if (!hayParecido) return responder(r);
+    const parecido = (texto, expresion) => ({
+      sql: `word_similarity($Q, ${expresion}) >= ${UMBRAL_PARECIDO}`, valor: texto,
+    });
+    const aprox = [];
+    if (q) {
+      if (q.length >= 3) aprox.push(parecido(q, BUSQUEDA_PRODUCTO));
+      else aprox.push(...exactas.slice(0, palabras.length));
+    }
+    if (modelo) {
+      if (modelo.length >= 3) aprox.push(parecido(modelo, MODELO_PRODUCTO));
+      else aprox.push(exactas[exactas.length - 1]);
+    }
     try {
-      const sim = await consultar(
-        [{ sql: `word_similarity($Q, ${BUSQUEDA_PRODUCTO}) >= ${UMBRAL_PARECIDO}`, valor: q }],
-        `word_similarity($Q, ${BUSQUEDA_PRODUCTO}) DESC, p.nombre ASC`
-      );
+      // Orden: el más parecido primero (por el primer campo aproximado).
+      const orden = aprox.find((a) => a.sql.startsWith('word_similarity'));
+      // El primero de la lista es el que ordena (su "$Q" se reemplaza en el ORDER BY).
+      const lista = [orden, ...aprox.filter((a) => a !== orden)];
+      const sim = await consultar(lista, `${orden.sql.replace(/ >= [\d.]+$/, '')} DESC, p.nombre ASC`);
       return responder(sim, sim.rows.length > 0);
     } catch (err) {
       // pg_trgm no disponible: se devuelve el resultado vacío del ILIKE.
