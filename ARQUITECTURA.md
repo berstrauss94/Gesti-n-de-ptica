@@ -8,7 +8,7 @@
 > cambio. Hay un hook de Kiro (`.kiro/hooks/sync-arquitectura-doc.json`) que lo
 > recuerda automáticamente. Al final está el **Registro de cambios**.
 
-_Última actualización: 2026-10-14 (Sobres Fase 3: estados Lentes/Listo y subida del Try-On a Cloudinary)_
+_Última actualización: 2026-10-16 (Stock: filtros Categoría y Modelo o referencia, botón Imprimir)_
 
 ---
 
@@ -137,7 +137,7 @@ lentes, quitar fondo, 3 vistas de marcos, logo). No corren en producción.
   y responde `200` con `cache: true` y `coincidencia` (`exacto|parcial|similar`) sin consultar a
   Gemini. Si no hay coincidencia (o `forzar: true`) consulta a la IA, que resuelve la marca/modelo
   oficial más probable o devuelve `no_identificado` (400), y responde `201` con `coincidencia: "ia"`.
-- **Stock:** `/sucursales`, `/productos`, `POST /productos/importar` (admin, lista de precios CSV; empareja por `codigo` y, si no hay, por `codigo_barras`; un producto nuevo exige `codigo`; acepta además `genero`, `material`, `ubicacion` y `proveedor` por nombre o `proveedor_id`; celda vacía no borra; cada fila en su propio SAVEPOINT, así una fila con error no corta la importación), `/stock` (devuelve `total` y `parecidos`; `limit` hasta 1000), `/stock/marcas`, `GET /stock/filtros` (opciones de los desplegables), movimientos, `/traslados`.
+- **Stock:** `/sucursales`, `/productos`, `POST /productos/importar` (admin, lista de precios CSV; empareja por `codigo` y, si no hay, por `codigo_barras`; un producto nuevo exige `codigo`; acepta además `genero`, `material`, `ubicacion` y `proveedor` por nombre o `proveedor_id`; celda vacía no borra; cada fila en su propio SAVEPOINT, así una fila con error no corta la importación), `/stock` (filtros `categoria`, `modelo` = texto parcial en nombre, código o código de barras, `marca`, `genero`, `material`, `ubicacion_prod`, `proveedor_id`; devuelve `total` y `parecidos`; `limit` hasta 1000), `/stock/marcas`, `GET /stock/filtros` (opciones de los desplegables), movimientos, `/traslados`.
 - **TPV:** `/cajas/*` (actual/abrir/cerrar/movimientos), `/ventas/*` (acepta `descuento` al crear), pagos, entregar, anular, `/cuenta-corriente/:id`.
 - **Promociones:** `GET /promociones`, `POST /promociones` (admin), `PATCH /promociones/:id` (admin), `DELETE /promociones/:id` (admin).
 - **Obras sociales:** `GET /obras-sociales`, `POST /obras-sociales` (admin), `PUT /obras-sociales/:id` (admin), `DELETE /obras-sociales/:id` (admin).
@@ -500,3 +500,10 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
   resultado (`api/uploads.js` → `POST /uploads/tryon`; sin credenciales 409 se ignora y se muestra el
   enlace "Imagen guardada en la nube" solo si se pudo subir). `npm audit fix` en `backend`: `multer`,
   `body-parser` y `qs` actualizados (las 3 vulnerabilidades eran previas a `cloudinary`); 0 pendientes.
+- **2026-10-16** — Stock al estilo Optix: desplegable "Categoría" (usa el filtro `categoria` que el backend ya
+  tenía), campo "Modelo o referencia" (nuevo parámetro `modelo` en `stockController.listar`: texto parcial
+  en nombre, código o código de barras; se aplica al buscar, no en cada tecla) y botón "Imprimir" en
+  `StockPage` (abre el listado completo con los filtros vigentes en una ventana aparte, A4 horizontal).
+  Ambos filtros entran también en Exportar CSV, en el mensaje de "sin resultados" y en Limpiar filtros.
+  No se agregó la categoría "Sol" del ejemplo: las categorías reales son armazón, cristal, lente de
+  contacto, accesorio y otro.

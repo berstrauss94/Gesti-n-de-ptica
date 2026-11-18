@@ -48,7 +48,7 @@ const UBICACIONES_SUGERIDAS = ['Expositor A', 'Expositor B', 'Expositor C'];
 const TODOS = 1000;
 const TAMANIOS = [20, 50, 100, TODOS];
 
-const FILTROS_VACIOS = { marca: '', genero: '', material: '', ubicacion: '', proveedor: '' };
+const FILTROS_VACIOS = { categoria: '', modelo: '', marca: '', genero: '', material: '', ubicacion: '', proveedor: '' };
 const OPCIONES_VACIAS = { marcas: [], generos: [], materiales: [], ubicaciones: [], proveedores: [] };
 const PRODUCTO_VACIO = {
   codigo: '', codigo_barras: '', nombre: '', categoria: 'armazon',
@@ -66,6 +66,8 @@ function paramsListado(sucursalId, q, f, limit, offset) {
   return {
     sucursal_id: sucursalId,
     q: q || undefined,
+    categoria: f.categoria || undefined,
+    modelo: f.modelo || undefined,
     marca: f.marca || undefined,
     genero: f.genero || undefined,
     material: f.material || undefined,
@@ -155,15 +157,17 @@ export default function StockPage() {
 
   // Cambiar un filtro o la cantidad por página vuelve a la primera página.
   function setFiltro(campo, valor) { setPagina(0); setInterpretado([]); setFiltros((f) => ({ ...f, [campo]: valor })); }
-  function limpiarFiltros() { setPagina(0); setInterpretado([]); setFiltros(FILTROS_VACIOS); }
+  function limpiarFiltros() { setPagina(0); setInterpretado([]); setModeloTxt(''); setFiltros(FILTROS_VACIOS); }
   // Vuelve a ver todo el stock: sin texto, sin filtros y en la primera página.
   function limpiarTodo() {
-    setQ(''); setPagina(0); setInterpretado([]); setFiltros(FILTROS_VACIOS);
+    setQ(''); setModeloTxt(''); setPagina(0); setInterpretado([]); setFiltros(FILTROS_VACIOS);
     cargarStock(sucursalId, '', FILTROS_VACIOS, 0, porPagina);
   }
   // Texto de los filtros activos para el mensaje de "sin resultados".
   function descripcionFiltros() {
     const partes = [];
+    if (filtros.categoria) partes.push('Categoría ' + (CAT_LABEL[filtros.categoria] || filtros.categoria));
+    if (filtros.modelo) partes.push('Modelo ' + filtros.modelo);
     if (filtros.marca) partes.push('Marca ' + filtros.marca);
     if (filtros.genero) partes.push('Género ' + filtros.genero);
     if (filtros.material) partes.push('Material ' + filtros.material);
@@ -173,6 +177,8 @@ export default function StockPage() {
   }
   // Al salir del campo Marca (alta): sugiere género y material si están vacíos.
   const [sugerido, setSugerido] = useState('');
+  // Texto del campo "Modelo o referencia": se aplica al buscar (Enter o botón), no en cada tecla.
+  const [modeloTxt, setModeloTxt] = useState('');
   async function sugerirPorMarca(marca) {
     const m = (marca || '').trim();
     if (m.length < 2) return;
@@ -198,8 +204,9 @@ export default function StockPage() {
       ...filtros,
       genero: r.genero || filtros.genero,
       material: r.material || filtros.material,
+      modelo: modeloTxt.trim(),
     };
-    const cambian = nuevos.genero !== filtros.genero || nuevos.material !== filtros.material;
+    const cambian = nuevos.genero !== filtros.genero || nuevos.material !== filtros.material || nuevos.modelo !== filtros.modelo;
     setInterpretado(r.detectado);
     if (r.q !== q) setQ(r.q);
     if (cambian || pagina !== 0) {
@@ -479,6 +486,49 @@ export default function StockPage() {
   }
 
   // Genera e imprime una etiqueta con código de barras del producto.
+  // Imprime el listado completo con los filtros vigentes (no solo la página visible),
+  // en una ventana aparte para que no salgan el menú ni los botones.
+  async function imprimirListado() {
+    setError(''); setOk('');
+    let filas;
+    try {
+      filas = (await listarStock(paramsListado(sucursalId, q, filtros, TODOS, 0))).stock;
+    } catch (err) {
+      setError(err.response?.data?.error || 'No se pudo preparar la impresión');
+      return;
+    }
+    if (!filas.length) { setError('No hay productos para imprimir.'); return; }
+    const sucursal = sucursales.find((s) => s.id === sucursalId)?.nombre || '';
+    const criterios = [q && `Búsqueda: ${q}`, ...descripcionFiltros()].filter(Boolean).join(' · ') || 'Sin filtros';
+    const fila = (s) => `<tr>
+      <td>${escapeHtml(s.codigo)}</td><td>${escapeHtml(s.nombre)}</td>
+      <td>${escapeHtml(CAT_LABEL[s.categoria] || s.categoria)}</td><td>${escapeHtml(s.marca)}</td>
+      <td>${escapeHtml(s.genero)}</td><td>${escapeHtml(s.material)}</td><td>${escapeHtml(s.ubicacion_prod)}</td>
+      <td class="num">$ ${Number(s.precio_venta).toFixed(2)}</td><td class="num">${s.cantidad}</td></tr>`;
+    const win = window.open('', '_blank', 'width=900,height=700');
+    if (!win) { setError('El navegador bloqueó la ventana de impresión.'); return; }
+    win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Stock ${escapeHtml(sucursal)}</title>
+      <style>
+        @page { size: A4 landscape; margin: 10mm; }
+        body { font-family: system-ui, sans-serif; font-size: 11px; color: #111; }
+        h1 { font-size: 16px; margin: 0 0 2px; }
+        p { margin: 0 0 8px; color: #444; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #bbb; padding: 3px 5px; text-align: left; }
+        th { background: #eee; }
+        .num { text-align: right; }
+        thead { display: table-header-group; }
+        tr { page-break-inside: avoid; }
+      </style></head>
+      <body>
+        <h1>Stock ${escapeHtml(sucursal)}</h1>
+        <p>${escapeHtml(criterios)} · ${filas.length} producto(s) · ${new Date().toLocaleDateString('es-AR')}</p>
+        <table><thead><tr><th>Código</th><th>Nombre</th><th>Categoría</th><th>Marca</th><th>Género</th><th>Material</th><th>Ubicación</th><th>Precio</th><th>Cant.</th></tr></thead>
+        <tbody>${filas.map(fila).join('')}</tbody></table>
+        <script>window.onload = function(){ window.print(); };<\/script>
+      </body></html>`);
+    win.document.close();
+  }
   // Usa el código de barras si existe; si no, el código interno.
   function imprimirEtiqueta(s) {
     const valor = (s.codigo_barras && String(s.codigo_barras).trim()) || s.codigo;
@@ -588,6 +638,9 @@ export default function StockPage() {
           <button type="button" className="btn btn--ghost btn--inline" onClick={exportarCSV}>
             Exportar CSV
           </button>
+          <button type="button" className="btn btn--ghost btn--inline" onClick={imprimirListado}>
+            Imprimir
+          </button>
           {esAdmin && (
             <>
               <button type="button" className="btn btn--ghost btn--inline" onClick={handleRecalcular}>
@@ -647,7 +700,12 @@ export default function StockPage() {
       {/* Búsqueda parcial + filtros tipo Optix */}
       <form className="searchbar searchbar--filtros" onSubmit={buscar}>
         <input type="search" placeholder="Buscar por nombre, código, código de barras o marca (ej: “Ray”)…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input type="search" aria-label="Modelo o referencia" placeholder="Modelo o referencia…" value={modeloTxt} onChange={(e) => setModeloTxt(e.target.value)} />
         <button type="submit" className="btn btn--ghost">Buscar</button>
+        <select aria-label="Categoría" value={filtros.categoria} onChange={(e) => setFiltro('categoria', e.target.value)}>
+          <option value="">Todas las categorías</option>
+          {CATEGORIAS.map((c) => <option key={c} value={c}>{CAT_LABEL[c]}</option>)}
+        </select>
         <select aria-label="Marca" value={filtros.marca} onChange={(e) => setFiltro('marca', e.target.value)}>
           <option value="">Todas las marcas</option>
           {opciones.marcas.map((m) => <option key={m} value={m}>{m}</option>)}

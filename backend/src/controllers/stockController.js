@@ -20,7 +20,7 @@ function escaparLike(texto) {
   return String(texto).replace(/[\\%_]/g, '\\$&');
 }
 
-// GET /api/stock?sucursal_id=&q=&categoria=&marca=&genero=&material=
+// GET /api/stock?sucursal_id=&q=&modelo=&categoria=&marca=&genero=&material=
 //                &ubicacion_prod=&proveedor_id=&bajo_minimo=&limit=&offset=
 // Existencias por sucursal. Devuelve { stock, total, limit, offset, parecidos }.
 // q busca por texto parcial en nombre, código, código de barras y marca; si no
@@ -45,6 +45,14 @@ async function listar(req, res) {
   igual(req.query.material, 'p.material');
   igual(req.query.ubicacion_prod, 'p.ubicacion');
   igual(req.query.proveedor_id, 'p.proveedor_id');
+  // "Modelo o referencia": texto parcial en nombre, código o código de barras
+  // (sin la marca, que ya tiene su propio filtro).
+  const modelo = typeof req.query.modelo === 'string' ? req.query.modelo.trim().slice(0, 100) : '';
+  if (modelo) {
+    params.push(`%${escaparLike(modelo)}%`);
+    const n = params.length;
+    cond.push(`(p.nombre ILIKE $${n} OR p.codigo ILIKE $${n} OR p.codigo_barras ILIKE $${n})`);
+  }
   if (req.query.bajo_minimo === 'true') cond.push('ss.cantidad <= ss.stock_minimo');
 
   // Ejecuta la consulta. `textos` es una lista de { sql, valor }: en cada sql,
