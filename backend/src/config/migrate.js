@@ -541,6 +541,34 @@ const MIGRACIONES = [
    )`,
   `CREATE INDEX IF NOT EXISTS idx_catalogo_lab_categoria ON catalogo_laboratorio (LOWER(categoria))`,
   `CREATE INDEX IF NOT EXISTS idx_catalogo_lab_marca ON catalogo_laboratorio (LOWER(marca_proveedor))`,
+  // --- Recordatorios automáticos de turnos / controles (WhatsApp) ---
+  `ALTER TABLE config_notificaciones ADD COLUMN IF NOT EXISTS whatsapp_plantilla VARCHAR(100)`,
+  `ALTER TABLE config_notificaciones ADD COLUMN IF NOT EXISTS whatsapp_idioma VARCHAR(10) DEFAULT 'es_AR'`,
+  `CREATE TABLE IF NOT EXISTS recordatorios_turnos (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     turno_id UUID REFERENCES turnos(id) ON DELETE CASCADE,
+     usuario_id UUID REFERENCES usuarios(id) ON DELETE CASCADE,
+     sucursal_id UUID REFERENCES sucursales(id) ON DELETE CASCADE,
+     nombre_destino VARCHAR(150),
+     telefono_destino VARCHAR(30) NOT NULL,
+     fecha_evento DATE NOT NULL,
+     fecha_programada TIMESTAMP WITH TIME ZONE NOT NULL,
+     anticipacion_tipo VARCHAR(20) NOT NULL
+       CHECK (anticipacion_tipo IN ('1_mes','2_semanas','1_semana','4_dias','personalizado')),
+     dias_antes INTEGER CHECK (dias_antes IS NULL OR dias_antes BETWEEN 1 AND 365),
+     mensaje_personalizado TEXT NOT NULL,
+     canal VARCHAR(20) NOT NULL DEFAULT 'whatsapp' CHECK (canal IN ('whatsapp','telegram')),
+     estado VARCHAR(20) NOT NULL DEFAULT 'pendiente'
+       CHECK (estado IN ('pendiente','enviando','enviado','fallido','cancelado')),
+     intentos INTEGER NOT NULL DEFAULT 0,
+     ultimo_error TEXT,
+     reclamado_at TIMESTAMP WITH TIME ZONE,
+     enviado_at TIMESTAMP WITH TIME ZONE,
+     creado_por UUID REFERENCES usuarios_sistema(id) ON DELETE SET NULL,
+     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+   )`,
+  `CREATE INDEX IF NOT EXISTS idx_recordatorios_estado_fecha ON recordatorios_turnos (estado, fecha_programada)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS uq_recordatorio_en_cola ON recordatorios_turnos (telefono_destino, fecha_evento, fecha_programada, canal) WHERE estado IN ('pendiente','enviando')`,
 ];
 
 // `ejecutar` permite reutilizar las mismas migraciones desde otro cliente

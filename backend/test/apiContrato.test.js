@@ -127,6 +127,18 @@ const CASOS = [
   ['PUT', '/api/laboratorio/actualizacion-masiva', { body: { porcentaje: 900, categoria: 'x' } }, [400], 'error'],
   ['POST', '/api/laboratorio/importar', { token: tokenVendedor, body: { filas: [{}] } }, [403], 'error'],
   ['POST', '/api/laboratorio/importar', { body: { filas: [] } }, [400], 'error'],
+  ['GET', '/api/notificaciones/recordatorios', { token: tokenVendedor }, [200], 'recordatorios'],
+  ['GET', '/api/notificaciones/recordatorios?estado=zzz', {}, [400], 'error'],
+  ['GET', '/api/notificaciones/recordatorios', { token: null }, [401], 'error'],
+  ['POST', '/api/notificaciones/recordatorios', { body: {} }, [400], 'error'],
+  ['POST', '/api/notificaciones/recordatorios', { body: { nombre: 'Ana', telefono: '123', fecha_evento: '2030-01-01', anticipaciones: ['1_mes'] } }, [400], 'error'],
+  ['POST', '/api/notificaciones/recordatorios', { body: { nombre: 'Ana', telefono: '11 5555 1234', fecha_evento: '2020-01-01', anticipaciones: ['1_mes'] } }, [400], 'error'],
+  ['POST', '/api/notificaciones/recordatorios', { body: { nombre: 'Ana', telefono: '11 5555 1234', fecha_evento: '2099-01-01', anticipaciones: ['1_mes'] } }, [400], 'error'],
+  ['POST', '/api/notificaciones/recordatorios', { body: { nombre: 'Ana', telefono: '11 5555 1234', fecha_evento: '2999-02-31', anticipaciones: ['1_mes'] } }, [400], 'error'],
+  ['PATCH', '/api/notificaciones/recordatorios/no-es-uuid/cancelar', {}, [400], 'error'],
+  ['POST', '/api/notificaciones/recordatorios/procesar', { token: tokenVendedor, body: {} }, [403], 'error'],
+  ['PUT', '/api/notificaciones/config', { body: { whatsapp_plantilla: 'Con Espacios' } }, [400], 'error'],
+  ['PUT', '/api/notificaciones/config', { body: { whatsapp_idioma: 'espanol' } }, [400], 'error'],
   ['GET', '/api/no-existe', {}, [404], 'error'],
 ];
 

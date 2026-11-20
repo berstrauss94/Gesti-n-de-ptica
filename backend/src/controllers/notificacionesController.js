@@ -15,6 +15,11 @@ async function obtenerConfig(req, res) {
       telegram_configurado: Boolean(c.telegram_token),
       telegram_chat_default: c.telegram_chat_default || '',
       whatsapp_configurado: Boolean(c.whatsapp_token),
+      whatsapp_phone_id_cargado: Boolean(c.whatsapp_phone_id),
+      whatsapp_plantilla: c.whatsapp_plantilla || '',
+      whatsapp_idioma: c.whatsapp_idioma || 'es_AR',
+      // Listo para recordatorios: token + Phone ID + plantilla aprobada
+      whatsapp_listo: Boolean(c.whatsapp_token && c.whatsapp_phone_id && c.whatsapp_plantilla),
       gemini_configurado: Boolean(c.gemini_api_key),
     });
   } catch (err) {
@@ -26,9 +31,15 @@ async function obtenerConfig(req, res) {
 // PUT /api/notificaciones/config
 async function guardarConfig(req, res) {
   const b = req.body || {};
+  if (b.whatsapp_plantilla && !/^[a-z0-9_]{1,100}$/.test(String(b.whatsapp_plantilla))) {
+    return res.status(400).json({ error: 'El nombre de la plantilla solo puede tener minúsculas, números y guion bajo' });
+  }
+  if (b.whatsapp_idioma && !/^[a-z]{2}(_[A-Z]{2})?$/.test(String(b.whatsapp_idioma))) {
+    return res.status(400).json({ error: 'El idioma tiene que verse así: es_AR' });
+  }
   const campos = [];
   const valores = [];
-  const permitidos = ['telegram_token', 'telegram_chat_default', 'whatsapp_token', 'whatsapp_phone_id', 'gemini_api_key'];
+  const permitidos = ['telegram_token', 'telegram_chat_default', 'whatsapp_token', 'whatsapp_phone_id', 'whatsapp_plantilla', 'whatsapp_idioma', 'gemini_api_key'];
   permitidos.forEach((c) => {
     if (b[c] !== undefined && b[c] !== '') { valores.push(b[c]); campos.push(`${c} = $${valores.length}`); }
   });

@@ -9,6 +9,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { listarSucursales } from '../api/stock';
 import { listarUsuarios } from '../api/usuarios';
 import { listarTurnos, crearTurno, cambiarEstadoTurno, eliminarTurno } from '../api/turnos';
+import { useNavigate } from 'react-router-dom';
 import InfoBtn from '../components/InfoBtn';
 import Modal from '../components/Modal';
 
@@ -30,6 +31,7 @@ const FORM_VACIO = {
 };
 
 export default function TurnosPage() {
+  const navigate = useNavigate();
   const [sucursales, setSucursales] = useState([]);
   const [sucursalId, setSucursalId] = useState('');
   const [clientes, setClientes] = useState([]);
@@ -79,6 +81,16 @@ export default function TurnosPage() {
   useEffect(() => { cargar(); }, [cargar]);
 
   function setCampo(c, v) { setForm((f) => ({ ...f, [c]: v })); }
+  // Lleva al módulo Recordatorios con los datos del turno ya cargados.
+  function recordar(t) {
+    const p = new URLSearchParams({
+      turno_id: t.id,
+      nombre: t.cliente_nombre || t.nombre_contacto || '',
+      telefono: t.telefono_contacto || '',
+      fecha: new Date(t.fecha_hora).toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }),
+    });
+    navigate('/recordatorios?' + p.toString());
+  }
 
   async function guardar(e) {
     e.preventDefault();
@@ -178,6 +190,9 @@ export default function TurnosPage() {
                     <button type="button" className="btn-mini btn-mini--wide" onClick={() => marcar(t.id, 'asistio')}>Asistió</button>
                     <button type="button" className="btn-mini btn-mini--wide" onClick={() => marcar(t.id, 'ausente')}>Ausente</button>
                     <button type="button" className="btn-mini btn-mini--wide" onClick={() => marcar(t.id, 'cancelado')}>Cancelar</button>
+                    {t.estado === 'pendiente' && (
+                      <button type="button" className="btn-mini btn-mini--wide" onClick={() => recordar(t)}>Recordar</button>
+                    )}
                     <button type="button" className="btn-mini btn-mini--wide" onClick={() => borrar(t.id)}>Eliminar</button>
                   </td>
                 </tr>

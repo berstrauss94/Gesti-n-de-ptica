@@ -22,6 +22,7 @@ export default function ConfiguracionPage() {
   const [cfg, setCfg] = useState(null);
   const [form, setForm] = useState({
     telegram_token: '', telegram_chat_default: '', whatsapp_token: '', whatsapp_phone_id: '',
+    whatsapp_plantilla: '', whatsapp_idioma: 'es_AR',
     gemini_api_key: '', alertas_activas: true,
   });
   const [historial, setHistorial] = useState([]);
@@ -79,7 +80,7 @@ export default function ConfiguracionPage() {
         obtenerConfigFiscal().catch(() => null),
       ]);
       setCfg(c);
-      setForm((f2) => ({ ...f2, alertas_activas: c.alertas_activas, telegram_chat_default: c.telegram_chat_default || '' }));
+      setForm((f2) => ({ ...f2, alertas_activas: c.alertas_activas, telegram_chat_default: c.telegram_chat_default || '', whatsapp_plantilla: c.whatsapp_plantilla || '', whatsapp_idioma: c.whatsapp_idioma || 'es_AR' }));
       setHistorial(h);
       setFiscal(f);
       setIa(i);
@@ -134,6 +135,8 @@ export default function ConfiguracionPage() {
       if (form.telegram_token) payload.telegram_token = form.telegram_token;
       if (form.whatsapp_token) payload.whatsapp_token = form.whatsapp_token;
       if (form.whatsapp_phone_id) payload.whatsapp_phone_id = form.whatsapp_phone_id;
+      if (form.whatsapp_plantilla) payload.whatsapp_plantilla = form.whatsapp_plantilla.trim();
+      if (form.whatsapp_idioma) payload.whatsapp_idioma = form.whatsapp_idioma.trim();
       if (form.gemini_api_key) payload.gemini_api_key = form.gemini_api_key;
       await guardarConfigNotif(payload);
       setOk('Configuración guardada.');
@@ -347,6 +350,15 @@ export default function ConfiguracionPage() {
           <input value={form.whatsapp_token} onChange={(e) => setCampo('whatsapp_token', e.target.value)} placeholder="dejar vacío para no cambiar" /></label>
         <label className="field"><span>WhatsApp Phone ID</span>
           <input value={form.whatsapp_phone_id} onChange={(e) => setCampo('whatsapp_phone_id', e.target.value)} /></label>
+        <label className="field"><span>Plantilla de WhatsApp (nombre en Meta)</span>
+          <input value={form.whatsapp_plantilla} onChange={(e) => setCampo('whatsapp_plantilla', e.target.value)} placeholder="ej: recordatorio_control" /></label>
+        <label className="field"><span>Idioma de la plantilla</span>
+          <input value={form.whatsapp_idioma} onChange={(e) => setCampo('whatsapp_idioma', e.target.value)} placeholder="es_AR" /></label>
+        <p className="muted small field--full">
+          Para escribirle primero a un cliente, Meta exige una plantilla aprobada con una sola variable {'{{1}}'} en el cuerpo,
+          con texto antes y después (ej: “Recordatorio de tu óptica: {'{{1}}'} Respondé este mensaje para coordinar.”).
+          Los recordatorios automáticos se envían con esa plantilla.
+        </p>
 
         <label className="field field--full"><span>Google / Gemini API Key (Try-On con IA)</span>
           <input value={form.gemini_api_key} onChange={(e) => setCampo('gemini_api_key', e.target.value)} placeholder="dejar vacío para no cambiar — habilita la prueba realista con IA" /></label>

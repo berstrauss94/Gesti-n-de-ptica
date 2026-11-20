@@ -17,6 +17,7 @@ import MarcoNuevoPage from './pages/MarcoNuevoPage';
 import TryOnPage from './pages/TryOnPage';
 import MercadoPage from './pages/MercadoPage';
 import LentesPage from './pages/LentesPage';
+import RecordatoriosPage from './pages/RecordatoriosPage';
 import StockPage from './pages/StockPage';
 import TpvPage from './pages/TpvPage';
 import ComprasPage from './pages/ComprasPage';
@@ -50,6 +51,7 @@ export default function App() {
         <Route path="/tpv" element={<TpvPage />} />
         <Route path="/compras" element={<ComprasPage />} />
         <Route path="/turnos" element={<TurnosPage />} />
+          <Route path="/recordatorios" element={<RecordatoriosPage />} />
         <Route path="/sobres" element={<SobresPage />} />
         <Route path="/comisiones" element={<ComisionesPage />} />
         <Route path="/configuracion" element={<ConfiguracionPage />} />

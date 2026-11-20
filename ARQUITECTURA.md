@@ -8,7 +8,7 @@
 > cambio. Hay un hook de Kiro (`.kiro/hooks/sync-arquitectura-doc.json`) que lo
 > recuerda automáticamente. Al final está el **Registro de cambios**.
 
-_Última actualización: 2026-10-19 (Nuevo módulo "Lentes y otros": catálogo de laboratorio)_
+_Última actualización: 2026-10-20 (Recordatorios automáticos de turnos por WhatsApp)_
 
 ---
 
@@ -113,7 +113,8 @@ Optica/
 | **Compras** | Proveedores, laboratorios, compras (confirmar impacta stock/costos), órdenes de laboratorio, **exportación contable CITI Compras (AFIP) por período**. |
 | **Turnos / Agenda** | Alta de turnos, filtro por rango, estados (asistió/ausente/cancelado). |
 | **Fiscal (AFIP/ARCA)** | Comprobantes A/B/C/interno con numeración correlativa y QR oficial; modo real listo para activar con certificado. |
-| **Notificaciones** | Telegram (real) y WhatsApp (listo para activar), con historial y config. |
+| **Notificaciones** | Telegram y WhatsApp (Meta Cloud API) reales, con historial y config. |
+| **Recordatorios** | Avisos automáticos por WhatsApp para que el cliente vuelva a su control (1 mes, 2 semanas, 1 semana, 4 días antes, o días a elección), con el mensaje del doctor. |
 | **Configuración** | Tokens de integraciones + panel de estado de integraciones. Solo admin. |
 
 **Scripts auxiliares (`scripts/`):** preparación de imágenes con `sharp` (recortar
@@ -148,7 +149,8 @@ lentes, quitar fondo, 3 vistas de marcos, logo). No corren en producción.
 - **Stock:** el listado acepta además filtros `genero`, `material`, `ubicacion_prod` (columna `productos.ubicacion`) y `proveedor_id`. `q` busca cada palabra por separado (tienen que aparecer todas) en nombre + código + código de barras + marca (índice trigram `idx_productos_busqueda_trgm`); si no hay resultados y `q` tiene 3+ letras, reintenta por parecido (`word_similarity`) y responde `parecidos: true`. `POST/PUT /productos` aceptan `genero` (Hombre/Mujer/Unisex/Niño), `material`, `ubicacion` (hasta 40) y `proveedor_id`.
 - **Compras:** `/proveedores`, `/compras`, `/ordenes-laboratorio`, `GET /compras-citi?periodo=YYYY-MM` (admin, descarga .txt).
 - **Fiscal:** `/fiscal/estado`, `GET/PUT /fiscal/config` (admin; config AFIP sin exponer cert/clave), `/fiscal/emitir`, `/fiscal/comprobantes`.
-- **Notificaciones:** `/notificaciones/config`, `/notificaciones`, `/notificaciones/prueba`.
+- **Notificaciones:** `/notificaciones/config` (ahora también `whatsapp_plantilla`, `whatsapp_idioma` y `whatsapp_listo`; valida el nombre de plantilla `[a-z0-9_]` y el idioma `es_AR`), `/notificaciones`, `/notificaciones/prueba`.
+- **Recordatorios** (`/recordatorios` en el front, `recordatoriosController`): `POST /notificaciones/recordatorios` (`{nombre, telefono, fecha_evento, anticipaciones: ['1_mes','2_semanas','1_semana','4_dias'], dias_personalizados: [n], mensaje?, canal?, turno_id?, cliente_id?, sucursal_id?}`; crea un aviso por anticipación, a las 10:00 de Argentina; los avisos cuya fecha ya pasó se informan en `omitidos` y no se crean; repetir lo mismo no duplica; con `turno_id` toma nombre, teléfono y fecha del turno; el mensaje admite `{nombre}`, `{fecha}`, `{local}`), `GET /notificaciones/recordatorios?estado=`, `PATCH /notificaciones/recordatorios/:id/cancelar` y `POST /notificaciones/recordatorios/procesar` (admin: corre la cola ahora). Teléfonos de Argentina se normalizan a `549…` (`recordatoriosUtil.normalizarTelefono`).
 - **Health:** `GET /health`.
 
 Fuera de `/api`: fallback SPA (sirve `index.html`).
@@ -182,7 +184,7 @@ integraciones NO se devuelven al frontend (solo flags `_configurado`).
 - **Compras:** `proveedores`, `compras`, `compra_items`, `ordenes_laboratorio`.
 - **Fiscal/avisos/agenda:** `comprobantes_fiscales` (con `payload` JSONB para el QR),
   `config_fiscal` (CUIT/punto de venta/certificado/clave, fila única),
-  `config_notificaciones`, `notificaciones`, `turnos`, `graduaciones`, `sobres`
+  `config_notificaciones`, `notificaciones`, `turnos`, `recordatorios_turnos`, `graduaciones`, `sobres`
   (receta lejos/cerca por ojo), fotos. `productos` tiene además `genero`/`material`/`ubicacion`.
 
 Operaciones críticas (traslados, cierre de caja, confirmar compra) usan
@@ -208,9 +210,18 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
   429 (sin cuota); otros errores (clave inválida) cortan. Recuerda el último modelo que respondió
   bien y lo prueba primero. Si todos fallan no escribe en la base. Devuelve specs en JSON y hace
   upsert en `mercado_catalogo`.
-- **Notificaciones** (`notificacionesService.js`): **Telegram real** (Bot API);
-  WhatsApp (Meta Cloud API) pendiente de plantillas. Eventos registrados como
-  `enviado`/`simulado`/`error`.
+- **Notificaciones** (`notificacionesService.js`): **Telegram real** (Bot API) y
+  **WhatsApp real** (Meta Cloud API v21, `enviarWhatsApp`): con `whatsapp_plantilla` manda una
+  plantilla aprobada con el texto en la variable `{{1}}` (única forma de escribirle primero a un
+  cliente); sin plantilla manda texto libre, que solo llega si el cliente escribió en las últimas
+  24 h. Eventos registrados como `enviado`/`simulado`/`error`.
+- **Programador de recordatorios** (`reminderScheduler.js`, arranca en `server.js` después de las
+  migraciones): cada 5 minutos toma de `recordatorios_turnos` los avisos que ya tocan
+  (`FOR UPDATE SKIP LOCKED`, seguro con varias instancias) y los manda. Si las alertas están
+  desactivadas o faltan credenciales, los deja pendientes. Si falla reintenta 3 veces (cada 30 min) y
+  queda `fallido` con el motivo; si ya pasó la fecha del control se cancela solo; un aviso que quedó
+  `enviando` por un corte vuelve a la cola a los 15 min. Los avisos salen a las 10:00 de Argentina.
+  Las credenciales son globales (una fila en `config_notificaciones`), no por sucursal.
 
 ---
 
@@ -535,3 +546,18 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
   la importación no borra datos. No se implementaron las pestañas "Mi Lista" y "Etiquetas" del spec ni la
   integración de `validar-receta` con el sobre (queda el endpoint listo). Verificado contra PostgreSQL real
   (18 casos) y con pruebas de contrato nuevas.
+- **2026-10-20** — Recordatorios automáticos de turnos por WhatsApp. Pestaña nueva "Recordatorios"
+  (`RecordatoriosPage`, `/recordatorios`, ícono Bell): se carga cliente, celular y la fecha en que tiene que
+  volver (atajos "en 1, 2, 3, 6 meses o 1 año"), cuánto antes avisar (1 mes, 2 semanas, 1 semana, 4 días y/o
+  días a elección) y, si hace falta, el mensaje del doctor. Tabla `recordatorios_turnos` (+ columnas
+  `whatsapp_plantilla` y `whatsapp_idioma` en `config_notificaciones`; 5 sentencias aditivas en
+  `migrate.js`), `recordatoriosController` + rutas bajo `/notificaciones/recordatorios`,
+  `services/recordatoriosUtil.js` (fechas, teléfonos AR, mensaje; 11 pruebas) y `services/reminderScheduler.js`
+  (reloj de 5 min, arrancado desde `server.js`). `enviarWhatsApp` dejó de ser un punto de integración y
+  manda de verdad por la Cloud API de Meta. `TurnosPage` suma el botón "Recordar" por turno pendiente y
+  `ConfiguracionPage` los campos de plantilla e idioma. Diferencias con el borrador: se reutilizan
+  `whatsapp_token` y `whatsapp_phone_id` (no se duplican columnas), las credenciales son globales y no por
+  sucursal, los avisos guardan nombre y teléfono propios (los clientes no tienen teléfono cargado), el control
+  puede no existir todavía como turno (`turno_id` es opcional) y no se implementó `respuesta_cliente` ni
+  `sms` (requieren webhook de Meta y otro proveedor). Verificado contra PostgreSQL real con Meta simulado
+  (20 grupos de casos); **no** verificado contra Meta real (falta la cuenta, el token y la plantilla aprobada).
