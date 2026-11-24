@@ -321,7 +321,7 @@ body {
 /* 4) Contenido: entra deslizando, con duración larga y fluida.
    En la primera carga queda después de los íconos; al navegar, fluido. */
 .content {
-  flex: 1; padding: 1.5rem 2rem; min-width: 0;
+  flex: 1; padding: 1.5rem 2rem 5.5rem; min-width: 0;
   animation: contentSlideIn 0.7s cubic-bezier(0.22, 0.61, 0.36, 1) 0.8s both;
 }
 @keyframes contentSlideIn {

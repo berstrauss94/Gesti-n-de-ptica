@@ -49,18 +49,9 @@ export default function ClienteNuevoPage() {
     });
   }
 
-  const slotsCompletos = SLOTS.every((s) => fotos[s.key]);
-
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
-
-    if (!slotsCompletos) {
-      const faltantes = SLOTS.filter((s) => !fotos[s.key]).map((s) => s.label);
-      setError(`Faltan fotos obligatorias: ${faltantes.join(', ')}.`);
-      return;
-    }
-
     setGuardando(true);
     try {
       const payload = {
@@ -71,9 +62,9 @@ export default function ClienteNuevoPage() {
       };
       const cliente = await crearUsuario(payload);
 
-      // Enviar las 3 fotos con su ángulo explícito (orden garantizado)
-      const items = SLOTS.map((s) => ({ file: fotos[s.key], angulo: s.key }));
-      await subirFotosConAngulo(cliente.id, items);
+      // Las fotos son opcionales: se suben solo las elegidas, cada una con su ángulo.
+      const items = SLOTS.filter((s) => fotos[s.key]).map((s) => ({ file: fotos[s.key], angulo: s.key }));
+      if (items.length > 0) await subirFotosConAngulo(cliente.id, items);
 
       navigate(`/clientes/${cliente.id}`, { replace: true });
     } catch (err) {
@@ -139,7 +130,7 @@ export default function ClienteNuevoPage() {
         </label>
 
         <div className="field--full">
-          <span className="slots-title">Fotos de seguimiento (3 obligatorias) *</span>
+          <span className="slots-title">Fotos de seguimiento (opcionales)</span>
           <p className="aviso-fotos">
             Importante: subí la foto del rostro tal cual (JPG/PNG normal). No uses
             fotos con el fondo recortado o "transparente" (cuadriculado): el sistema
@@ -168,7 +159,6 @@ export default function ClienteNuevoPage() {
                   type="file"
                   accept="image/png,image/jpeg,image/webp"
                   onChange={(e) => handleSlot(slot.key, e)}
-                  required
                 />
               </div>
             ))}
@@ -186,7 +176,7 @@ export default function ClienteNuevoPage() {
           <button
             type="submit"
             className="btn btn--primary btn--inline"
-            disabled={guardando || !slotsCompletos}
+            disabled={guardando}
           >
             {guardando ? 'Guardando…' : 'Guardar cliente'}
           </button>
