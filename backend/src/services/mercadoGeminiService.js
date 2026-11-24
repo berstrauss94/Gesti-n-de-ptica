@@ -304,4 +304,22 @@ async function rastrearYEnriquecerModelo({ marca, modelo, forzar = false }) {
   }
 }
 
-module.exports = { rastrearYEnriquecerModelo };
+// Genera texto libre (sin búsqueda web) reutilizando la misma clave y la misma
+// cadena de modelos con respaldo. Devuelve { ok, texto } o { ok:false, motivo }.
+async function generarTexto(prompt, opciones) {
+  const op = opciones || {};
+  const key = await obtenerApiKey();
+  if (!key) return { ok: false, motivo: 'sin_credenciales', detalle: 'Falta la API key de Google' };
+  const body = {
+    contents: [{ role: 'user', parts: [{ text: String(prompt) }] }],
+    generationConfig: { temperature: 0.2, maxOutputTokens: 1500 },
+  };
+  if (op.system) body.systemInstruction = { parts: [{ text: String(op.system) }] };
+  const r = await llamarGemini(key, body);
+  if (!r.ok) return r;
+  const partes = (r.data && r.data.candidates && r.data.candidates[0] && r.data.candidates[0].content && r.data.candidates[0].content.parts) || [];
+  const texto = partes.map((p) => p.text || '').join('').trim();
+  return texto ? { ok: true, texto, modelo: r.modelo } : { ok: false, motivo: 'vacio', detalle: 'La IA no devolvió texto' };
+}
+
+module.exports = { rastrearYEnriquecerModelo, generarTexto };

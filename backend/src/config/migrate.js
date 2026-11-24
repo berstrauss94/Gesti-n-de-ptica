@@ -569,6 +569,38 @@ const MIGRACIONES = [
    )`,
   `CREATE INDEX IF NOT EXISTS idx_recordatorios_estado_fecha ON recordatorios_turnos (estado, fecha_programada)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS uq_recordatorio_en_cola ON recordatorios_turnos (telefono_destino, fecha_evento, fecha_programada, canal) WHERE estado IN ('pendiente','enviando')`,
+  // --- Asistente virtual de ayuda (preguntas frecuentes + historial de consultas) ---
+  `CREATE TABLE IF NOT EXISTS faq_categorias (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     clave VARCHAR(60),
+     nombre VARCHAR(100) NOT NULL,
+     icono VARCHAR(50),
+     orden INT DEFAULT 0
+   )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS uq_faq_categorias_clave ON faq_categorias (clave)`,
+  `CREATE TABLE IF NOT EXISTS faq_preguntas (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     categoria_id UUID REFERENCES faq_categorias(id) ON DELETE CASCADE,
+     clave VARCHAR(60),
+     orden INT DEFAULT 0,
+     pregunta TEXT NOT NULL,
+     respuesta_corta TEXT NOT NULL,
+     respuesta_detallada TEXT,
+     opciones_siguientes JSONB DEFAULT '[]'::jsonb,
+     activo BOOLEAN DEFAULT TRUE
+   )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS uq_faq_preguntas_clave ON faq_preguntas (clave)`,
+  `CREATE INDEX IF NOT EXISTS idx_faq_preguntas_categoria ON faq_preguntas (categoria_id)`,
+  `CREATE TABLE IF NOT EXISTS asistente_consultas (
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+     usuario_id UUID REFERENCES usuarios_sistema(id) ON DELETE SET NULL,
+     consulta_manual TEXT NOT NULL,
+     respuesta_otorgada TEXT NOT NULL,
+     fuente VARCHAR(20) CHECK (fuente IN ('opcion_multiple','ia_gemini','busqueda_local')),
+     valoracion INT CHECK (valoracion IN (1, -1)),
+     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+   )`,
+  `CREATE INDEX IF NOT EXISTS idx_asistente_consultas_fecha ON asistente_consultas (created_at DESC)`,
 ];
 
 // `ejecutar` permite reutilizar las mismas migraciones desde otro cliente

@@ -8,7 +8,7 @@
 > cambio. Hay un hook de Kiro (`.kiro/hooks/sync-arquitectura-doc.json`) que lo
 > recuerda automáticamente. Al final está el **Registro de cambios**.
 
-_Última actualización: 2026-10-20 (Recordatorios automáticos de turnos por WhatsApp)_
+_Última actualización: 2026-10-21 (Asistente virtual de ayuda)_
 
 ---
 
@@ -115,6 +115,7 @@ Optica/
 | **Fiscal (AFIP/ARCA)** | Comprobantes A/B/C/interno con numeración correlativa y QR oficial; modo real listo para activar con certificado. |
 | **Notificaciones** | Telegram y WhatsApp (Meta Cloud API) reales, con historial y config. |
 | **Recordatorios** | Avisos automáticos por WhatsApp para que el cliente vuelva a su control (1 mes, 2 semanas, 1 semana, 4 días antes, o días a elección), con el mensaje del doctor. |
+| **Asistente de ayuda** | Botón "Ayuda" del menú: preguntas frecuentes por tema, consulta escrita y, si no hay respuesta guardada, IA (Gemini); todo queda registrado y se puede valorar. |
 | **Configuración** | Tokens de integraciones + panel de estado de integraciones. Solo admin. |
 
 **Scripts auxiliares (`scripts/`):** preparación de imágenes con `sharp` (recortar
@@ -151,6 +152,7 @@ lentes, quitar fondo, 3 vistas de marcos, logo). No corren en producción.
 - **Fiscal:** `/fiscal/estado`, `GET/PUT /fiscal/config` (admin; config AFIP sin exponer cert/clave), `/fiscal/emitir`, `/fiscal/comprobantes`.
 - **Notificaciones:** `/notificaciones/config` (ahora también `whatsapp_plantilla`, `whatsapp_idioma` y `whatsapp_listo`; valida el nombre de plantilla `[a-z0-9_]` y el idioma `es_AR`), `/notificaciones`, `/notificaciones/prueba`.
 - **Recordatorios** (`/recordatorios` en el front, `recordatoriosController`): `POST /notificaciones/recordatorios` (`{nombre, telefono, fecha_evento, anticipaciones: ['1_mes','2_semanas','1_semana','4_dias'], dias_personalizados: [n], mensaje?, canal?, turno_id?, cliente_id?, sucursal_id?}`; crea un aviso por anticipación, a las 10:00 de Argentina; los avisos cuya fecha ya pasó se informan en `omitidos` y no se crean; repetir lo mismo no duplica; con `turno_id` toma nombre, teléfono y fecha del turno; el mensaje admite `{nombre}`, `{fecha}`, `{local}`), `GET /notificaciones/recordatorios?estado=`, `PATCH /notificaciones/recordatorios/:id/cancelar` y `POST /notificaciones/recordatorios/procesar` (admin: corre la cola ahora). Teléfonos de Argentina se normalizan a `549…` (`recordatoriosUtil.normalizarTelefono`).
+- **Asistente** (`asistenteController`): `GET /asistente/opciones` (menú de categorías y preguntas activas), `POST /asistente/consultar` (`{preguntaId}` responde con lo guardado y devuelve las preguntas relacionadas; `{consultaManual}` hasta 500 caracteres busca primero por parecido, `word_similarity > 0.4`, y solo si no hay coincidencia consulta a Gemini; límite de 15 consultas a la IA por usuario cada 10 minutos, 429 al pasarse), `POST /asistente/valorar` (`{consulta_id, valoracion: 1|-1}`, solo sobre consultas propias) y `GET /asistente/consultas` (admin, filtros `valoracion` y `fuente`).
 - **Health:** `GET /health`.
 
 Fuera de `/api`: fallback SPA (sirve `index.html`).
@@ -184,7 +186,7 @@ integraciones NO se devuelven al frontend (solo flags `_configurado`).
 - **Compras:** `proveedores`, `compras`, `compra_items`, `ordenes_laboratorio`.
 - **Fiscal/avisos/agenda:** `comprobantes_fiscales` (con `payload` JSONB para el QR),
   `config_fiscal` (CUIT/punto de venta/certificado/clave, fila única),
-  `config_notificaciones`, `notificaciones`, `turnos`, `recordatorios_turnos`, `graduaciones`, `sobres`
+  `config_notificaciones`, `notificaciones`, `turnos`, `recordatorios_turnos`, `faq_categorias`, `faq_preguntas`, `asistente_consultas`, `graduaciones`, `sobres`
   (receta lejos/cerca por ojo), fotos. `productos` tiene además `genero`/`material`/`ubicacion`.
 
 Operaciones críticas (traslados, cierre de caja, confirmar compra) usan
@@ -222,6 +224,7 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
   queda `fallido` con el motivo; si ya pasó la fecha del control se cancela solo; un aviso que quedó
   `enviando` por un corte vuelve a la cola a los 15 min. Los avisos salen a las 10:00 de Argentina.
   Las credenciales son globales (una fila en `config_notificaciones`), no por sucursal.
+- **Asistente de ayuda** (`services/faqSeed.js`, `mercadoGeminiService.generarTexto`): las preguntas frecuentes iniciales se cargan al arrancar (después de las migraciones) y solo se agregan las que faltan, identificadas por `clave`: nunca pisan lo que ya esté en la base. La IA usa la misma clave y la misma cadena de modelos con respaldo que Mercado, con un contexto fijo del sistema (no inventa pantallas ni da consejos médicos) y la consulta del usuario tratada como dato. `asistente_consultas.usuario_id` apunta a `usuarios_sistema` (quien consulta es el personal, no el cliente).
 
 ---
 
@@ -561,3 +564,4 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
   puede no existir todavía como turno (`turno_id` es opcional) y no se implementó `respuesta_cliente` ni
   `sms` (requieren webhook de Meta y otro proveedor). Verificado contra PostgreSQL real con Meta simulado
   (20 grupos de casos); **no** verificado contra Meta real (falta la cuenta, el token y la plantilla aprobada).
+- **2026-10-21** — Asistente virtual de ayuda. Botón "Ayuda" en el menú lateral (`Layout`) que abre `AsistenteVirtualModal`: menú de preguntas frecuentes por tema, texto libre, preguntas relacionadas y valoración "Útil / No útil". Tablas nuevas `faq_categorias`, `faq_preguntas` y `asistente_consultas` (7 sentencias aditivas en `migrate.js`), `asistenteController` + `asistenteRoutes` (`/api/asistente/*`), `services/faqSeed.js` (18 preguntas iniciales en 8 temas, escritas sobre lo que el sistema hace hoy) y `generarTexto` en `mercadoGeminiService`. Diferencias con el borrador: se reutiliza la cadena de modelos de Gemini por `fetch` en vez de sumar la dependencia `@google/generative-ai`; `usuario_id` apunta a `usuarios_sistema`; se registran todas las consultas y no solo las de IA; se agregaron `clave` y `orden` (para cargar sin duplicar y ordenar), el endpoint de valoración que el borrador no tenía, el límite por usuario y el historial para admin (sin pantalla todavía). Las FAQ se editan por base de datos: no hay pantalla de administración.

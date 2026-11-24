@@ -18,6 +18,7 @@ const server = app.listen(PORT, () => {
   }
   // Migraciones idempotentes al arrancar (agrega columnas si faltan)
   ejecutarMigraciones()
+    .then(() => require('./services/faqSeed').sembrar())
     .then(() => require('./services/reminderScheduler').iniciar())
     .catch((e) => console.error('Error en migraciones:', e.message));
 });

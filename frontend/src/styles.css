@@ -1320,3 +1320,22 @@ body {
 .lab-cats button:hover { background: #f1f5f9; }
 .lab-cats button.is-active { background: var(--primary-accent); color: #ffffff; }
 @media (max-width: 980px) { .lab-layout { grid-template-columns: 1fr; } .lab-grid { grid-template-columns: 1fr; } }
+
+/* ---------- Asistente virtual de ayuda ---------- */
+.asistente { display: flex; flex-direction: column; gap: 0.75rem; min-width: min(560px, 80vw); }
+.asistente__chat { display: flex; flex-direction: column; gap: 0.6rem; max-height: 320px; overflow-y: auto; padding: 0.75rem; background: #f8fafc; border: 1px solid var(--gris-borde); border-radius: 8px; }
+.asistente__burbuja { max-width: 88%; padding: 0.55rem 0.8rem; border-radius: 10px; font-size: 0.9rem; line-height: 1.4; }
+.asistente__burbuja p { margin: 0 0 0.35rem; white-space: pre-line; }
+.asistente__burbuja p:last-child { margin-bottom: 0; }
+.asistente__burbuja--bot { align-self: flex-start; background: #ffffff; border: 1px solid var(--gris-borde); }
+.asistente__burbuja--usuario { align-self: flex-end; background: var(--primary-accent); color: #ffffff; }
+.asistente__titulo { margin: 0 0 0.35rem; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--texto-suave); }
+.asistente__chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.4rem; }
+.asistente__chip { background: #ffffff; border: 1px solid var(--gris-borde); border-radius: 999px; padding: 0.3rem 0.7rem; font-size: 0.8rem; cursor: pointer; color: #334155; text-align: left; }
+.asistente__chip:hover { background: #f1f5f9; }
+.asistente__chip:disabled { opacity: 0.6; cursor: default; }
+.asistente__chip--tema { font-weight: 600; }
+.asistente__chip--tema.is-active { background: var(--primary-accent); border-color: var(--primary-accent); color: #ffffff; }
+.asistente__valorar { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.4rem; }
+.asistente__form { display: flex; gap: 0.5rem; }
+.asistente__form input { flex: 1; background: #ffffff; border: 1px solid var(--gris-borde); border-radius: 8px; padding: 0.5rem 0.7rem; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08); }

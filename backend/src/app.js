@@ -30,6 +30,7 @@ const mercadoRoutes = require('./routes/mercadoRoutes');
 const medicosRoutes = require('./routes/medicosRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
 const laboratorioRoutes = require('./routes/laboratorioRoutes');
+const asistenteRoutes = require('./routes/asistenteRoutes');
 
 const app = express();
 
@@ -75,6 +76,7 @@ app.use('/api', mercadoRoutes);
 app.use('/api', medicosRoutes);
 app.use('/api', uploadRoutes);
 app.use('/api', laboratorioRoutes);
+app.use('/api', asistenteRoutes);
 
 // 404 solo para rutas de API (deja pasar lo demás al frontend/SPA)
 app.use('/api', (req, res) => {
