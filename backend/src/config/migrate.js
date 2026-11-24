@@ -688,6 +688,37 @@ const MIGRACIONES = [
      (1203, '1 MONOFOCALES', 'Mono Laboratorio', 'LENA', 'Mineral Fotocromatico', '+-800/400', 9, 260943, FALSE, FALSE)
    ON CONFLICT (id) DO NOTHING`,
   `SELECT setval(pg_get_serial_sequence('catalogo_laboratorio', 'id'), GREATEST((SELECT COALESCE(MAX(id), 1) FROM catalogo_laboratorio), 1))`,
+  // --- Carga inicial: monofocal digital (Intelligence Digital, Eyezen, Myopilux Plus). Solo inserta lo que falta. ---
+  `INSERT INTO catalogo_laboratorio (id, categoria, subcategoria_grupo, marca_proveedor, descripcion, badge_graduacion_raw, dias_demora, precio_lista, es_servicio, es_insumo_mostrador)
+   VALUES (1340, '2 MONOFOCAL DIGITAL', 'Monofocal Intelligence Digital', 'LENA', 'Organico blanco 🤖', 'Rx +1200 a -1000', 9, 117714, FALSE, FALSE),
+     (1341, '2 MONOFOCAL DIGITAL', 'Monofocal Intelligence Digital', 'LENA', 'Organico BlueMax 🤖', 'Rx +1200 a -1000', 9, 171210, FALSE, FALSE),
+     (1342, '2 MONOFOCAL DIGITAL', 'Monofocal Intelligence Digital', 'LENA', 'Organico FotoMax 🤖', 'Rx +1200 a -1000', 9, 221607, FALSE, FALSE),
+     (1343, '2 MONOFOCAL DIGITAL', 'Monofocal Intelligence Digital', 'LENA', 'Organico Foto BlueMax 🤖', 'Rx +1200 a -1000', 9, 272151, FALSE, FALSE),
+     (1344, '2 MONOFOCAL DIGITAL', 'Monofocal Intelligence Digital', 'LENA', 'Organico Transitions 🤖', 'Rx +1200 a -1000', 9, 481890, FALSE, FALSE),
+     (1345, '2 MONOFOCAL DIGITAL', 'Monofocal Intelligence Digital', 'LENA', 'Organico Polarizado 🤖', 'Rx +1200 a -1000', 9, 284166, FALSE, FALSE),
+     (1347, '2 MONOFOCAL DIGITAL', 'Monofocal Intelligence Digital', 'LENA', 'Poly Blanco 🤖', 'Rx +1100 a -1500', 9, 163290, FALSE, FALSE),
+     (1348, '2 MONOFOCAL DIGITAL', 'Monofocal Intelligence Digital', 'LENA', 'Poly BlueMax 🤖', 'Rx +900 a -1200', 9, 241041, FALSE, FALSE),
+     (1349, '2 MONOFOCAL DIGITAL', 'Monofocal Intelligence Digital', 'LENA', 'Poly FotoMax 🤖', 'Rx +900 a -1200', 9, 648783, FALSE, FALSE),
+     (1350, '2 MONOFOCAL DIGITAL', 'Monofocal Intelligence Digital', 'LENA', 'Poly Transitions 🤖', 'Rx +900 a -1200', 9, 903408, FALSE, FALSE),
+     (1351, '2 MONOFOCAL DIGITAL', 'Monofocal Intelligence Digital', 'LENA', 'Poly Polarizado 🤖', 'Rx +900 a -1200', 9, 526977, FALSE, FALSE),
+     (1354, '2 MONOFOCAL DIGITAL', 'Monofocal Intelligence Digital', 'LENA', '1.67 Organico Blanco 🤖', 'Rx +1000 a -1000', 9, 287697, FALSE, FALSE),
+     (1355, '2 MONOFOCAL DIGITAL', 'Monofocal Intelligence Digital', 'LENA', '1.67 Blue Max 🤖', 'Rx +1000 a -1000', 9, 311322, FALSE, FALSE),
+     (1356, '2 MONOFOCAL DIGITAL', 'Monofocal Intelligence Digital', 'LENA', '1.67 Foto Max 🤖', 'Rx +1000 a -1000', 9, 435438, FALSE, FALSE),
+     (1357, '2 MONOFOCAL DIGITAL', 'Monofocal Intelligence Digital', 'LENA', '1.67 Transitions 🤖', 'Rx +1000 a -1000', 9, 925302, FALSE, FALSE),
+     (1358, '2 MONOFOCAL DIGITAL', 'Monofocal Intelligence Digital', 'LENA', '1.74 Blanco 🤖', 'Rx +1000 a -1000', 9, 846030, FALSE, FALSE),
+     (1416, '2 MONOFOCAL DIGITAL', 'EYEZEN', 'LENA', 'Orma Blue UV', 'Sin AR', 12, 299517, FALSE, FALSE),
+     (1417, '2 MONOFOCAL DIGITAL', 'EYEZEN', 'LENA', 'Orma Transitions Gris', 'Sin AR', 12, 780318, FALSE, FALSE),
+     (1418, '2 MONOFOCAL DIGITAL', 'EYEZEN', 'LENA', 'Orma Transitions Cafe', 'Sin AR', 12, 961602, FALSE, FALSE),
+     (1419, '2 MONOFOCAL DIGITAL', 'EYEZEN', 'LENA', 'Airwear Blue UV', 'Sin AR', 12, 299517, FALSE, FALSE),
+     (1420, '2 MONOFOCAL DIGITAL', 'EYEZEN', 'LENA', 'Airwear Transitions', 'Sin AR', 12, 867021, FALSE, FALSE),
+     (1421, '2 MONOFOCAL DIGITAL', 'EYEZEN', 'LENA', '1.67 Stylis Blue UV', 'Sin AR', 12, 512325, FALSE, FALSE),
+     (1422, '2 MONOFOCAL DIGITAL', 'EYEZEN', 'LENA', '1.67 Transitions', 'Sin AR', 12, 1332054, FALSE, FALSE),
+     (1423, '2 MONOFOCAL DIGITAL', 'MYOPILUX-PLUS', 'LENA', 'Airwear Blue UV', 'Sin AR', 12, 559620, FALSE, FALSE),
+     (1424, '2 MONOFOCAL DIGITAL', 'MYOPILUX-PLUS', 'LENA', 'Airwear Transitions', 'Sin AR', 12, 867021, FALSE, FALSE),
+     (1425, '2 MONOFOCAL DIGITAL', 'MYOPILUX-PLUS', 'LENA', '1.67 Stylis Blue UV', 'Sin AR', 12, 717261, FALSE, FALSE),
+     (1426, '2 MONOFOCAL DIGITAL', 'MYOPILUX-PLUS', 'LENA', '1.67 Stylis Transitions', 'Sin AR', 12, 1300524, FALSE, FALSE)
+   ON CONFLICT (id) DO NOTHING`,
+  `SELECT setval(pg_get_serial_sequence('catalogo_laboratorio', 'id'), GREATEST((SELECT COALESCE(MAX(id), 1) FROM catalogo_laboratorio), 1))`,
 ];
 
 // `ejecutar` permite reutilizar las mismas migraciones desde otro cliente
