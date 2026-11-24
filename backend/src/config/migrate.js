@@ -601,6 +601,7 @@ const MIGRACIONES = [
      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
    )`,
   `CREATE INDEX IF NOT EXISTS idx_asistente_consultas_fecha ON asistente_consultas (created_at DESC)`,
+  `UPDATE faq_preguntas SET respuesta_corta = 'Por seguridad la contraseña no se cambia desde el sistema: pedísela al administrador.', respuesta_detallada = 'Por seguridad la contraseña no se cambia desde el sistema. Si necesitás cambiarla o la olvidaste, consultá con el administrador y él te la restablece.' WHERE clave = 'config_password'`,
 ];
 
 // `ejecutar` permite reutilizar las mismas migraciones desde otro cliente

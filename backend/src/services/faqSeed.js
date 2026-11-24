@@ -142,8 +142,8 @@ const CATEGORIAS = [
       },
       {
         clave: 'config_password', pregunta: '¿Cómo cambio mi contraseña?',
-        corta: 'Con el botón "Contraseña" de abajo, en el menú lateral.',
-        detalle: 'En el menú lateral, abajo, está el botón "Contraseña": te pide la contraseña actual y la nueva. Si no podés entrar, pedile a un admin que te la restablezca.',
+        corta: 'Por seguridad la contraseña no se cambia desde el sistema: pedísela al administrador.',
+        detalle: 'Por seguridad la contraseña no se cambia desde el sistema. Si necesitás cambiarla o la olvidaste, consultá con el administrador y él te la restablece.',
         rel: [],
       },
     ],

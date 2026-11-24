@@ -8,7 +8,7 @@
 > cambio. Hay un hook de Kiro (`.kiro/hooks/sync-arquitectura-doc.json`) que lo
 > recuerda automáticamente. Al final está el **Registro de cambios**.
 
-_Última actualización: 2026-10-21 (Asistente virtual de ayuda)_
+_Última actualización: 2026-10-22 (Asistente flotante y contraseña solo por administrador)_
 
 ---
 
@@ -98,7 +98,7 @@ Optica/
 
 | Módulo | Qué hace |
 |---|---|
-| **Autenticación** | Login JWT, `me`, cambio de contraseña (bcrypt dentro de Postgres). |
+| **Autenticación** | Login JWT, `me`, cambio de contraseña (bcrypt dentro de Postgres). El botón de cambio de contraseña se quitó de la interfaz: el personal la pide al administrador. El endpoint `POST /auth/cambiar-password` sigue existiendo pero no tiene pantalla. |
 | **Dashboard** | KPIs reales: ventas y cobros del día, cajas abiertas, stock bajo mínimo, turnos de hoy, presupuestos abiertos. Filtrable por sucursal. |
 | **Clientes/Pacientes** | CRUD, fotos de seguimiento (hasta 3), graduaciones/recetas anidadas. |
 | **Marcos (catálogo)** | CRUD de armazones con 3 vistas (frontal/45°/perfil) en PNG transparente. |
@@ -115,7 +115,7 @@ Optica/
 | **Fiscal (AFIP/ARCA)** | Comprobantes A/B/C/interno con numeración correlativa y QR oficial; modo real listo para activar con certificado. |
 | **Notificaciones** | Telegram y WhatsApp (Meta Cloud API) reales, con historial y config. |
 | **Recordatorios** | Avisos automáticos por WhatsApp para que el cliente vuelva a su control (1 mes, 2 semanas, 1 semana, 4 días antes, o días a elección), con el mensaje del doctor. |
-| **Asistente de ayuda** | Botón "Ayuda" del menú: preguntas frecuentes por tema, consulta escrita y, si no hay respuesta guardada, IA (Gemini); todo queda registrado y se puede valorar. |
+| **Asistente de ayuda** | Botón flotante rosa (viñeta con "?" blanco) en la esquina inferior derecha que abre un panel de chat: preguntas frecuentes por tema, consulta escrita y, si no hay respuesta guardada, IA (Gemini); todo queda registrado y se puede valorar. |
 | **Configuración** | Tokens de integraciones + panel de estado de integraciones. Solo admin. |
 
 **Scripts auxiliares (`scripts/`):** preparación de imágenes con `sharp` (recortar
@@ -450,7 +450,7 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
   - **Frontend:** `SobresPage.jsx` con botón Abrir para editar; `SobreConsola.jsx`, `SelectorArmazon.jsx`,
     `utils/receta.js`, `api/medicos.js` y estilos `.sobre-consola` en `styles.css`.
   - Pendiente: Etapa 2 (ítems adicionales, pagos ligados a venta/caja, saldo calculado al leer) y
-    Etapa 3 (orden de laboratorio, descuento de stock, estados). El significado de `DEG` queda a confirmar.
+    Etapa 3 (orden de laboratorio, descuento de stock, estados). `DEG` es la degresión: disminución de la potencia desde la zona de cerca hacia la intermedia en lentes ocupacionales (en dioptrías, habitual 0,75 a 2,25).
 - **2026-10-12** — Cadena de modelos de Gemini y compuerta de calidad:
   - **IA:** `mercadoGeminiService.js` prueba `GEMINI_TEXT_MODEL` y luego `GEMINI_TEXT_FALLBACKS`
     (nuevo en `backend/src/config/env.js`); escala solo ante 404/429 y recuerda el modelo que
@@ -564,4 +564,5 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
   puede no existir todavía como turno (`turno_id` es opcional) y no se implementó `respuesta_cliente` ni
   `sms` (requieren webhook de Meta y otro proveedor). Verificado contra PostgreSQL real con Meta simulado
   (20 grupos de casos); **no** verificado contra Meta real (falta la cuenta, el token y la plantilla aprobada).
+- **2026-10-22** — Asistente flotante: el modal desencajado se reemplazó por un botón circular en la esquina inferior derecha (logo de viñeta rosa con "?" blanco, entrada con pop y latido, sin animación si el sistema pide menos movimiento) que abre un panel anclado (`AsistenteVirtualModal` con `abierto/onAbrir/onCerrar`, cierra con Esc). Se quitó el botón "Contraseña" del menú lateral y su modal (la contraseña la gestiona el administrador); la FAQ `config_password` se actualizó con una migración `UPDATE ... WHERE clave`. Se confirmó el significado de `DEG` (degresión).
 - **2026-10-21** — Asistente virtual de ayuda. Botón "Ayuda" en el menú lateral (`Layout`) que abre `AsistenteVirtualModal`: menú de preguntas frecuentes por tema, texto libre, preguntas relacionadas y valoración "Útil / No útil". Tablas nuevas `faq_categorias`, `faq_preguntas` y `asistente_consultas` (7 sentencias aditivas en `migrate.js`), `asistenteController` + `asistenteRoutes` (`/api/asistente/*`), `services/faqSeed.js` (18 preguntas iniciales en 8 temas, escritas sobre lo que el sistema hace hoy) y `generarTexto` en `mercadoGeminiService`. Diferencias con el borrador: se reutiliza la cadena de modelos de Gemini por `fetch` en vez de sumar la dependencia `@google/generative-ai`; `usuario_id` apunta a `usuarios_sistema`; se registran todas las consultas y no solo las de IA; se agregaron `clave` y `orden` (para cargar sin duplicar y ordenar), el endpoint de valoración que el borrador no tenía, el límite por usuario y el historial para admin (sin pantalla todavía). Las FAQ se editan por base de datos: no hay pantalla de administración.

@@ -8,11 +8,10 @@ import { useState } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import {
   Home, Users, Glasses, Store, Eye, Package, ShoppingCart, Truck, Settings,
-  CalendarClock, FileText, Percent, Sparkles, LogOut, KeyRound, Menu, X, Bell, HelpCircle,
+  CalendarClock, FileText, Percent, Sparkles, LogOut, Menu, X, Bell,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useEsAdmin } from '../hooks/useEsAdmin';
-import CambiarPasswordModal from './CambiarPasswordModal';
 import AsistenteVirtualModal from './AsistenteVirtualModal';
 import logo from '../assets/logo.png';
 
@@ -41,7 +40,6 @@ export default function Layout() {
   const { usuario, logout } = useAuth();
   const esAdmin = useEsAdmin();
   const location = useLocation();
-  const [cambiandoPass, setCambiandoPass] = useState(false);
   const [asistenteAbierto, setAsistenteAbierto] = useState(false);
   const [abiertoMovil, setAbiertoMovil] = useState(false); // control táctil
 
@@ -93,12 +91,6 @@ export default function Layout() {
             <span className="sidebar__user-rol">{usuario?.rol}</span>
           </div>
           <div className="sidebar__actions">
-            <button type="button" className="sidebar__btn" onClick={() => setCambiandoPass(true)} title="Cambiar contraseña">
-              <KeyRound size={16} /> <span className="sidebar__btn-label">Contraseña</span>
-            </button>
-            <button type="button" className="sidebar__btn" onClick={() => setAsistenteAbierto(true)} title="Ayuda">
-              <HelpCircle size={16} /> <span className="sidebar__btn-label">Ayuda</span>
-            </button>
             <button type="button" className="sidebar__btn sidebar__btn--salir" onClick={logout} title="Salir">
               <LogOut size={16} /> <span className="sidebar__btn-label">Salir</span>
             </button>
@@ -109,9 +101,7 @@ export default function Layout() {
       <main className="content" key={location.pathname}>
         <Outlet />
       </main>
-
-      {cambiandoPass && <CambiarPasswordModal onCerrar={() => setCambiandoPass(false)} />}
-      {asistenteAbierto && <AsistenteVirtualModal onCerrar={() => setAsistenteAbierto(false)} />}
+      <AsistenteVirtualModal abierto={asistenteAbierto} onAbrir={() => setAsistenteAbierto(true)} onCerrar={() => setAsistenteAbierto(false)} />
     </div>
   );
 }
