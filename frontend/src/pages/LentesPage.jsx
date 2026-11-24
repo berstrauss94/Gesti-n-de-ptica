@@ -112,9 +112,8 @@ export default function LentesPage() {
       if (!mapa.has(g)) mapa.set(g, []);
       mapa.get(g).push(it);
     });
-    // Orden de la lista del laboratorio: cada grupo va según su primer código.
-    const primerId = (lista) => Math.min(...lista.map((it) => Number(it.id)));
-    return [...mapa.entries()].sort((a, b) => primerId(a[1]) - primerId(b[1]));
+    // El backend ya los manda en el orden de la lista del laboratorio (orden_lista).
+    return [...mapa.entries()];
   }, [items]);
 
   // --- Imprimir lo que se ve (ventana aparte, sin menú ni botones) ---

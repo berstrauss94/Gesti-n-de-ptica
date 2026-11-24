@@ -51,7 +51,7 @@ async function listar(req, res) {
     params.push(MAX_ITEMS);
     const r = await query(
       `SELECT * FROM catalogo_laboratorio WHERE ${cond.join(' AND ')}
-       ORDER BY subcategoria_grupo ASC NULLS LAST, id ASC LIMIT $${params.length}`,
+       ORDER BY orden_lista ASC NULLS LAST, subcategoria_grupo ASC NULLS LAST, id ASC LIMIT $${params.length}`,
       params
     );
     return res.json({ status: 'success', count: r.rows.length, data: r.rows });

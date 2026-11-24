@@ -719,6 +719,46 @@ const MIGRACIONES = [
      (1426, '2 MONOFOCAL DIGITAL', 'MYOPILUX-PLUS', 'LENA', '1.67 Stylis Transitions', 'Sin AR', 12, 1300524, FALSE, FALSE)
    ON CONFLICT (id) DO NOTHING`,
   `SELECT setval(pg_get_serial_sequence('catalogo_laboratorio', 'id'), GREATEST((SELECT COALESCE(MAX(id), 1) FROM catalogo_laboratorio), 1))`,
+  // --- Orden de la lista del laboratorio: grupos e ítems se muestran como vienen en la lista (NULL = al final, por código). ---
+  `ALTER TABLE catalogo_laboratorio ADD COLUMN IF NOT EXISTS orden_lista INTEGER`,
+  `UPDATE catalogo_laboratorio AS c SET orden_lista = v.o FROM (VALUES (1493, 1), (1494, 2), (1495, 3), (1496, 4), (1497, 5), (1498, 6), (1499, 7), (1500, 8), (1501, 9), (1502, 10), (1503, 11), (1504, 12), (1505, 13), (1506, 14), (1507, 15), (1508, 16), (1509, 17), (1510, 18), (1511, 19), (1512, 20), (1283, 21), (1531, 22), (1284, 23), (1285, 24), (1286, 25), (1287, 26), (1288, 27), (1289, 28), (1291, 29), (1529, 30), (1550, 31), (1292, 32), (1293, 33), (1530, 34), (1294, 35), (1309, 36), (1310, 37), (1295, 38), (1296, 39), (1390, 40), (1298, 41), (1299, 42), (1300, 43), (1520, 44), (1484, 45), (1301, 46), (1302, 47), (1303, 48), (1304, 49), (1305, 50), (1306, 51), (1307, 52), (1308, 53), (1169, 54), (1526, 55), (1172, 56), (1170, 57), (1536, 58), (1173, 59), (1174, 60), (1175, 61), (1177, 62), (1178, 63), (1179, 64), (1180, 65), (1181, 66), (1182, 67), (1183, 68), (1184, 69), (1185, 70), (1186, 71), (1187, 72), (1188, 73), (1189, 74), (1190, 75), (1201, 76), (1202, 77), (1203, 78), (1340, 79), (1341, 80), (1342, 81), (1343, 82), (1344, 83), (1345, 84), (1347, 85), (1348, 86), (1349, 87), (1350, 88), (1351, 89), (1354, 90), (1355, 91), (1356, 92), (1357, 93), (1358, 94), (1416, 95), (1417, 96), (1418, 97), (1419, 98), (1420, 99), (1421, 100), (1422, 101), (1423, 102), (1424, 103), (1425, 104), (1426, 105)) AS v(id, o) WHERE c.id = v.id AND c.orden_lista IS NULL`,
+  // --- Carga inicial: bifocales (Flap Top, Kriptock, Flat Top, Invisibles). Solo inserta lo que falta. ---
+  `INSERT INTO catalogo_laboratorio (id, categoria, subcategoria_grupo, marca_proveedor, descripcion, badge_graduacion_raw, dias_demora, precio_lista, es_servicio, es_insumo_mostrador, orden_lista)
+   VALUES (1532, '3 BIFOCALES', 'BIFOCALES Flap Top', 'LENA', 'PROMO Bifocal Blanco + ARMAZON ⭐', 'ARMAZON ECONOMICO', NULL, 81602, FALSE, FALSE, 106),
+     (1549, '3 BIFOCALES', 'BIFOCALES Flap Top', 'Cent', 'FOTO BLUE AR PROMO', NULL, NULL, 200000, FALSE, FALSE, 107),
+     (1191, '3 BIFOCALES', 'BIFOCALES Flap Top', 'LENA', 'Organico Bco AD: 100a 300', 'Esf +-6.00 cil 4.00', 9, 72000, FALSE, FALSE, 108),
+     (1192, '3 BIFOCALES', 'BIFOCALES Flap Top', 'LENA', 'Organico BlueMax AD: 100 a 300', 'Esf +-600 cil 400', 9, 157092, FALSE, FALSE, 109),
+     (1193, '3 BIFOCALES', 'BIFOCALES Flap Top', 'LENA', 'Organico FotoMax AD: 100 a 300', 'Esf +-600 cil 400', 9, 187000, FALSE, FALSE, 110),
+     (1194, '3 BIFOCALES', 'BIFOCALES Flap Top', 'LENA', 'Organico FotoBlue AD: 100 a 300', 'Esf +-600 cil 400', 9, 216720, FALSE, FALSE, 111),
+     (1195, '3 BIFOCALES', 'BIFOCALES Flap Top', 'LENA', 'Organico Transitions AD: 100 a 300', 'Esf +-600 cil 400', 12, 689965, FALSE, FALSE, 112),
+     (1196, '3 BIFOCALES', 'BIFOCALES Flap Top', 'LENA', 'Organico Polarizado AD: 100 a 300', 'Esf +600-400 cil 400', 10, 411242, FALSE, FALSE, 113),
+     (1197, '3 BIFOCALES', 'BIFOCALES Flap Top', 'LENA', 'Poly Bco AD: 100 a 300', 'Esf +-600 cil 400', 10, 126893, FALSE, FALSE, 114),
+     (1198, '3 BIFOCALES', 'BIFOCALES Flap Top', 'LENA', 'Poly FotoMax AD: 100 a 300', 'Esf +-600 cil 400', 10, 651690, FALSE, FALSE, 115),
+     (1205, '3 BIFOCALES', 'BIFOCALES Flap Top', 'LENA', 'Poli Polarizado', 'Esf+-600 cil-400', 10, 591019, FALSE, FALSE, 116),
+     (1227, '3 BIFOCALES', 'BIFOCALES Flap Top', 'LENA', 'Organico Bco AD: 100a 300 URGENTE!!!', 'Esf +-6.00 cil 4.00', 2, 83776, FALSE, FALSE, 117),
+     (1228, '3 BIFOCALES', 'BIFOCALES Flap Top', 'LENA', 'Organico BlueMax AD: 100 a 300 URGENTE!!!', 'Esf +-600 cil 400', 3, 171864, FALSE, FALSE, 118),
+     (1229, '3 BIFOCALES', 'BIFOCALES Flap Top', 'LENA', 'Organico FotoMax AD: 100 a 300 URGENTE!!!', 'Esf +-600 cil 400', 3, 196350, FALSE, FALSE, 119),
+     (1278, '3 BIFOCALES', 'BIFOCALES KRIPTOCK', 'LENA', 'Orgánico Blanco', 'Esf +4.00 Cil -4.00', 7, 68064, FALSE, FALSE, 120),
+     (72, '3 BIFOCALES', 'Flat Top', 'VIST', 'Mineral Foto', 'Add 100 a 350 +45% por un solo ojo', 7, 753349, FALSE, FALSE, 121),
+     (1513, '3 BIFOCALES', 'Flat Top', 'VIST', 'Mineral Blanco', 'Add 100 a 350 +45% por un solo ojo', NULL, 380363, FALSE, FALSE, 122),
+     (1514, '3 BIFOCALES', 'Flat Top', 'Cristal', 'FLAT TOP MINERAL BLANCO', NULL, NULL, 220500, FALSE, FALSE, 123),
+     (1263, '3 BIFOCALES', 'BIFOCALES INVISIBLES', 'LENA', 'Orgánico Blanco', 'RX +6.00 a -9.00', 7, 156884, FALSE, FALSE, 124),
+     (1264, '3 BIFOCALES', 'BIFOCALES INVISIBLES', 'LENA', 'Orgánico BlueMax', 'RX +6.00 a -9.00', 7, 206164, FALSE, FALSE, 125),
+     (1265, '3 BIFOCALES', 'BIFOCALES INVISIBLES', 'LENA', 'Org FotoMax', 'RX +6.00 a -9.00', 7, 351280, FALSE, FALSE, 126),
+     (1266, '3 BIFOCALES', 'BIFOCALES INVISIBLES', 'LENA', 'Org Foto BlueMax', 'RX +6.00 a -9.00', 7, 402740, FALSE, FALSE, 127),
+     (1267, '3 BIFOCALES', 'BIFOCALES INVISIBLES', 'LENA', 'Org Transitions', 'RX +6.00 a -9.00', 7, 707216, FALSE, FALSE, 128),
+     (1268, '3 BIFOCALES', 'BIFOCALES INVISIBLES', 'LENA', 'Org Polarizado', 'RX +6.00 a -3.00', 7, 385125, FALSE, FALSE, 129),
+     (1269, '3 BIFOCALES', 'BIFOCALES INVISIBLES', 'LENA', 'Org Espejado Foto', 'RX +6.00 a -9.00', 7, 526820, FALSE, FALSE, 130),
+     (1270, '3 BIFOCALES', 'BIFOCALES INVISIBLES', 'LENA', 'Poly Blanco', 'RX +6.00 a -9.00', 7, 208705, FALSE, FALSE, 131),
+     (1271, '3 BIFOCALES', 'BIFOCALES INVISIBLES', 'LENA', 'Poly BlueMax', 'RX +6.00 a -9.00', 7, 415279, FALSE, FALSE, 132),
+     (1272, '3 BIFOCALES', 'BIFOCALES INVISIBLES', 'LENA', 'Poly FotoMax', 'RX +6.00 a -9.00', 7, 578078, FALSE, FALSE, 133),
+     (1273, '3 BIFOCALES', 'BIFOCALES INVISIBLES', 'LENA', 'Poly Transitions', 'RX +6.00 a -9.00', 7, 665184, FALSE, FALSE, 134),
+     (1274, '3 BIFOCALES', 'BIFOCALES INVISIBLES', 'LENA', '1.67 Blanco', 'RX +6.00 a -9.00', NULL, 670919, FALSE, FALSE, 135),
+     (1275, '3 BIFOCALES', 'BIFOCALES INVISIBLES', 'LENA', '1.67 BlueMax', 'RX +6.00 a -9.00', 7, 1413992, FALSE, FALSE, 136),
+     (1276, '3 BIFOCALES', 'BIFOCALES INVISIBLES', 'LENA', '1.67 FotoMax', 'RX +6.00 a -9.00', NULL, 1436512, FALSE, FALSE, 137),
+     (1277, '3 BIFOCALES', 'BIFOCALES INVISIBLES', 'LENA', '1.67 Transitions', 'RX +6.00 a -9.00', 7, 1150285, FALSE, FALSE, 138)
+   ON CONFLICT (id) DO NOTHING`,
+  `SELECT setval(pg_get_serial_sequence('catalogo_laboratorio', 'id'), GREATEST((SELECT COALESCE(MAX(id), 1) FROM catalogo_laboratorio), 1))`,
 ];
 
 // `ejecutar` permite reutilizar las mismas migraciones desde otro cliente
