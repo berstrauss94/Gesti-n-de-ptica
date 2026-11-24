@@ -1302,7 +1302,7 @@ body {
 
 /* ---------- Lentes y otros (catálogo de laboratorio) ---------- */
 .lab-layout { display: grid; grid-template-columns: minmax(0, 1fr) 230px; gap: 1rem; align-items: start; }
-.lab-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.lab-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; align-items: start; }
 .lab-card { background: #ffffff; border: 1px solid var(--gris-borde); border-radius: 8px; overflow: hidden; }
 .lab-card__head { background: var(--primary-accent); color: #ffffff; font-weight: 700; font-size: 0.85rem; padding: 0.45rem 0.75rem; display: flex; justify-content: space-between; gap: 0.5rem; }
 .lab-row { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--gris-borde); font-size: 0.85rem; background: #ffffff; }
@@ -1314,6 +1314,7 @@ body {
 .lab-row__precio { font-weight: 700; white-space: nowrap; }
 .lab-row__main { flex: 1; }
 .lab-row__desc { flex-basis: 100%; }
+.lab-row__main .lab-badge { white-space: normal; overflow-wrap: anywhere; max-width: 100%; }
 .lab-row__cod { display: flex; flex-direction: column; align-items: center; gap: 0.15rem; flex: none; min-width: 3rem; }
 .lab-marca { font-size: 0.65rem; font-weight: 600; color: var(--texto-suave); text-transform: uppercase; }
 .lab-id { background: var(--primary-accent); color: #ffffff; font-weight: 700; font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 4px; }
