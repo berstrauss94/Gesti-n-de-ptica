@@ -263,9 +263,12 @@ export default function LentesPage() {
                   <div className="lab-card__head"><span>{grupo}</span><span>{lista.length}</span></div>
                   {lista.map((it) => (
                     <div key={it.id} className="lab-row">
-                      <div className="lab-row__main">
+                      <div className="lab-row__cod">
                         <span className="lab-id">{it.id}</span>
-                        <span>{it.descripcion}</span>
+                        {it.marca_proveedor && <span className="lab-marca">{it.marca_proveedor}</span>}
+                      </div>
+                      <div className="lab-row__main">
+                        <span className="lab-row__desc">{it.descripcion}</span>
                         {it.badge_graduacion_raw && <span className="lab-badge lab-badge--grad">{it.badge_graduacion_raw}</span>}
                         {it.dias_demora != null && <span className="lab-badge lab-badge--dias">⏱ {it.dias_demora} días</span>}
                         {busqueda && <span className="muted small">{it.categoria}</span>}

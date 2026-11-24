@@ -1312,6 +1312,10 @@ body {
 .lab-row:hover { background: #f0fdf4; }
 .lab-row__main { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; min-width: 0; }
 .lab-row__precio { font-weight: 700; white-space: nowrap; }
+.lab-row__main { flex: 1; }
+.lab-row__desc { flex-basis: 100%; }
+.lab-row__cod { display: flex; flex-direction: column; align-items: center; gap: 0.15rem; flex: none; min-width: 3rem; }
+.lab-marca { font-size: 0.65rem; font-weight: 600; color: var(--texto-suave); text-transform: uppercase; }
 .lab-id { background: var(--primary-accent); color: #ffffff; font-weight: 700; font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 4px; }
 .lab-badge { color: #ffffff; font-size: 0.7rem; padding: 0.1rem 0.5rem; border-radius: 999px; white-space: nowrap; }
 .lab-badge--grad { background: #0ea5e9; font-family: ui-monospace, monospace; }
