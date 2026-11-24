@@ -759,6 +759,42 @@ const MIGRACIONES = [
      (1277, '3 BIFOCALES', 'BIFOCALES INVISIBLES', 'LENA', '1.67 Transitions', 'RX +6.00 a -9.00', 7, 1150285, FALSE, FALSE, 138)
    ON CONFLICT (id) DO NOTHING`,
   `SELECT setval(pg_get_serial_sequence('catalogo_laboratorio', 'id'), GREATEST((SELECT COALESCE(MAX(id), 1) FROM catalogo_laboratorio), 1))`,
+  // --- Carga inicial: ocupacionales (Custom, Novar, Intelligence Desk, Access, Digitime, Interview, Litoral). Solo inserta lo que falta. ---
+  `INSERT INTO catalogo_laboratorio (id, categoria, subcategoria_grupo, marca_proveedor, descripcion, badge_graduacion_raw, dias_demora, precio_lista, es_servicio, es_insumo_mostrador, orden_lista)
+   VALUES (84, '4 OCUPACIONALES', 'Ocupacionales Digitales CUSTOM', 'VIST', 'ANTIAGE SUPER HD AR OFFICE 2 🤖', NULL, 4, 447850, FALSE, FALSE, 139),
+     (178, '4 OCUPACIONALES', 'Ocupacional Digitales NOVAR', 'VIST', 'Orgánico Blanco CERCA 🤖', NULL, 10, 250221, FALSE, FALSE, 140),
+     (180, '4 OCUPACIONALES', 'Ocupacional Digitales NOVAR', 'VIST', 'Orgánico Blanco CERCA AR DURAX 🤖', NULL, 10, 297805, FALSE, FALSE, 141),
+     (181, '4 OCUPACIONALES', 'Ocupacional Digitales NOVAR', 'VIST', 'BLUE TECH CERCA AR DURAX 🤖', NULL, 10, 379239, FALSE, FALSE, 142),
+     (182, '4 OCUPACIONALES', 'Ocupacional Digitales NOVAR', 'VIST', 'Policarbonato Blanco CERCA 🤖', NULL, 10, 353724, FALSE, FALSE, 143),
+     (184, '4 OCUPACIONALES', 'Ocupacional Digitales NOVAR', 'VIST', 'Policarbonato Blanco CERCA AR DURAX 🤖', NULL, 10, 401308, FALSE, FALSE, 144),
+     (186, '4 OCUPACIONALES', 'Ocupacional Digitales NOVAR', 'VIST', 'Orgánico Blanco 1.67 CERCA AR DURAX 🤖', NULL, 10, 561896, FALSE, FALSE, 145),
+     (1097, '4 OCUPACIONALES', 'INTELLIGENCE Desk', 'LENA', 'Organico Blanco', 'Sin AR', 9, 144345, FALSE, FALSE, 146),
+     (1098, '4 OCUPACIONALES', 'INTELLIGENCE Desk', 'LENA', 'Organico BlueMax', 'Sin AR', 9, 206082, FALSE, FALSE, 147),
+     (1099, '4 OCUPACIONALES', 'INTELLIGENCE Desk', 'LENA', 'Organico FotoMax', 'Sin AR', 9, 298821, FALSE, FALSE, 148),
+     (1100, '4 OCUPACIONALES', 'INTELLIGENCE Desk', 'LENA', 'Organico Foto BlueMax', 'Sin AR', 9, 425457, FALSE, FALSE, 149),
+     (1101, '4 OCUPACIONALES', 'INTELLIGENCE Desk', 'LENA', 'Organico Transitions', 'Sin AR', 9, 556056, FALSE, FALSE, 150),
+     (1102, '4 OCUPACIONALES', 'INTELLIGENCE Desk', 'LENA', 'Poly Blanco', 'Sin AR', 9, 161937, FALSE, FALSE, 151),
+     (1103, '4 OCUPACIONALES', 'INTELLIGENCE Desk', 'LENA', 'Poly BlueMax', 'Sin AR', 9, 318438, FALSE, FALSE, 152),
+     (1104, '4 OCUPACIONALES', 'INTELLIGENCE Desk', 'LENA', 'Poly FotoMax', 'Sin AR', 9, 512595, FALSE, FALSE, 153),
+     (1105, '4 OCUPACIONALES', 'INTELLIGENCE Desk', 'LENA', 'Poly Transitions', 'Sin AR', 9, 641601, FALSE, FALSE, 154),
+     (1107, '4 OCUPACIONALES', 'INTELLIGENCE Desk', 'LENA', '1.60 Blue Max', 'Sin AR', 9, 304285, FALSE, FALSE, 155),
+     (1108, '4 OCUPACIONALES', 'INTELLIGENCE Desk', 'LENA', '1.67 Blanco', 'Sin AR', 9, 266766, FALSE, FALSE, 156),
+     (1109, '4 OCUPACIONALES', 'INTELLIGENCE Desk', 'LENA', '1.67 Blue Max', 'Sin AR', 9, 371442, FALSE, FALSE, 157),
+     (1110, '4 OCUPACIONALES', 'INTELLIGENCE Desk', 'LENA', '1.67 Foto Max', 'Sin AR', 9, 605157, FALSE, FALSE, 158),
+     (1111, '4 OCUPACIONALES', 'INTELLIGENCE Desk', 'LENA', '1.67 Transitions', 'Sin AR', 9, 696513, FALSE, FALSE, 159),
+     (1112, '4 OCUPACIONALES', 'INTELLIGENCE Desk', 'LENA', '1.74 Blanco', 'Sin AR', 9, 856035, FALSE, FALSE, 160),
+     (1168, '4 OCUPACIONALES', 'ACCESS Linea Zeiss', 'LENA', 'Org Blanco Rx +5.00 a -4.00', 'Sin AR', 9, 168420, FALSE, FALSE, 161),
+     (1402, '4 OCUPACIONALES', 'DIGITIME', 'LENA', 'Orma Blue UV', 'Sin AR', 12, 524910, FALSE, FALSE, 162),
+     (1403, '4 OCUPACIONALES', 'DIGITIME', 'LENA', 'Orma Transitions', 'Sin AR', 12, 844782, FALSE, FALSE, 163),
+     (1404, '4 OCUPACIONALES', 'DIGITIME', 'LENA', 'Airwear Blue UV', 'Sin AR', 12, 574122, FALSE, FALSE, 164),
+     (1405, '4 OCUPACIONALES', 'DIGITIME', 'LENA', 'Airwear Transitions', 'Sin AR', 12, 1000614, FALSE, FALSE, 165),
+     (1406, '4 OCUPACIONALES', 'DIGITIME', 'LENA', '1.67 Stylis Blue UV', 'Sin AR', 12, 606927, FALSE, FALSE, 166),
+     (1407, '4 OCUPACIONALES', 'DIGITIME', 'LENA', '1.67 Stylis Transitions', 'Sin AR', 12, 1254870, FALSE, FALSE, 167),
+     (1408, '4 OCUPACIONALES', 'INTERVIEW', 'LENA', 'Orma', 'Sin AR', 12, 242151, FALSE, FALSE, 168),
+     (1409, '4 OCUPACIONALES', 'INTERVIEW', 'LENA', 'Airwear', 'Sin AR', 12, 499632, FALSE, FALSE, 169),
+     (1552, '4 OCUPACIONALES', 'LITORAL', 'Cent', 'Poly Blanco', NULL, NULL, 215985, FALSE, FALSE, 170)
+   ON CONFLICT (id) DO NOTHING`,
+  `SELECT setval(pg_get_serial_sequence('catalogo_laboratorio', 'id'), GREATEST((SELECT COALESCE(MAX(id), 1) FROM catalogo_laboratorio), 1))`,
 ];
 
 // `ejecutar` permite reutilizar las mismas migraciones desde otro cliente
