@@ -11,6 +11,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { crearUsuario, subirFotosConAngulo } from '../api/usuarios';
+import InfoBtn from '../components/InfoBtn';
 
 // Definición de los 3 slots (orden visual Frontal -> 45° -> Perfil)
 const SLOTS = [
