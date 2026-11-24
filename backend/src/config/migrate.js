@@ -602,6 +602,30 @@ const MIGRACIONES = [
    )`,
   `CREATE INDEX IF NOT EXISTS idx_asistente_consultas_fecha ON asistente_consultas (created_at DESC)`,
   `UPDATE faq_preguntas SET respuesta_corta = 'Por seguridad la contraseña no se cambia desde el sistema: pedísela al administrador.', respuesta_detallada = 'Por seguridad la contraseña no se cambia desde el sistema. Si necesitás cambiarla o la olvidaste, consultá con el administrador y él te la restablece.' WHERE clave = 'config_password'`,
+  // --- Carga inicial: control de miopía (Myofix / Myolens, Novar). Solo inserta lo que falta. ---
+  `INSERT INTO catalogo_laboratorio (id, categoria, subcategoria_grupo, marca_proveedor, descripcion, dias_demora, precio_lista, es_servicio, es_insumo_mostrador)
+   VALUES (1493, '0 CONTROL DE MIOPÍA', 'MYOFIX Novar para el Control', 'Novar', 'Organico BLUE-TECH AR DURAX', NULL, 457253, FALSE, FALSE),
+     (1494, '0 CONTROL DE MIOPÍA', 'MYOFIX Novar para el Control', 'Novar', 'Policarbonato Blanco', NULL, 416708, FALSE, FALSE),
+     (1495, '0 CONTROL DE MIOPÍA', 'MYOFIX Novar para el Control', 'Novar', 'Policarbonato Blanco AR DURAX', NULL, 489913, FALSE, FALSE),
+     (1496, '0 CONTROL DE MIOPÍA', 'MYOFIX Novar para el Control', 'Novar', 'Stylis 1.67 blanco AR DURAX', NULL, 655869, FALSE, FALSE),
+     (1497, '0 CONTROL DE MIOPÍA', 'MYOFIX Novar para el Control', 'Novar', 'Organico Fotosensible', NULL, 556684, FALSE, FALSE),
+     (1498, '0 CONTROL DE MIOPÍA', 'MYOFIX Novar para el Control', 'Novar', 'Organico Fotosensible AR DURAX', NULL, 629889, FALSE, FALSE),
+     (1499, '0 CONTROL DE MIOPÍA', 'MYOFIX Novar para el Control', 'Novar', 'Policarbonato Fotosensible', NULL, 714155, FALSE, FALSE),
+     (1500, '0 CONTROL DE MIOPÍA', 'MYOFIX Novar para el Control', 'Novar', 'Policarbonato Fotosensible AR DURAX', NULL, 787360, FALSE, FALSE),
+     (1501, '0 CONTROL DE MIOPÍA', 'MYOFIX Novar para el Control', 'Novar', 'Organico blanco', NULL, 335056, FALSE, FALSE),
+     (1502, '0 CONTROL DE MIOPÍA', 'MYOFIX Novar para el Control', 'Novar', 'Organico blanco AR DURAX', NULL, 408261, FALSE, FALSE),
+     (1503, '0 CONTROL DE MIOPÍA', 'MYOLENS Novar para el Confort', 'Novar', 'Organico Blanco', NULL, 191597, FALSE, FALSE),
+     (1504, '0 CONTROL DE MIOPÍA', 'MYOLENS Novar para el Confort', 'Novar', 'Organico blanco AR DURAX', NULL, 229663, FALSE, FALSE),
+     (1505, '0 CONTROL DE MIOPÍA', 'MYOLENS Novar para el Confort', 'Novar', 'Organico BLUE-TECH AR DURAX', NULL, 257224, FALSE, FALSE),
+     (1506, '0 CONTROL DE MIOPÍA', 'MYOLENS Novar para el Confort', 'Novar', 'Organico Fotosensible', NULL, 358953, FALSE, FALSE),
+     (1507, '0 CONTROL DE MIOPÍA', 'MYOLENS Novar para el Confort', 'Novar', 'Organico Fotosensible AR DURAX', NULL, 397019, FALSE, FALSE),
+     (1508, '0 CONTROL DE MIOPÍA', 'MYOLENS Novar para el Confort', 'Novar', 'Policarbonato Blanco', NULL, 237532, FALSE, FALSE),
+     (1509, '0 CONTROL DE MIOPÍA', 'MYOLENS Novar para el Confort', 'Novar', 'Policarbonato Blanco AR DURAX', NULL, 275598, FALSE, FALSE),
+     (1510, '0 CONTROL DE MIOPÍA', 'MYOLENS Novar para el Confort', 'Novar', 'Policarbonato Fotosensible', NULL, 458208, FALSE, FALSE),
+     (1511, '0 CONTROL DE MIOPÍA', 'MYOLENS Novar para el Confort', 'Novar', 'Policarbonato Fotosensible AR DURAX', NULL, 496274, FALSE, FALSE),
+     (1512, '0 CONTROL DE MIOPÍA', 'MYOLENS Novar para el Confort', 'Novar', 'Stylis 1.67 blanco AR DURAX', NULL, 310049, FALSE, FALSE)
+   ON CONFLICT (id) DO NOTHING`,
+  `SELECT setval(pg_get_serial_sequence('catalogo_laboratorio', 'id'), GREATEST((SELECT COALESCE(MAX(id), 1) FROM catalogo_laboratorio), 1))`,
 ];
 
 // `ejecutar` permite reutilizar las mismas migraciones desde otro cliente
