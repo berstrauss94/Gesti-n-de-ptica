@@ -1373,6 +1373,13 @@ const MIGRACIONES = [
      ('UPCN *')
    ) AS v(nombre)
    WHERE NOT EXISTS (SELECT 1 FROM obras_sociales o WHERE LOWER(TRIM(REPLACE(o.nombre, '*', ''))) = LOWER(TRIM(REPLACE(v.nombre, '*', ''))))`,
+  // --- Sobres: fecha de última modificación (la usa el borrador local del sobre
+  // para no aplicar solo un borrador viejo si el sobre cambió después). ---
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP`,
+  `DROP TRIGGER IF EXISTS update_sobres_updated_at ON sobres`,
+  `CREATE TRIGGER update_sobres_updated_at
+     BEFORE UPDATE ON sobres
+     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`,
 ];
 
 // `ejecutar` permite reutilizar las mismas migraciones desde otro cliente

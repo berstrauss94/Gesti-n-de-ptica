@@ -1206,6 +1206,33 @@ body {
   flex-direction: column;
   gap: 0.75rem;
 }
+/* Bloqueo de solo lectura (sobre guardado): el fieldset no debe dibujar nada. */
+.sobre-bloque { border: 0; margin: 0; padding: 0; min-width: 0; }
+.sobre-bloque--resumen { display: flex; flex-direction: column; gap: 0.75rem; }
+.sobre-bloque:disabled input,
+.sobre-bloque:disabled select,
+.sobre-bloque:disabled textarea { background: #f4f4f6; color: var(--texto); cursor: not-allowed; }
+.sobre-badge-lectura { margin-left: 0.5rem; font-size: 0.72rem; vertical-align: middle; }
+/* Panel de acciones del sobre (debajo del Resumen) */
+.sobre-acciones { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.4rem; }
+.sobre-accion {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.2rem;
+  min-height: 3.4rem; padding: 0.4rem 0.2rem; border: 0; border-radius: 8px;
+  color: #fff; font-size: 0.75rem; font-weight: 600; cursor: pointer;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
+}
+.sobre-accion:hover:not(:disabled) { filter: brightness(0.92); }
+.sobre-accion:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+.sobre-accion--guardar { background: var(--azul); }
+.sobre-accion--editar { background: var(--antracita); }
+.sobre-accion--limpiar { background: #e8553e; }
+.sobre-accion--recuperar { background: #0ea5d8; }
+.sobre-accion--imprimir { background: #4b5563; }
+.sobre-borrador-estado { margin: 0; color: var(--texto-suave); }
+.sobre-borrador-estado--falla { color: var(--rojo); }
+.alert--info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+.sobre-borrador-aviso { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
+.sobre-borrador-aviso__acciones { display: flex; gap: 0.5rem; }
 @media (max-width: 980px) {
   .sobre-consola { grid-template-columns: 1fr; }
   .sobre-consola__resumen { position: static; }

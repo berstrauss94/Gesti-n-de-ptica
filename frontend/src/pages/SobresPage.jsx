@@ -18,6 +18,7 @@ import { listarMedicos } from '../api/medicos';
 import { listarProveedores } from '../api/compras';
 import InfoBtn from '../components/InfoBtn';
 import SobreConsola from '../components/sobres/SobreConsola';
+import { listarBorradores, borrarTodo, horaBorrador } from '../utils/sobreBorrador';
 import { useEsAdmin } from '../hooks/useEsAdmin';
 
 const ESTADOS = ['pendiente', 'reserva', 'en_taller', 'lentes', 'listo', 'entregado', 'anulado'];
@@ -41,6 +42,12 @@ export default function SobresPage() {
   const [consola, setConsola] = useState(null);
   const [error, setError] = useState('');
   const [ok, setOk] = useState('');
+  // Sobres con cambios sin guardar en este equipo (autoguardado de la consola).
+  const [borradores, setBorradores] = useState([]);
+  useEffect(() => {
+    if (consola) return;
+    try { setBorradores(listarBorradores(window.localStorage)); } catch { setBorradores([]); }
+  }, [consola]);
 
   useEffect(() => {
     (async () => {
@@ -79,10 +86,23 @@ export default function SobresPage() {
     } catch (err) { setError(err.response?.data?.error || 'No se pudo abrir el sobre'); }
   }
 
+  // Al guardar, la consola queda abierta con el sobre guardado (en solo lectura),
+  // para poder imprimirlo o volver a editarlo.
   function alGuardar(guardado) {
     setOk(consola?.sobre ? `Sobre #${guardado.numero} actualizado.` : `Sobre #${guardado.numero} creado.`);
-    setConsola(null);
+    setConsola({ sobre: guardado });
     cargar(sucursalId, estadoFiltro);
+  }
+  function retomar(b) {
+    setError(''); setOk('');
+    if (b.sobreId) { abrir({ id: b.sobreId }); return; }
+    if (b.sucursalId && sucursales.some((s) => s.id === b.sucursalId)) setSucursalId(b.sucursalId);
+    setConsola({ sobre: null });
+  }
+  function descartarBorrador(b) {
+    const que = b.sobreId ? `los cambios sin guardar del sobre #${b.numero || ''}` : 'el sobre nuevo sin guardar';
+    if (!window.confirm(`¿Descartar ${que}? No se puede deshacer.`)) return;
+    try { borrarTodo(window.localStorage, b.sobreId); setBorradores(listarBorradores(window.localStorage)); } catch { /* sin almacenamiento */ }
   }
 
   async function cambiar(id, estado) {
@@ -127,12 +147,25 @@ export default function SobresPage() {
 
       {error && <p className="alert alert--error" role="alert">{error}</p>}
       {ok && <p className="alert alert--ok" role="status">{ok}</p>}
+      {!consola && borradores.map((b) => (
+        <div key={b.sobreId || 'nuevo'} className="alert alert--info sobre-borrador-aviso" role="status">
+          <span>
+            {b.sobreId ? `Cambios sin guardar en el sobre #${b.numero || ''}` : 'Sobre nuevo sin guardar'}
+            {' '}({horaBorrador(b.guardadoEn)}).
+          </span>
+          <span className="sobre-borrador-aviso__acciones">
+            <button type="button" className="btn btn--primary btn--inline" onClick={() => retomar(b)}>Retomar</button>
+            <button type="button" className="btn btn--ghost btn--inline" onClick={() => descartarBorrador(b)}>Descartar</button>
+          </span>
+        </div>
+      ))}
 
       {consola && (
         <SobreConsola
-          key={consola.sobre?.id || 'nuevo'}
+          key={`${consola.sobre?.id || 'nuevo'}:${consola.sobre?.updated_at || ''}`}
           sobre={consola.sobre}
           sucursalId={sucursalId}
+          sucursalNombre={sucursales.find((s) => s.id === sucursalId)?.nombre || ''}
           clientes={clientes}
           obrasSociales={obrasSociales}
           medicos={medicos}

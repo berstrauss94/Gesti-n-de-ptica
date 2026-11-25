@@ -15,11 +15,18 @@
 //   sucursalId    sucursal activa (para alta y búsqueda de stock)
 //   clientes, obrasSociales, medicos, laboratorios  listas para los selectores
 //   esAdmin       (sin uso: el alta rápida de médicos está abierta a todos)
+//   sucursalNombre nombre de la sucursal activa (para la impresión del alta)
 //   onGuardado(sobre), onCancelar(), onMedicoCreado(medico)
+//
+// Panel de acciones (debajo del Resumen): Guardar, Editar, Limpiar, Recuperar e
+// Imprimir (A4). Un sobre guardado se abre BLOQUEADO (solo lectura) y "Editar" lo
+// habilita. Todo lo cargado se autoguarda como borrador en este equipo
+// (hooks/useSobreBorrador): sobrevive a recargar la página, cambiar de sección o
+// un cierre del navegador, y se borra al guardar en el sistema o al limpiar.
 // =====================================================================
 
-import { useMemo, useState } from 'react';
-import { Search, Eraser, Plus, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Search, Eraser, Plus, X, Save, Pencil, RotateCcw, Printer } from 'lucide-react';
 import { crearSobre, actualizarSobre } from '../../api/sobres';
 import { transponer, calcularCerca } from '../../utils/receta';
 import SelectorArmazon from './SelectorArmazon';
@@ -29,6 +36,9 @@ import NuevoMedicoModal from '../medicos/NuevoMedicoModal';
 import SelectorCatalogoLab from './SelectorCatalogoLab';
 import SobreFinanzas from './SobreFinanzas';
 import { calcularTotales, pesos } from '../../utils/sobreTotales';
+import { useSobreBorrador } from '../../hooks/useSobreBorrador';
+import { mismosDatos, horaBorrador } from '../../utils/sobreBorrador';
+import { imprimirSobreA4 } from '../../utils/impresionSobreA4';
 
 const ESTADOS = ['pendiente', 'reserva', 'en_taller', 'lentes', 'listo', 'entregado', 'anulado'];
 const ESTADO_LABEL = {
@@ -119,20 +129,48 @@ function normalizarNumero(v) {
   return typeof v === 'string' && /^[+-]?\d+,\d+$/.test(v.trim()) ? v.trim().replace(',', '.') : v;
 }
 
+// Aviso al abrir la consola según lo que encontró el autoguardado.
+function mensajeInicio(inicio, esEdicion) {
+  if (inicio.restaurado) {
+    return `Se recuperó lo que habías cargado sin guardar (${horaBorrador(inicio.restaurado.guardadoEn)}). ${esEdicion ? 'Revisalo y guardá los cambios.' : 'Revisalo y guardá el sobre.'}`;
+  }
+  if (inicio.motivo === 'version') {
+    return `Hay cambios sin guardar de este sobre (${horaBorrador(inicio.respaldo.guardadoEn)}), pero el sobre se modificó después en el sistema. Si los querés, tocá "Recuperar".`;
+  }
+  if (inicio.motivo === 'sucursal') {
+    return `Hay un sobre nuevo sin guardar de otra sucursal (${horaBorrador(inicio.respaldo.guardadoEn)}). Si lo querés acá, tocá "Recuperar".`;
+  }
+  return '';
+}
+
 export default function SobreConsola({
-  sobre, sucursalId, clientes, obrasSociales, medicos, laboratorios, esAdmin,
+  sobre, sucursalId, sucursalNombre, clientes, obrasSociales, medicos, laboratorios, esAdmin,
   onGuardado, onCancelar, onMedicoCreado,
 }) {
   const esEdicion = Boolean(sobre?.id);
-  const [form, setForm] = useState(() => formDesde(sobre));
+  // Lo guardado en el sistema (o el alta vacía): referencia para saber si hay cambios.
+  const [base] = useState(() => ({ form: formDesde(sobre), items: itemsDesde(sobre), pagos: pagosDesde(sobre) }));
+  const borrador = useSobreBorrador({
+    sobreId: sobre?.id, base, version: sobre?.updated_at || null,
+    sucursalId: sobre?.sucursal_id || sucursalId, numero: sobre?.numero || null,
+  });
+  const [form, setForm] = useState(() => borrador.inicio.datos.form);
+  // Un sobre guardado abre en solo lectura, salvo que se haya recuperado un borrador suyo.
+  const [bloqueado, setBloqueado] = useState(() => esEdicion && !borrador.inicio.restaurado);
+  const [avisoBorrador, setAvisoBorrador] = useState(() => mensajeInicio(borrador.inicio, esEdicion));
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
   const [aviso, setAviso] = useState('');
   const [nuevoMedico, setNuevoMedico] = useState(false);
-  const [items, setItems] = useState(() => itemsDesde(sobre));
-  const [pagos, setPagos] = useState(() => pagosDesde(sobre));
+  const [items, setItems] = useState(() => borrador.inicio.datos.items);
+  const [pagos, setPagos] = useState(() => borrador.inicio.datos.pagos);
   const [selector, setSelector] = useState(null); // 'lejos' | 'cerca' | 'otros' | null
   const totales = useMemo(() => calcularTotales(form, items, pagos), [form, items, pagos]);
+  const datos = useMemo(() => ({ form, items, pagos }), [form, items, pagos]);
+  const hayCambios = !mismosDatos(datos, base);
+  const { sincronizar } = borrador;
+  // Autoguardado: cada cambio se escribe en el borrador local.
+  useEffect(() => { sincronizar(datos); }, [datos, sincronizar]);
 
   function setC(campo, v) { setForm((f) => ({ ...f, [campo]: v })); }
 
@@ -239,6 +277,7 @@ export default function SobreConsola({
   // --- Guardar sobre ---
   async function guardar(e) {
     e.preventDefault();
+    if (bloqueado || guardando) return;
     setError(''); setAviso('');
     if (!esEdicion && !sucursalId) { setError('Elegí una sucursal.'); return; }
     const payload = {};
@@ -260,6 +299,8 @@ export default function SobreConsola({
       const guardado = esEdicion
         ? await actualizarSobre(sobre.id, payload)
         : await crearSobre(payload);
+      // Quedó en el sistema: el borrador local ya no hace falta.
+      borrador.confirmarGuardado();
       onGuardado?.(guardado);
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo guardar el sobre');
@@ -267,6 +308,70 @@ export default function SobreConsola({
       setGuardando(false);
     }
   }
+
+  // --- Panel de acciones ---
+  function aplicar(d) { setForm(d.form); setItems(d.items); setPagos(d.pagos); }
+
+  function editar() {
+    setBloqueado(false);
+    setAvisoBorrador('');
+  }
+
+  // Limpiar: alta -> formulario vacío; sobre guardado -> vuelve a lo guardado.
+  // Lo que se descarta queda como respaldo para "Recuperar".
+  function limpiar() {
+    const pregunta = esEdicion
+      ? '¿Descartar los cambios sin guardar? El sobre vuelve a como está guardado. Podés deshacerlo con "Recuperar".'
+      : '¿Limpiar el sobre? Se borra todo lo cargado. Podés deshacerlo con "Recuperar".';
+    if (!window.confirm(pregunta)) return;
+    borrador.limpiar(datos);
+    aplicar(base);
+    setError(''); setAviso('');
+    if (esEdicion) setBloqueado(true);
+    setAvisoBorrador('Sobre limpio. Si fue un error, tocá "Recuperar".');
+  }
+
+  function recuperar() {
+    if (hayCambios && !window.confirm('Recuperar reemplaza lo que está cargado ahora. ¿Seguir?')) return;
+    const d = borrador.recuperar();
+    if (!d) return;
+    aplicar(d);
+    setBloqueado(false);
+    setAvisoBorrador('Se recuperó el borrador. Revisalo y guardá el sobre.');
+  }
+
+  function textoArmazon(sec) {
+    if (form[`armazon_${sec}_es_propio`]) return 'Propio del paciente';
+    return form[`armazon_${sec}_nombre`] || '';
+  }
+
+  function imprimir() {
+    const med = medicos.find((m) => m.id === form.medico_id);
+    const os = obrasSociales.find((o) => o.id === form.obra_social_id);
+    const lab = laboratorios.find((l) => l.id === form.laboratorio_id);
+    const ok = imprimirSobreA4({
+      numero: sobre?.numero || null,
+      borrador: !esEdicion || hayCambios,
+      sucursal: sobre?.sucursal_nombre || sucursalNombre || '',
+      estado: ESTADO_LABEL[form.estado],
+      paciente: cliente ? { nombre: cliente.nombre_completo, dni: cliente.dni } : null,
+      medico: med ? { nombre: med.nombre, matricula: med.matricula } : (sobre?.medico ? { nombre: sobre.medico } : null),
+      obraSocial: os?.nombre || '',
+      laboratorio: lab?.nombre || '',
+      armazonLejos: textoArmazon('lejos'),
+      armazonCerca: textoArmazon('cerca'),
+      form, items, pagos, totales,
+      colsLejos: COLS_LEJOS, colsCerca: COLS_CERCA, cotas: COTAS,
+    });
+    if (!ok) setError('El navegador bloqueó la ventana de impresión: permití las ventanas emergentes para este sitio.');
+  }
+
+  let estadoBorrador;
+  if (bloqueado) estadoBorrador = 'Sobre guardado. Tocá "Editar" para modificarlo.';
+  else if (borrador.falla) estadoBorrador = 'No se pudo guardar el borrador en este navegador: guardá el sobre para no perder los datos.';
+  else if (hayCambios && borrador.guardadoEn) estadoBorrador = `Borrador guardado en este equipo (${horaBorrador(borrador.guardadoEn)}).`;
+  else if (esEdicion) estadoBorrador = 'Sin cambios.';
+  else estadoBorrador = 'Lo que cargues se guarda solo como borrador en este equipo.';
 
   function filaReceta(seccion, ojo, cols) {
     const p = `${seccion}_${ojo}`;
@@ -310,7 +415,9 @@ export default function SobreConsola({
         <div className="sobre-consola__tecnica card">
           <h2 className="section-title">
             {esEdicion ? `Sobre #${sobre.numero}` : 'Nuevo sobre'}
+            {bloqueado && <span className="badge sobre-badge-lectura">Solo lectura</span>}
           </h2>
+          <fieldset className="sobre-bloque" disabled={bloqueado}>
 
           <div className="form-grid">
             <label className="field"><span>Paciente</span>
@@ -461,6 +568,7 @@ export default function SobreConsola({
             <label className="field field--full"><span>Observación para el laboratorio</span>
               <textarea rows={2} value={form.observacion_lab} onChange={(e) => setC('observacion_lab', e.target.value)} /></label>
           </div>
+          </fieldset>
         </div>
 
         {/* ===== Columna derecha: resumen y acciones ===== */}
@@ -471,6 +579,35 @@ export default function SobreConsola({
             <dt>Estado</dt><dd><span className="badge">{ESTADO_LABEL[form.estado]}</span></dd>
           </dl>
 
+          <div className="sobre-acciones" role="toolbar" aria-label="Acciones del sobre">
+            <button type="submit" className="sobre-accion sobre-accion--guardar" disabled={bloqueado || guardando}
+              title="Guardar el sobre en el sistema">
+              <Save size={18} aria-hidden="true" /><span>{guardando ? 'Guardando…' : 'Guardar'}</span>
+            </button>
+            <button type="button" className="sobre-accion sobre-accion--editar" onClick={editar}
+              disabled={!esEdicion || !bloqueado} title="Habilitar la edición de este sobre">
+              <Pencil size={18} aria-hidden="true" /><span>Editar</span>
+            </button>
+            <button type="button" className="sobre-accion sobre-accion--limpiar" onClick={limpiar}
+              disabled={!hayCambios || guardando}
+              title={esEdicion ? 'Descartar los cambios sin guardar' : 'Vaciar el sobre'}>
+              <Eraser size={18} aria-hidden="true" /><span>Limpiar</span>
+            </button>
+            <button type="button" className="sobre-accion sobre-accion--recuperar" onClick={recuperar}
+              disabled={!borrador.hayRespaldo || guardando}
+              title={borrador.respaldoEn ? `Recuperar lo cargado (${horaBorrador(borrador.respaldoEn)})` : 'No hay nada para recuperar'}>
+              <RotateCcw size={18} aria-hidden="true" /><span>Recuperar</span>
+            </button>
+            <button type="button" className="sobre-accion sobre-accion--imprimir" onClick={imprimir}
+              title="Imprimir el sobre en hoja A4">
+              <Printer size={18} aria-hidden="true" /><span>Imprimir</span>
+            </button>
+          </div>
+          <p className={`sobre-borrador-estado small${borrador.falla ? ' sobre-borrador-estado--falla' : ''}`} role="status">{estadoBorrador}</p>
+          {avisoBorrador && <p className="alert alert--info" role="status">{avisoBorrador}</p>}
+
+          <fieldset className="sobre-bloque sobre-bloque--resumen" disabled={bloqueado}>
+
           <label className="field"><span>Cristal</span>
             <input maxLength={200} value={form.cristal_descripcion} onChange={(e) => setC('cristal_descripcion', e.target.value)} placeholder="Tipo de cristal, tratamiento…" /></label>
           <label className="field"><span>Detalle del armazón</span>
@@ -479,11 +616,13 @@ export default function SobreConsola({
             <textarea rows={3} value={form.notas} onChange={(e) => setC('notas', e.target.value)} /></label>
 
           <SobreFinanzas form={form} setC={setC} pagos={pagos} setPagos={setPagos} totales={totales} />
+          </fieldset>
 
           {error && <p className="alert alert--error" role="alert">{error}</p>}
           <div className="form-actions">
-            <button type="button" className="btn btn--ghost btn--inline" onClick={onCancelar}>Cancelar</button>
-            <button type="submit" className="btn btn--primary btn--inline" disabled={guardando}>
+            <button type="button" className="btn btn--ghost btn--inline" onClick={onCancelar}
+              title="Cerrar la consola (lo que no guardaste queda como borrador en este equipo)">Cerrar</button>
+            <button type="submit" className="btn btn--primary btn--inline" disabled={bloqueado || guardando}>
               {guardando ? 'Guardando…' : (esEdicion ? 'Guardar cambios' : 'Crear sobre')}
             </button>
           </div>
