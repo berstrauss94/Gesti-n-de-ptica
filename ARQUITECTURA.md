@@ -564,6 +564,7 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
   puede no existir todavía como turno (`turno_id` es opcional) y no se implementó `respuesta_cliente` ni
   `sms` (requieren webhook de Meta y otro proveedor). Verificado contra PostgreSQL real con Meta simulado
   (20 grupos de casos); **no** verificado contra Meta real (falta la cuenta, el token y la plantilla aprobada).
+- **2026-10-22** — Carga inicial de "11 LENTES DE SOL": 1 ítem (1518, LENTE DE SOL, grupo Convencionales, marca LENA, precio $0 a definir). Con esto quedan cargadas las 12 categorías de "Lentes y otros" (471 ítems).
 - **2026-10-22** — Carga inicial de "10 ACCESORIOS": 3 ítems en el grupo ACCESORIOS (marca LENA), marcados como insumo de mostrador (`es_insumo_mostrador = TRUE`); migración aditiva `INSERT ... ON CONFLICT (id) DO NOTHING`.
 - **2026-10-22** — Carga inicial de "9 TRATAMIENTOS Y SERVICIOS": 13 ítems en 2 grupos (Coloraciones y Reparaciones, Calibrados y Centrado Digital), marcados como servicio (`es_servicio = TRUE`); migración aditiva `INSERT ... ON CONFLICT (id) DO NOTHING`.
 - **2026-10-22** — Carga inicial de "8 MULTIPROPOSITOS-GOTAS": 8 líquidos en el grupo Multipropósitos (marca LENA); migración aditiva `INSERT ... ON CONFLICT (id) DO NOTHING`. En `LentesPage`, cuando la categoría tiene un solo grupo la tarjeta ocupa todo el ancho (`.lab-grid--uno`).

@@ -1119,6 +1119,11 @@ const MIGRACIONES = [
      (1551, '10 ACCESORIOS', 'ACCESORIOS', 'LENA', 'plaquetas adeshivas', NULL, NULL, 18000, FALSE, TRUE, 470)
    ON CONFLICT (id) DO NOTHING`,
   `SELECT setval(pg_get_serial_sequence('catalogo_laboratorio', 'id'), GREATEST((SELECT COALESCE(MAX(id), 1) FROM catalogo_laboratorio), 1))`,
+  // --- Carga inicial: lentes de sol (precio a definir en el mostrador). Solo inserta lo que falta. ---
+  `INSERT INTO catalogo_laboratorio (id, categoria, subcategoria_grupo, marca_proveedor, descripcion, badge_graduacion_raw, dias_demora, precio_lista, es_servicio, es_insumo_mostrador, orden_lista)
+   VALUES (1518, '11 LENTES DE SOL', 'Convencionales', 'LENA', 'LENTE DE SOL', NULL, NULL, 0, FALSE, FALSE, 471)
+   ON CONFLICT (id) DO NOTHING`,
+  `SELECT setval(pg_get_serial_sequence('catalogo_laboratorio', 'id'), GREATEST((SELECT COALESCE(MAX(id), 1) FROM catalogo_laboratorio), 1))`,
 ];
 
 // `ejecutar` permite reutilizar las mismas migraciones desde otro cliente
