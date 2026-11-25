@@ -1,13 +1,15 @@
 // =====================================================================
 // Controller de Médicos (los que firman las recetas de los sobres).
 // Listar: cualquier usuario (el vendedor lo elige al armar el sobre).
-// Alta / edición / baja: solo admin (definido en la ruta).
+// Alta: cualquier usuario (alta rápida desde el sobre o la ficha del cliente).
+// Edición / baja: solo admin (definido en la ruta).
 // =====================================================================
 
 const { query } = require('../config/db');
 
 const MAX_NOMBRE = 150;
 const MAX_MATRICULA = 50;
+const MAX_ESPECIALIDAD = 100;
 
 // Valida y normaliza el cuerpo. Devuelve { datos } o { error }.
 function validar(b, parcial = false) {
@@ -23,6 +25,12 @@ function validar(b, parcial = false) {
     const m = (b.matricula || '').trim();
     if (m.length > MAX_MATRICULA) return { error: `La matrícula admite hasta ${MAX_MATRICULA} caracteres` };
     datos.matricula = m || null;
+  }
+  if (b.especialidad !== undefined) {
+    if (b.especialidad !== null && typeof b.especialidad !== 'string') return { error: 'Especialidad inválida' };
+    const e = (b.especialidad || '').trim();
+    if (e.length > MAX_ESPECIALIDAD) return { error: `La especialidad admite hasta ${MAX_ESPECIALIDAD} caracteres` };
+    datos.especialidad = e || null;
   }
   if (b.activo !== undefined) {
     if (typeof b.activo !== 'boolean') return { error: 'activo debe ser true o false' };
@@ -50,14 +58,20 @@ async function listar(req, res) {
   }
 }
 
-// POST /api/medicos  { nombre, matricula? }
+// POST /api/medicos  { nombre, matricula?, especialidad? }
+// Si ya existe uno con el mismo nombre y matrícula, responde 409 con ese médico.
 async function crear(req, res) {
   const { datos, error } = validar(req.body || {});
   if (error) return res.status(400).json({ error });
   try {
-    const r = await query(
-      'INSERT INTO medicos (nombre, matricula) VALUES ($1, $2) RETURNING *',
+    const dup = await query(
+      `SELECT * FROM medicos WHERE LOWER(nombre) = LOWER($1) AND COALESCE(matricula, '') = COALESCE($2, '') LIMIT 1`,
       [datos.nombre, datos.matricula ?? null]
+    );
+    if (dup.rowCount > 0) return res.status(409).json({ error: 'Ese médico ya está cargado', medico: dup.rows[0] });
+    const r = await query(
+      'INSERT INTO medicos (nombre, matricula, especialidad) VALUES ($1, $2, $3) RETURNING *',
+      [datos.nombre, datos.matricula ?? null, datos.especialidad ?? null]
     );
     return res.status(201).json({ medico: r.rows[0] });
   } catch (err) {

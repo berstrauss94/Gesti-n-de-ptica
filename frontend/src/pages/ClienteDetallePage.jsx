@@ -11,7 +11,11 @@ import {
   subirFotos,
   eliminarUsuario,
   eliminarFoto,
+  actualizarUsuario,
 } from '../api/usuarios';
+import { listarMedicos } from '../api/medicos';
+import SelectorMedico from '../components/medicos/SelectorMedico';
+import NuevoMedicoModal from '../components/medicos/NuevoMedicoModal';
 import GraduacionesSeccion from '../components/GraduacionesSeccion';
 import InfoBtn from '../components/InfoBtn';
 import { useEsAdmin } from '../hooks/useEsAdmin';
@@ -29,6 +33,23 @@ export default function ClienteDetallePage() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
   const [subiendo, setSubiendo] = useState(false);
+  const [medicos, setMedicos] = useState([]);
+  const [nuevoMedico, setNuevoMedico] = useState(false);
+  const [okMedico, setOkMedico] = useState('');
+
+  useEffect(() => { listarMedicos({ activos: 'true' }).then(setMedicos).catch(() => setMedicos([])); }, []);
+
+  // Guarda el médico tratante apenas se elige.
+  async function cambiarMedico(medicoId) {
+    setError(''); setOkMedico('');
+    try {
+      const u = await actualizarUsuario(id, { medico_id: medicoId || null });
+      setCliente((c) => ({ ...c, medico_id: u.medico_id }));
+      setOkMedico(medicoId ? 'Médico tratante guardado.' : 'Médico tratante quitado.');
+    } catch (err) {
+      setError(err.response?.data?.error || 'No se pudo guardar el médico tratante');
+    }
+  }
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -119,7 +140,23 @@ export default function ClienteDetallePage() {
           <div><dt>Obra social</dt><dd>{cliente.obra_social || '—'}</dd></div>
           <div><dt>Edad</dt><dd>{cliente.edad ?? '—'}</dd></div>
         </dl>
+        <div className="field cliente-medico">
+          <label htmlFor="cliente-medico"><span>Médico tratante / prescriptor habitual</span></label>
+          <SelectorMedico id="cliente-medico" medicos={medicos} value={cliente.medico_id || ''}
+            onChange={cambiarMedico} onNuevo={() => setNuevoMedico(true)} />
+          {okMedico && <span className="ok-text small" role="status">✓ {okMedico}</span>}
+        </div>
       </div>
+      {nuevoMedico && (
+        <NuevoMedicoModal
+          onCreado={(m) => {
+            setMedicos((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m].sort((a, b) => a.nombre.localeCompare(b.nombre))));
+            setNuevoMedico(false);
+            cambiarMedico(m.id);
+          }}
+          onCerrar={() => setNuevoMedico(false)}
+        />
+      )}
 
       <div className="card">
         <div className="page-header">

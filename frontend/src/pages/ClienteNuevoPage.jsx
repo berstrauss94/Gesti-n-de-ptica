@@ -8,10 +8,13 @@
 // Flujo: 1) validar 3 slots, 2) crear cliente, 3) subir fotos con ángulo.
 // =====================================================================
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { crearUsuario, subirFotosConAngulo } from '../api/usuarios';
 import InfoBtn from '../components/InfoBtn';
+import { listarMedicos } from '../api/medicos';
+import SelectorMedico from '../components/medicos/SelectorMedico';
+import NuevoMedicoModal from '../components/medicos/NuevoMedicoModal';
 
 // Definición de los 3 slots (orden visual Frontal -> 45° -> Perfil)
 const SLOTS = [
@@ -28,7 +31,11 @@ export default function ClienteNuevoPage() {
     dni: '',
     obra_social: '',
     edad: '',
+    medico_id: '',
   });
+  const [medicos, setMedicos] = useState([]);
+  const [nuevoMedico, setNuevoMedico] = useState(false);
+  useEffect(() => { listarMedicos({ activos: 'true' }).then(setMedicos).catch(() => setMedicos([])); }, []);
   // fotos por slot: { frontal: File|null, '45deg': File|null, perfil: File|null }
   const [fotos, setFotos] = useState({ frontal: null, '45deg': null, perfil: null });
   const [previews, setPreviews] = useState({ frontal: '', '45deg': '', perfil: '' });
@@ -59,6 +66,7 @@ export default function ClienteNuevoPage() {
         dni: form.dni.trim(),
         obra_social: form.obra_social.trim() || undefined,
         edad: form.edad === '' ? undefined : Number(form.edad),
+        medico_id: form.medico_id || undefined,
       };
       const cliente = await crearUsuario(payload);
 
@@ -80,7 +88,7 @@ export default function ClienteNuevoPage() {
           Nuevo cliente
           <InfoBtn
             paraQue="Da de alta a un paciente nuevo con sus datos básicos y las 3 fotos de seguimiento."
-            comoFunciona="Completá nombre, DNI y obra social, y subí las fotos frontal, de 45° y de perfil; el sistema crea el cliente y guarda las fotos."
+            comoFunciona="Completá nombre, DNI, obra social y, si querés, el médico tratante; subí las fotos (opcionales) y guardá."
             conQueFin="Tener la ficha del paciente lista para recetas, ventas y la prueba virtual de armazones."
           />
         </h1>
@@ -129,6 +137,12 @@ export default function ClienteNuevoPage() {
           />
         </label>
 
+        <div className="field">
+          <label htmlFor="cliente-medico"><span>Médico tratante / prescriptor habitual</span></label>
+          <SelectorMedico id="cliente-medico" medicos={medicos} value={form.medico_id}
+            onChange={(id) => setCampo('medico_id', id)} onNuevo={() => setNuevoMedico(true)} />
+          <span className="muted small">Opcional. Se precarga en los sobres de este paciente.</span>
+        </div>
         <div className="field--full">
           <span className="slots-title">Fotos de seguimiento (opcionales)</span>
           <p className="aviso-fotos">
@@ -182,6 +196,16 @@ export default function ClienteNuevoPage() {
           </button>
         </div>
       </form>
+      {nuevoMedico && (
+        <NuevoMedicoModal
+          onCreado={(m) => {
+            setMedicos((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m].sort((a, b) => a.nombre.localeCompare(b.nombre))));
+            setCampo('medico_id', m.id);
+            setNuevoMedico(false);
+          }}
+          onCerrar={() => setNuevoMedico(false)}
+        />
+      )}
     </div>
   );
 }

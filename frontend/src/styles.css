@@ -1315,6 +1315,24 @@ body {
 .fin-saldo strong { font-size: 1.35rem; }
 .fin-saldo--favor { border-color: #0ea5e9; }
 
+/* ---------- Selector de médico con buscador ---------- */
+.medico-sel { position: relative; }
+.medico-sel__control { display: flex; align-items: stretch; gap: 0.35rem; position: relative; }
+.medico-sel__control input { flex: 1; min-width: 0; background: #ffffff; border: 1px solid var(--gris-borde); border-radius: 8px; padding: 0.55rem 2rem 0.55rem 0.75rem; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08); }
+.medico-sel__control input::placeholder { color: #334155; }
+.medico-sel__flecha { position: absolute; right: 3.1rem; top: 50%; transform: translateY(-50%); color: var(--texto-suave); pointer-events: none; }
+.medico-sel__control:not(:has(.medico-sel__nuevo)) .medico-sel__flecha { right: 0.7rem; }
+.medico-sel__nuevo { flex: none; width: 2.4rem; display: grid; place-items: center; border: none; border-radius: 8px; background: #16a34a; color: #ffffff; cursor: pointer; }
+.medico-sel__nuevo:hover { background: #15803d; }
+.medico-sel__lista { position: absolute; z-index: 60; left: 0; right: 0; top: calc(100% + 4px); max-height: 260px; overflow-y: auto; margin: 0; padding: 0.25rem 0; list-style: none; background: #ffffff; border: 1px solid var(--gris-borde); border-radius: 8px; box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18); }
+.medico-sel__opcion { display: flex; justify-content: space-between; gap: 0.5rem; padding: 0.45rem 0.75rem; font-size: 0.85rem; cursor: pointer; }
+.medico-sel__opcion.is-resaltada { background: #2e1065; color: #ffffff; }
+.medico-sel__opcion.is-elegida:not(.is-resaltada) { background: #e5e7eb; font-weight: 600; }
+.medico-sel__opcion--ninguno { color: var(--texto-suave); font-style: italic; }
+.medico-sel__esp { font-size: 0.75rem; opacity: 0.75; }
+.medico-sel__vacio { padding: 0.5rem 0.75rem; font-size: 0.8rem; color: var(--texto-suave); }
+.cliente-medico { margin-top: 0.75rem; max-width: 520px; }
+
 /* Fila del listado con el sobre abierto en la consola */
 .fila-activa { background: #fdf2f8; box-shadow: inset 3px 0 0 var(--primary-accent); }
 

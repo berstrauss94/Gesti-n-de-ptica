@@ -140,7 +140,7 @@ export default function SobresPage() {
           esAdmin={esAdmin}
           onGuardado={alGuardar}
           onCancelar={() => setConsola(null)}
-          onMedicoCreado={(m) => setMedicos((prev) => [...prev, m].sort((a, b) => a.nombre.localeCompare(b.nombre)))}
+          onMedicoCreado={(m) => setMedicos((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m].sort((a, b) => a.nombre.localeCompare(b.nombre))))}
         />
       )}
 

@@ -97,7 +97,12 @@ const CASOS = [
   ['POST', '/api/mercado/enriquecer', { body: { marca: 'Ray-Ban', modelo: 'RB3025' } }, [409], 'error'],
   ['POST', '/api/mercado/enriquecer', { token: tokenVendedor, body: { marca: 'Ray-Ban' } }, [403], 'error'],
   ['GET', '/api/medicos', { token: tokenVendedor }, [200], 'medicos'],
-  ['POST', '/api/medicos', { token: tokenVendedor, body: { nombre: 'Dr. X' } }, [403], 'error'],
+  // El alta de médicos está abierta a cualquier usuario (alta rápida desde el sobre).
+  ['POST', '/api/medicos', { token: tokenVendedor, body: { nombre: '' } }, [400], 'error'],
+  ['POST', '/api/medicos', { body: { nombre: 'Dr. X', especialidad: 123 } }, [400], 'error'],
+  ['PUT', '/api/medicos/x', { token: tokenVendedor, body: { nombre: 'Dr. X' } }, [403], 'error'],
+  ['POST', '/api/usuarios', { body: { nombre_completo: 'A', dni: '1', medico_id: 'no-uuid' } }, [400], 'error'],
+  ['PUT', '/api/usuarios/x', { body: { medico_id: 'no-uuid' } }, [400], 'error'],
   ['POST', '/api/medicos', { body: { nombre: '' } }, [400], 'error'],
   ['GET', '/api/stock/filtros', { token: tokenVendedor }, [200], 'proveedores'],
   ['GET', '/api/stock?sucursal_id=s&genero=Mujer&material=Metal&proveedor_id=p&limit=20&offset=0', {}, [200], 'total'],

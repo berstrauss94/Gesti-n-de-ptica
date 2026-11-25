@@ -5,6 +5,14 @@
 
 const { query } = require('../config/db');
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// '' / null -> null; UUID válido -> el UUID; cualquier otra cosa -> undefined (inválido).
+function medicoIdValido(v) {
+  if (v === undefined) return undefined;
+  if (v === null || v === '') return null;
+  return typeof v === 'string' && UUID_RE.test(v) ? v : false;
+}
+
 // GET /api/usuarios  (lista con búsqueda y paginación)
 async function listar(req, res) {
   const { q, limit = 50, offset = 0 } = req.query;
@@ -13,18 +21,20 @@ async function listar(req, res) {
 
   try {
     let sql = `
-      SELECT id, nombre_completo, dni, obra_social, edad, metadatos_ia, created_at
-      FROM usuarios
+      SELECT u.id, u.nombre_completo, u.dni, u.obra_social, u.edad, u.metadatos_ia, u.created_at,
+             u.medico_id, m.nombre AS medico_nombre, m.matricula AS medico_matricula
+      FROM usuarios u
+      LEFT JOIN medicos m ON m.id = u.medico_id
     `;
     const params = [];
 
     if (q) {
       params.push(`%${q}%`);
-      sql += ` WHERE nombre_completo ILIKE $1 OR dni ILIKE $1`;
+      sql += ` WHERE u.nombre_completo ILIKE $1 OR u.dni ILIKE $1`;
     }
 
     params.push(lim, off);
-    sql += ` ORDER BY created_at DESC LIMIT $${params.length - 1} OFFSET $${params.length}`;
+    sql += ` ORDER BY u.created_at DESC LIMIT $${params.length - 1} OFFSET $${params.length}`;
 
     const result = await query(sql, params);
     return res.json({ usuarios: result.rows, limit: lim, offset: off });
@@ -38,8 +48,9 @@ async function listar(req, res) {
 async function obtener(req, res) {
   try {
     const result = await query(
-      `SELECT id, nombre_completo, dni, obra_social, edad, metadatos_ia, created_at
-       FROM usuarios WHERE id = $1`,
+      `SELECT u.id, u.nombre_completo, u.dni, u.obra_social, u.edad, u.metadatos_ia, u.created_at,
+              u.medico_id, m.nombre AS medico_nombre, m.matricula AS medico_matricula
+       FROM usuarios u LEFT JOIN medicos m ON m.id = u.medico_id WHERE u.id = $1`,
       [req.params.id]
     );
     if (result.rowCount === 0) {
@@ -55,6 +66,8 @@ async function obtener(req, res) {
 // POST /api/usuarios
 async function crear(req, res) {
   const { nombre_completo, dni, obra_social, edad, metadatos_ia } = req.body || {};
+  const medicoId = medicoIdValido(req.body?.medico_id);
+  if (medicoId === false) return res.status(400).json({ error: 'medico_id inválido' });
 
   if (!nombre_completo || !dni) {
     return res
@@ -67,13 +80,14 @@ async function crear(req, res) {
 
   try {
     const result = await query(
-      `INSERT INTO usuarios (nombre_completo, dni, obra_social, edad, metadatos_ia)
-       VALUES ($1, $2, $3, $4, COALESCE($5, '{}'::jsonb))
-       RETURNING id, nombre_completo, dni, obra_social, edad, metadatos_ia, created_at`,
-      [nombre_completo, dni, obra_social || null, edad ?? null, metadatos_ia || null]
+      `INSERT INTO usuarios (nombre_completo, dni, obra_social, edad, metadatos_ia, medico_id)
+       VALUES ($1, $2, $3, $4, COALESCE($5, '{}'::jsonb), $6)
+       RETURNING id, nombre_completo, dni, obra_social, edad, metadatos_ia, created_at, medico_id`,
+      [nombre_completo, dni, obra_social || null, edad ?? null, metadatos_ia || null, medicoId ?? null]
     );
     return res.status(201).json({ usuario: result.rows[0] });
   } catch (err) {
+    if (err.code === '23503') return res.status(400).json({ error: 'El médico elegido no existe' });
     if (err.code === '23505') {
       // unique_violation (dni duplicado)
       return res.status(409).json({ error: 'Ya existe un cliente con ese DNI' });
@@ -85,13 +99,15 @@ async function crear(req, res) {
 
 // PUT /api/usuarios/:id  (actualización parcial de campos permitidos)
 async function actualizar(req, res) {
-  const permitidos = ['nombre_completo', 'dni', 'obra_social', 'edad', 'metadatos_ia'];
+  const permitidos = ['nombre_completo', 'dni', 'obra_social', 'edad', 'metadatos_ia', 'medico_id'];
+  const medicoId = medicoIdValido(req.body?.medico_id);
+  if (medicoId === false) return res.status(400).json({ error: 'medico_id inválido' });
   const campos = [];
   const valores = [];
 
   permitidos.forEach((campo) => {
     if (req.body && req.body[campo] !== undefined) {
-      valores.push(req.body[campo]);
+      valores.push(campo === 'medico_id' ? medicoId : req.body[campo]);
       campos.push(`${campo} = $${valores.length}`);
     }
   });
@@ -105,8 +121,8 @@ async function actualizar(req, res) {
   try {
     const result = await query(
       `UPDATE usuarios SET ${campos.join(', ')}
-       WHERE id = $${valores.length}
-       RETURNING id, nombre_completo, dni, obra_social, edad, metadatos_ia, created_at`,
+       WHERE id = ${valores.length}
+       RETURNING id, nombre_completo, dni, obra_social, edad, metadatos_ia, created_at, medico_id`,
       valores
     );
     if (result.rowCount === 0) {
@@ -114,6 +130,7 @@ async function actualizar(req, res) {
     }
     return res.json({ usuario: result.rows[0] });
   } catch (err) {
+    if (err.code === '23503') return res.status(400).json({ error: 'El médico elegido no existe' });
     if (err.code === '23505') {
       return res.status(409).json({ error: 'Ya existe un cliente con ese DNI' });
     }

@@ -14,17 +14,17 @@
 //   sobre         sobre a editar (null = nuevo)
 //   sucursalId    sucursal activa (para alta y búsqueda de stock)
 //   clientes, obrasSociales, medicos, laboratorios  listas para los selectores
-//   esAdmin       habilita el alta rápida de médicos
+//   esAdmin       (sin uso: el alta rápida de médicos está abierta a todos)
 //   onGuardado(sobre), onCancelar(), onMedicoCreado(medico)
 // =====================================================================
 
 import { useMemo, useState } from 'react';
 import { Search, Eraser, Plus, X } from 'lucide-react';
 import { crearSobre, actualizarSobre } from '../../api/sobres';
-import { crearMedico } from '../../api/medicos';
 import { transponer, calcularCerca } from '../../utils/receta';
-import Modal from '../Modal';
 import SelectorArmazon from './SelectorArmazon';
+import SelectorMedico from '../medicos/SelectorMedico';
+import NuevoMedicoModal from '../medicos/NuevoMedicoModal';
 import SelectorCatalogoLab from './SelectorCatalogoLab';
 import SobreFinanzas from './SobreFinanzas';
 import { calcularTotales, pesos } from '../../utils/sobreTotales';
@@ -127,8 +127,7 @@ export default function SobreConsola({
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
   const [aviso, setAviso] = useState('');
-  const [nuevoMedico, setNuevoMedico] = useState(null); // { nombre, matricula } | null
-  const [errorMedico, setErrorMedico] = useState('');
+  const [nuevoMedico, setNuevoMedico] = useState(false);
   const [items, setItems] = useState(() => itemsDesde(sobre));
   const [pagos, setPagos] = useState(() => pagosDesde(sobre));
   const [selector, setSelector] = useState(null); // 'lejos' | 'cerca' | 'otros' | null
@@ -209,19 +208,21 @@ export default function SobreConsola({
     );
   }
 
-  // --- Alta rápida de médico (admin) ---
-  async function guardarMedico(e) {
-    e.preventDefault();
-    setErrorMedico('');
-    if (!nuevoMedico.nombre.trim()) { setErrorMedico('El nombre es obligatorio.'); return; }
-    try {
-      const m = await crearMedico({ nombre: nuevoMedico.nombre, matricula: nuevoMedico.matricula });
-      onMedicoCreado?.(m);
-      setC('medico_id', m.id);
-      setNuevoMedico(null);
-    } catch (err) {
-      setErrorMedico(err.response?.data?.error || 'No se pudo crear el médico');
-    }
+  // --- Alta rápida de médico (cualquier usuario) ---
+  function medicoCreado(m) {
+    onMedicoCreado?.(m);
+    setC('medico_id', m.id);
+    setNuevoMedico(false);
+  }
+
+  // Al elegir paciente, si tiene médico tratante y el sobre todavía no tiene médico, se precarga.
+  function elegirPaciente(id) {
+    const c = clientes.find((x) => x.id === id);
+    setForm((f) => {
+      const precargar = !f.medico_id && c?.medico_id;
+      if (precargar) setAviso(`Médico precargado desde la ficha del paciente: ${c.medico_nombre || ''}.`);
+      return { ...f, cliente_id: id, medico_id: precargar ? c.medico_id : f.medico_id };
+    });
   }
 
   // --- Guardar sobre ---
@@ -289,7 +290,6 @@ export default function SobreConsola({
   }
 
   const cliente = clientes.find((c) => c.id === form.cliente_id);
-  const medicosActivos = medicos.filter((m) => m.activo || m.id === form.medico_id);
   const sucursalStock = sobre?.sucursal_id || sucursalId;
 
   return (
@@ -303,7 +303,7 @@ export default function SobreConsola({
 
           <div className="form-grid">
             <label className="field"><span>Paciente</span>
-              <select value={form.cliente_id} onChange={(e) => setC('cliente_id', e.target.value)}>
+              <select value={form.cliente_id} onChange={(e) => elegirPaciente(e.target.value)}>
                 <option value="">Sin asociar</option>
                 {clientes.map((c) => <option key={c.id} value={c.id}>{c.nombre_completo} · {c.dni}</option>)}
               </select></label>
@@ -314,17 +314,8 @@ export default function SobreConsola({
               </select></label>
             <div className="field">
               <label htmlFor="sobre-medico"><span>Médico</span></label>
-              <select id="sobre-medico" value={form.medico_id} onChange={(e) => setC('medico_id', e.target.value)}>
-                <option value="">Sin médico</option>
-                {medicosActivos.map((m) => (
-                  <option key={m.id} value={m.id}>{m.nombre}{m.matricula ? ` · MP ${m.matricula}` : ''}</option>
-                ))}
-              </select>
-              {esAdmin && (
-                <button type="button" className="link-btn" onClick={() => setNuevoMedico({ nombre: '', matricula: '' })}>
-                  + Nuevo médico
-                </button>
-              )}
+              <SelectorMedico id="sobre-medico" medicos={medicos} value={form.medico_id}
+                onChange={(id) => setC('medico_id', id)} onNuevo={() => setNuevoMedico(true)} />
               {sobre?.medico && !form.medico_id && (
                 <span className="muted small">Cargado antes como texto: {sobre.medico}</span>
               )}
@@ -493,23 +484,7 @@ export default function SobreConsola({
       )}
 
       {/* Fuera del <form> del sobre: Enter acá guarda el médico, no el sobre. */}
-      {nuevoMedico && (
-        <Modal titulo="Nuevo médico" onCerrar={() => setNuevoMedico(null)}>
-          <form className="form-grid" onSubmit={guardarMedico}>
-            <label className="field field--full"><span>Nombre *</span>
-              <input maxLength={150} value={nuevoMedico.nombre} autoFocus
-                onChange={(e) => setNuevoMedico((m) => ({ ...m, nombre: e.target.value }))} /></label>
-            <label className="field field--full"><span>Matrícula</span>
-              <input maxLength={50} value={nuevoMedico.matricula}
-                onChange={(e) => setNuevoMedico((m) => ({ ...m, matricula: e.target.value }))} /></label>
-            {errorMedico && <p className="alert alert--error field--full" role="alert">{errorMedico}</p>}
-            <div className="form-actions">
-              <button type="button" className="btn btn--ghost btn--inline" onClick={() => setNuevoMedico(null)}>Cancelar</button>
-              <button type="submit" className="btn btn--primary btn--inline">Guardar médico</button>
-            </div>
-          </form>
-        </Modal>
-      )}
+      {nuevoMedico && <NuevoMedicoModal onCreado={medicoCreado} onCerrar={() => setNuevoMedico(false)} />}
     </>
   );
 }
