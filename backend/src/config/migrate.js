@@ -1095,6 +1095,23 @@ const MIGRACIONES = [
      (1548, '8 MULTIPROPOSITOS-GOTAS', 'Multipropósitos', 'LENA', 'AVISOR 350 ML', NULL, NULL, 32288, FALSE, FALSE, 454)
    ON CONFLICT (id) DO NOTHING`,
   `SELECT setval(pg_get_serial_sequence('catalogo_laboratorio', 'id'), GREATEST((SELECT COALESCE(MAX(id), 1) FROM catalogo_laboratorio), 1))`,
+  // --- Carga inicial: tratamientos y servicios (coloraciones, calibrados). Solo inserta lo que falta. ---
+  `INSERT INTO catalogo_laboratorio (id, categoria, subcategoria_grupo, marca_proveedor, descripcion, badge_graduacion_raw, dias_demora, precio_lista, es_servicio, es_insumo_mostrador, orden_lista)
+   VALUES (1525, '9 TRATAMIENTOS Y SERVICIOS', 'Coloraciones y Reparaciones', 'VIST', 'MULTIFACETADO (negativo) o LENTICULAR (positivo)', 'Sobre lentes CUSTOM digital', 7, 111300, TRUE, FALSE, 455),
+     (1316, '9 TRATAMIENTOS Y SERVICIOS', 'Calibrados y Centrado Digital', 'LENA', 'Calibrado Mono Focal-Aro Entero', 'Aro Entero', 2, 6600, TRUE, FALSE, 456),
+     (1317, '9 TRATAMIENTOS Y SERVICIOS', 'Calibrados y Centrado Digital', 'LENA', 'Calibrado Mono Focal-Ranurado', 'Ranurado', 2, 10500, TRUE, FALSE, 457),
+     (1318, '9 TRATAMIENTOS Y SERVICIOS', 'Calibrados y Centrado Digital', 'LENA', 'Calibrado Mono Focal-Perforado', 'Perforado', 2, 14400, TRUE, FALSE, 458),
+     (1319, '9 TRATAMIENTOS Y SERVICIOS', 'Calibrados y Centrado Digital', 'LENA', 'Calibrado Mono Focal de Laboratorio-Aro Entero', 'Aro Entero', 2, 10500, TRUE, FALSE, 459),
+     (1320, '9 TRATAMIENTOS Y SERVICIOS', 'Calibrados y Centrado Digital', 'LENA', 'Calibrado Mono Focal de Laboratorio-Ranurado', 'Ranurado', 2, 12000, TRUE, FALSE, 460),
+     (1321, '9 TRATAMIENTOS Y SERVICIOS', 'Calibrados y Centrado Digital', 'LENA', 'Calibrado Mono Focal de Laboratorio-Perforado', 'Perforado', 2, 18720, TRUE, FALSE, 461),
+     (1322, '9 TRATAMIENTOS Y SERVICIOS', 'Calibrados y Centrado Digital', 'LENA', 'Calibrado Bifocal-Aro Entero', 'Aro Entero', 2, 10500, TRUE, FALSE, 462),
+     (1323, '9 TRATAMIENTOS Y SERVICIOS', 'Calibrados y Centrado Digital', 'LENA', 'Calibrado Bifocal-Ranurado', 'Ranurado', 2, 12000, TRUE, FALSE, 463),
+     (1324, '9 TRATAMIENTOS Y SERVICIOS', 'Calibrados y Centrado Digital', 'LENA', 'Calibrado Bifocal-Perforado', 'Perforado', 2, 18720, TRUE, FALSE, 464),
+     (1325, '9 TRATAMIENTOS Y SERVICIOS', 'Calibrados y Centrado Digital', 'LENA', 'Calibrado Progresivo-Aro entero', 'Aro entero', 2, 14100, TRUE, FALSE, 465),
+     (1326, '9 TRATAMIENTOS Y SERVICIOS', 'Calibrados y Centrado Digital', 'LENA', 'Calibrado Progresivo-Ranurado', 'Ranurado', 2, 15600, TRUE, FALSE, 466),
+     (1327, '9 TRATAMIENTOS Y SERVICIOS', 'Calibrados y Centrado Digital', 'LENA', 'Calibrado Progresivo-Perforado', 'Perforado', 2, 24840, TRUE, FALSE, 467)
+   ON CONFLICT (id) DO NOTHING`,
+  `SELECT setval(pg_get_serial_sequence('catalogo_laboratorio', 'id'), GREATEST((SELECT COALESCE(MAX(id), 1) FROM catalogo_laboratorio), 1))`,
 ];
 
 // `ejecutar` permite reutilizar las mismas migraciones desde otro cliente
