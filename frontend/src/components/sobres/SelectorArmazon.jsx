@@ -10,7 +10,7 @@
 //   esPropio      boolean
 //   productoId    id del producto elegido (o '')
 //   productoNombre nombre a mostrar del elegido
-//   onChange({ esPropio, productoId, productoNombre })
+//   onChange({ esPropio, productoId, productoNombre, precio? })  precio: precio de venta del stock
 // =====================================================================
 
 import { useState } from 'react';
@@ -48,7 +48,7 @@ export default function SelectorArmazon({
   }
 
   function elegir(s) {
-    onChange({ esPropio: false, productoId: s.producto_id, productoNombre: `${s.codigo} · ${s.nombre}` });
+    onChange({ esPropio: false, productoId: s.producto_id, productoNombre: `${s.codigo} · ${s.nombre}`, precio: s.precio_venta });
     setAbierto(false);
   }
 

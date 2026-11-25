@@ -1124,6 +1124,21 @@ const MIGRACIONES = [
    VALUES (1518, '11 LENTES DE SOL', 'Convencionales', 'LENA', 'LENTE DE SOL', NULL, NULL, 0, FALSE, FALSE, 471)
    ON CONFLICT (id) DO NOTHING`,
   `SELECT setval(pg_get_serial_sequence('catalogo_laboratorio', 'id'), GREATEST((SELECT COALESCE(MAX(id), 1) FROM catalogo_laboratorio), 1))`,
+  // --- Sobres Etapa 2: lente del catálogo, precios, descuento, recargo, ítems y pagos ---
+  // El lente se copia al sobre (descripción y precio) para que la cotización no cambie si cambia la lista.
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS lente_lejos_id INTEGER REFERENCES catalogo_laboratorio(id) ON DELETE SET NULL`,
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS lente_lejos_descripcion VARCHAR(255)`,
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS lente_lejos_precio NUMERIC(12,2) CHECK (lente_lejos_precio >= 0)`,
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS lente_cerca_id INTEGER REFERENCES catalogo_laboratorio(id) ON DELETE SET NULL`,
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS lente_cerca_descripcion VARCHAR(255)`,
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS lente_cerca_precio NUMERIC(12,2) CHECK (lente_cerca_precio >= 0)`,
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS armazon_lejos_precio NUMERIC(12,2) CHECK (armazon_lejos_precio >= 0)`,
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS armazon_cerca_precio NUMERIC(12,2) CHECK (armazon_cerca_precio >= 0)`,
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS descuento_tipo VARCHAR(12)`,
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS descuento_valor NUMERIC(12,2) DEFAULT 0 CHECK (descuento_valor >= 0)`,
+  `ALTER TABLE sobres ADD COLUMN IF NOT EXISTS recargo NUMERIC(12,2) DEFAULT 0 CHECK (recargo >= 0)`,
+  `ALTER TABLE sobre_items_adicionales ADD COLUMN IF NOT EXISTS catalogo_id INTEGER REFERENCES catalogo_laboratorio(id) ON DELETE SET NULL`,
+  `ALTER TABLE sobre_items_adicionales ADD COLUMN IF NOT EXISTS orden INTEGER DEFAULT 0`,
 ];
 
 // `ejecutar` permite reutilizar las mismas migraciones desde otro cliente

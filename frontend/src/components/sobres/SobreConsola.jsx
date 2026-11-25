@@ -4,8 +4,11 @@
 //   - Izquierda (65%): datos técnicos — encabezado, médico, receta lejos y
 //     cerca (con C.Base y DEG), calculadoras ópticas, armazones, antropometría
 //     (DIP/DNP/AP), cotas del armazón y laboratorio.
-//   - Derecha (35%): resumen y acciones. La consola financiera (ítems
-//     adicionales, pagos y saldo) llega en la Etapa 2.
+//   - Derecha (35%): resumen, importes y acciones (Etapa 2): Sub Total
+//     Lejos / Cerca / Otros, descuento, recargo, Total, pagos y Saldo,
+//     recalculados en vivo (utils/sobreTotales; el servidor recalcula al guardar).
+// El lente de lejos y el de cerca se eligen del catálogo "Lentes y otros"
+// (SelectorCatalogoLab) y quedan copiados al sobre con su precio.
 //
 // Props:
 //   sobre         sobre a editar (null = nuevo)
@@ -15,12 +18,16 @@
 //   onGuardado(sobre), onCancelar(), onMedicoCreado(medico)
 // =====================================================================
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { Search, Eraser, Plus, X } from 'lucide-react';
 import { crearSobre, actualizarSobre } from '../../api/sobres';
 import { crearMedico } from '../../api/medicos';
 import { transponer, calcularCerca } from '../../utils/receta';
 import Modal from '../Modal';
 import SelectorArmazon from './SelectorArmazon';
+import SelectorCatalogoLab from './SelectorCatalogoLab';
+import SobreFinanzas from './SobreFinanzas';
+import { calcularTotales, pesos } from '../../utils/sobreTotales';
 
 const ESTADOS = ['pendiente', 'reserva', 'en_taller', 'lentes', 'listo', 'entregado', 'anulado'];
 const ESTADO_LABEL = {
@@ -49,6 +56,30 @@ function camposReceta(seccion, cols) {
   return ['od', 'oi'].flatMap((ojo) => cols.map(([c]) => `${seccion}_${ojo}_${c}`));
 }
 
+const CAMPOS_FINANZAS = [
+  'lente_lejos_id', 'lente_lejos_descripcion', 'lente_lejos_precio',
+  'lente_cerca_id', 'lente_cerca_descripcion', 'lente_cerca_precio',
+  'armazon_lejos_precio', 'armazon_cerca_precio',
+  'descuento_tipo', 'descuento_valor', 'recargo',
+];
+const PRECIOS = ['lente_lejos_precio', 'lente_cerca_precio', 'armazon_lejos_precio', 'armazon_cerca_precio'];
+
+// Ítems y pagos guardados -> filas editables. Un sobre viejo con total cargado a
+// mano (sin precios ni ítems) conserva ese importe como ítem de "Otros".
+function itemsDesde(sobre) {
+  const items = (sobre?.items || []).map((i) => ({
+    descripcion: i.descripcion, precio: String(i.precio), catalogo_id: i.catalogo_id ?? null, dias_demora: i.dias_demora ?? null,
+  }));
+  const legado = sobre?.id && Number(sobre.total) > 0 && !items.length && PRECIOS.every((c) => sobre[c] == null);
+  if (legado) items.push({ descripcion: 'Total cargado a mano (antes del cálculo automático)', precio: String(sobre.total), catalogo_id: null, dias_demora: null });
+  return items;
+}
+function pagosDesde(sobre) {
+  return (sobre?.pagos || []).map((p) => ({
+    fecha: String(p.fecha || '').slice(0, 10), detalle: p.detalle || '', medio_pago: p.medio_pago, importe: String(p.importe),
+  }));
+}
+
 const CAMPOS_TEXTO = [
   'cliente_id', 'obra_social_id', 'medico_id', 'fecha_receta', 'fecha_entrega', 'estado',
   'dip', 'dnp_od', 'dnp_oi', 'ap_od', 'ap_oi',
@@ -56,7 +87,9 @@ const CAMPOS_TEXTO = [
   'armazon_descripcion', 'cristal_descripcion',
   ...COTAS.map(([c]) => c),
   'laboratorio_id', 'codigo_pedido_garantia', 'observacion_lab',
-  'notas', 'total',
+  'notas',
+  // Etapa 2: importes (el total ya no se carga a mano)
+  ...CAMPOS_FINANZAS,
   ...camposReceta('lejos', COLS_LEJOS),
   ...camposReceta('cerca', COLS_CERCA),
 ];
@@ -96,6 +129,10 @@ export default function SobreConsola({
   const [aviso, setAviso] = useState('');
   const [nuevoMedico, setNuevoMedico] = useState(null); // { nombre, matricula } | null
   const [errorMedico, setErrorMedico] = useState('');
+  const [items, setItems] = useState(() => itemsDesde(sobre));
+  const [pagos, setPagos] = useState(() => pagosDesde(sobre));
+  const [selector, setSelector] = useState(null); // 'lejos' | 'cerca' | 'otros' | null
+  const totales = useMemo(() => calcularTotales(form, items, pagos), [form, items, pagos]);
 
   function setC(campo, v) { setForm((f) => ({ ...f, [campo]: v })); }
 
@@ -128,6 +165,50 @@ export default function SobreConsola({
     setAviso(`Receta de cerca calculada para ${hechos.join(' y ')} (ESF lejos + ADD).`);
   }
 
+  // --- Lente y "Otros" desde el catálogo "Lentes y otros" ---
+  function elegirDelCatalogo(it) {
+    const precio = String(Number(it.precio_lista) || 0);
+    if (selector === 'otros') {
+      setItems((xs) => [...xs, {
+        descripcion: `#${it.id} · ${it.descripcion}`.slice(0, 200), precio, catalogo_id: it.id, dias_demora: it.dias_demora ?? null,
+      }]);
+      setAviso(`Agregado a Otros: ${it.descripcion} (${pesos(it.precio_lista)}).`);
+    } else {
+      const sec = selector; // 'lejos' | 'cerca'
+      const nombre = [it.subcategoria_grupo, it.descripcion].filter(Boolean).join(' · ').slice(0, 255);
+      setForm((f) => ({ ...f, [`lente_${sec}_id`]: String(it.id), [`lente_${sec}_descripcion`]: nombre, [`lente_${sec}_precio`]: precio }));
+      setAviso(`Lente asignado a Receta ${sec === 'lejos' ? 'Lejos' : 'Cerca'}: #${it.id} ${it.descripcion} (${pesos(it.precio_lista)}).`);
+    }
+    setSelector(null);
+  }
+  function quitarLente(sec) {
+    setForm((f) => ({ ...f, [`lente_${sec}_id`]: '', [`lente_${sec}_descripcion`]: '', [`lente_${sec}_precio`]: '' }));
+  }
+  function cambiarItem(i, campo, v) { setItems((xs) => xs.map((x, j) => (j === i ? { ...x, [campo]: v } : x))); }
+
+  function campoLente(sec) {
+    const desc = form[`lente_${sec}_descripcion`];
+    const id = form[`lente_${sec}_id`];
+    return (
+      <div className="lente-campo">
+        <span className="lente-campo__label">Lente:</span>
+        <span className={desc ? 'lente-campo__valor' : 'lente-campo__valor muted'}>
+          {desc ? <>{id && <span className="lab-id">{id}</span>} {desc}</> : 'Sin lente elegido'}
+        </span>
+        <button type="button" className="btn-mini btn-mini--wide" onClick={() => setSelector(sec)}
+          title="Elegir del catálogo Lentes y otros">
+          <Search size={12} /> Lentes y otros
+        </button>
+        {desc && (
+          <button type="button" className="btn-mini" onClick={() => quitarLente(sec)}
+            aria-label={`Quitar lente de ${sec}`} title="Quitar lente">
+            <Eraser size={12} />
+          </button>
+        )}
+      </div>
+    );
+  }
+
   // --- Alta rápida de médico (admin) ---
   async function guardarMedico(e) {
     e.preventDefault();
@@ -157,6 +238,10 @@ export default function SobreConsola({
     payload.armazon_lejos_es_propio = form.armazon_lejos_es_propio;
     payload.armazon_cerca_es_propio = form.armazon_cerca_es_propio;
     if (!esEdicion) payload.sucursal_id = sucursalId;
+    payload.items = items.map((i) => ({
+      descripcion: i.descripcion, precio: normalizarNumero(i.precio), catalogo_id: i.catalogo_id, dias_demora: i.dias_demora,
+    }));
+    payload.pagos = pagos.map((p) => ({ ...p, importe: normalizarNumero(p.importe) }));
 
     setGuardando(true);
     try {
@@ -265,6 +350,7 @@ export default function SobreConsola({
               <tbody>{filaReceta('lejos', 'od', COLS_LEJOS)}{filaReceta('lejos', 'oi', COLS_LEJOS)}</tbody>
             </table>
           </div>
+          {campoLente('lejos')}
 
           <div className="sobre-subtitulo sobre-subtitulo--accion">
             <h3>Receta — Cerca</h3>
@@ -278,6 +364,7 @@ export default function SobreConsola({
               <tbody>{filaReceta('cerca', 'od', COLS_CERCA)}{filaReceta('cerca', 'oi', COLS_CERCA)}</tbody>
             </table>
           </div>
+          {campoLente('cerca')}
           {aviso && <p className="muted small" role="status">{aviso}</p>}
 
           <h3 className="sobre-subtitulo">Armazones</h3>
@@ -288,8 +375,9 @@ export default function SobreConsola({
               esPropio={form.armazon_lejos_es_propio}
               productoId={form.armazon_producto_id}
               productoNombre={form.armazon_lejos_nombre}
-              onChange={({ esPropio, productoId, productoNombre }) => setForm((f) => ({
+              onChange={({ esPropio, productoId, productoNombre, precio }) => setForm((f) => ({
                 ...f, armazon_lejos_es_propio: esPropio, armazon_producto_id: productoId || '', armazon_lejos_nombre: productoNombre || '',
+                armazon_lejos_precio: precio !== undefined && precio !== null ? String(precio) : (productoId ? f.armazon_lejos_precio : ''),
               }))}
             />
             <SelectorArmazon
@@ -298,11 +386,44 @@ export default function SobreConsola({
               esPropio={form.armazon_cerca_es_propio}
               productoId={form.armazon_cerca_producto_id}
               productoNombre={form.armazon_cerca_nombre}
-              onChange={({ esPropio, productoId, productoNombre }) => setForm((f) => ({
+              onChange={({ esPropio, productoId, productoNombre, precio }) => setForm((f) => ({
                 ...f, armazon_cerca_es_propio: esPropio, armazon_cerca_producto_id: productoId || '', armazon_cerca_nombre: productoNombre || '',
+                armazon_cerca_precio: precio !== undefined && precio !== null ? String(precio) : (productoId ? f.armazon_cerca_precio : ''),
               }))}
             />
           </div>
+
+          <div className="sobre-subtitulo sobre-subtitulo--accion">
+            <h3>Servicios, insumos, accesorios y otros</h3>
+            <span className="otros-acciones">
+              <button type="button" className="btn-mini btn-mini--wide" onClick={() => setSelector('otros')}>
+                <Plus size={12} /> Del catálogo
+              </button>
+              <button type="button" className="btn-mini btn-mini--wide"
+                onClick={() => setItems((xs) => [...xs, { descripcion: '', precio: '', catalogo_id: null, dias_demora: null }])}>
+                <Plus size={12} /> Ítem libre
+              </button>
+            </span>
+          </div>
+          {items.length === 0 ? (
+            <p className="muted small">Sin ítems adicionales.</p>
+          ) : (
+            <div className="otros-lista">
+              {items.map((it, i) => (
+                <div key={i} className="otros-fila">
+                  <input aria-label={`Descripción del ítem ${i + 1}`} maxLength={200} placeholder="Descripción"
+                    value={it.descripcion} onChange={(e) => cambiarItem(i, 'descripcion', e.target.value)} />
+                  <span className="fin-importe__input">
+                    <span aria-hidden="true">$</span>
+                    <input type="number" min="0" step="0.01" aria-label={`Precio del ítem ${i + 1}`}
+                      value={it.precio} onChange={(e) => cambiarItem(i, 'precio', e.target.value)} />
+                  </span>
+                  <button type="button" className="btn-mini" aria-label={`Quitar ítem ${i + 1}`} title="Quitar"
+                    onClick={() => setItems((xs) => xs.filter((_, j) => j !== i))}><X size={12} /></button>
+                </div>
+              ))}
+            </div>
+          )}
 
           <h3 className="sobre-subtitulo">Antropometría (mm)</h3>
           <div className="form-grid form-grid--compacta">
@@ -352,14 +473,10 @@ export default function SobreConsola({
             <input maxLength={200} value={form.cristal_descripcion} onChange={(e) => setC('cristal_descripcion', e.target.value)} placeholder="Tipo de cristal, tratamiento…" /></label>
           <label className="field"><span>Detalle del armazón</span>
             <input maxLength={200} value={form.armazon_descripcion} onChange={(e) => setC('armazon_descripcion', e.target.value)} placeholder="Color, modelo del armazón propio…" /></label>
-          <label className="field"><span>Total ($)</span>
-            <input type="number" step="0.01" min="0" value={form.total} onChange={(e) => setC('total', e.target.value)} /></label>
           <label className="field"><span>Notas</span>
             <textarea rows={3} value={form.notas} onChange={(e) => setC('notas', e.target.value)} /></label>
 
-          <p className="muted small">
-            Ítems adicionales, pagos y saldo se suman en la próxima etapa. Por ahora el total se carga a mano.
-          </p>
+          <SobreFinanzas form={form} setC={setC} pagos={pagos} setPagos={setPagos} totales={totales} />
 
           {error && <p className="alert alert--error" role="alert">{error}</p>}
           <div className="form-actions">
@@ -370,6 +487,10 @@ export default function SobreConsola({
           </div>
         </aside>
       </form>
+
+      {selector && (
+        <SelectorCatalogoLab contexto={selector} onSeleccionar={elegirDelCatalogo} onCerrar={() => setSelector(null)} />
+      )}
 
       {/* Fuera del <form> del sobre: Enter acá guarda el médico, no el sobre. */}
       {nuevoMedico && (

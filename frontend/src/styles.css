@@ -1274,6 +1274,47 @@ body {
 .sobre-resumen dt { color: var(--texto-suave); }
 .sobre-resumen dd { margin: 0; }
 
+/* ---------- Sobre Etapa 2: lente del catálogo, otros e importes ---------- */
+.modal--ancho { max-width: min(1100px, 96vw); }
+.catalogo-sel { max-height: 55vh; overflow-y: auto; border: 1px solid var(--gris-borde); border-radius: 8px; background: #ffffff; }
+.catalogo-sel .lab-row:nth-child(even) { background: #dcefd9; }
+.catalogo-sel .lab-row:hover { background: #cfe8cb; }
+.catalogo-sel__btn { flex: none; }
+.lente-campo { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; padding: 0.5rem 0.65rem; margin-bottom: 0.5rem; background: #ffffff; border: 1px solid var(--gris-borde); border-radius: 8px; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08); }
+.lente-campo__label { font-weight: 700; font-size: 0.85rem; }
+.lente-campo__valor { flex: 1; min-width: 12rem; font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.35rem; }
+.otros-acciones { display: inline-flex; gap: 0.4rem; flex-wrap: wrap; }
+.otros-lista { display: flex; flex-direction: column; gap: 0.4rem; }
+.otros-fila { display: grid; grid-template-columns: minmax(0, 1fr) 9rem auto; gap: 0.4rem; align-items: center; }
+.otros-fila input, .fin input, .fin select { background: #ffffff; border: 1px solid var(--gris-borde); border-radius: 6px; padding: 0.35rem 0.5rem; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08); min-width: 0; }
+.fin { display: flex; flex-direction: column; gap: 0.6rem; }
+.fin h3 { margin: 0 0 0.35rem; font-size: 0.9rem; font-weight: 600; }
+.fin-bloque { padding: 0.6rem 0.7rem; border-radius: 8px; background: #ffffff; border: 1px solid var(--gris-borde); border-top: 3px solid var(--primary-accent); }
+.fin-bloque--cerca { border-top-color: #16a34a; }
+.fin-importe { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); align-items: center; gap: 0.4rem; margin-bottom: 0.3rem; font-size: 0.8rem; }
+.fin-importe__input { display: flex; align-items: center; gap: 0.3rem; }
+.fin-importe__input input { width: 100%; text-align: right; }
+.fin-sub { margin: 0.25rem 0 0; text-align: right; font-weight: 700; }
+.fin-linea { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; font-size: 0.85rem; }
+.fin-linea--descuento select { flex: 1; }
+.fin-linea--descuento input { width: 5.5rem; text-align: right; }
+.fin-linea--recargo span { color: #dc2626; }
+.fin-linea--recargo input { width: 8rem; text-align: right; }
+.fin-linea--total { padding-top: 0.4rem; border-top: 1px solid var(--gris-borde); font-size: 0.95rem; }
+.fin-resumen { display: flex; flex-direction: column; gap: 0.45rem; padding: 0.6rem 0.7rem; border-radius: 8px; background: #f8fafc; border: 1px solid var(--gris-borde); }
+.fin-pagos { display: flex; flex-direction: column; gap: 0.4rem; padding: 0.6rem 0.7rem; border-radius: 8px; background: #ffffff; border: 1px solid var(--gris-borde); border-top: 3px solid #f59e0b; }
+.fin-pagos__head { display: flex; align-items: center; justify-content: space-between; }
+.fin-pagos__head h3 { margin: 0; }
+.fin-pago { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr) auto; grid-template-areas: "fecha medio quitar" "detalle importe importe"; gap: 0.3rem; }
+.fin-pago input[type=date] { grid-area: fecha; }
+.fin-pago select { grid-area: medio; }
+.fin-pago button { grid-area: quitar; }
+.fin-pago input:not([type=date]):not([type=number]) { grid-area: detalle; }
+.fin-pago input[type=number] { grid-area: importe; text-align: right; }
+.fin-saldo { display: flex; justify-content: space-between; align-items: baseline; padding: 0.6rem 0.75rem; border-radius: 8px; background: #ffffff; border: 2px solid #16a34a; font-size: 1.05rem; }
+.fin-saldo strong { font-size: 1.35rem; }
+.fin-saldo--favor { border-color: #0ea5e9; }
+
 /* Fila del listado con el sobre abierto en la consola */
 .fila-activa { background: #fdf2f8; box-shadow: inset 3px 0 0 var(--primary-accent); }
 

@@ -1,0 +1,6 @@
+// Categorías de la lista de laboratorio ("Lentes y otros"). El número ordena las solapas.
+export const CATEGORIAS_LAB = [
+  '0 CONTROL DE MIOPÍA', '1 MONOFOCALES', '2 MONOFOCAL DIGITAL', '3 BIFOCALES',
+  '4 OCUPACIONALES', '5 PROGRESIVOS', '6 PROGRESIVOS VARILUX', '7 CONTACTOLOGIA',
+  '8 MULTIPROPOSITOS-GOTAS', '9 TRATAMIENTOS Y SERVICIOS', '10 ACCESORIOS', '11 LENTES DE SOL',
+];

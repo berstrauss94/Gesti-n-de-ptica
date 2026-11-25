@@ -11,12 +11,9 @@ import { normalizar } from '../utils/busquedaNatural';
 import InfoBtn from '../components/InfoBtn';
 import Modal from '../components/Modal';
 import { useEsAdmin } from '../hooks/useEsAdmin';
+import { CATEGORIAS_LAB } from '../utils/catalogoLab';
 
-const CATEGORIAS = [
-  '0 CONTROL DE MIOPÍA', '1 MONOFOCALES', '2 MONOFOCAL DIGITAL', '3 BIFOCALES',
-  '4 OCUPACIONALES', '5 PROGRESIVOS', '6 PROGRESIVOS VARILUX', '7 CONTACTOLOGIA',
-  '8 MULTIPROPOSITOS-GOTAS', '9 TRATAMIENTOS Y SERVICIOS', '10 ACCESORIOS', '11 LENTES DE SOL',
-];
+const CATEGORIAS = CATEGORIAS_LAB;
 
 const precio = (p) => `$ ${Number(p).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const escapeHtml = (t) => String(t ?? '').replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
