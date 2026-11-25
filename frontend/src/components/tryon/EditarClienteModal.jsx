@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import Modal from '../Modal';
 import { actualizarUsuario } from '../../api/usuarios';
+import SelectorObraSocial from '../obrasSociales/SelectorObraSocial';
 
 export default function EditarClienteModal({ cliente, onCerrar, onGuardado }) {
   const [form, setForm] = useState({
@@ -57,7 +58,7 @@ export default function EditarClienteModal({ cliente, onCerrar, onGuardado }) {
         </label>
         <label className="field field--full">
           <span>Obra social</span>
-          <input value={form.obra_social} onChange={(e) => setCampo('obra_social', e.target.value)} />
+          <SelectorObraSocial value={form.obra_social} onChange={(v) => setCampo('obra_social', v)} />
         </label>
 
         <div className="form-actions">

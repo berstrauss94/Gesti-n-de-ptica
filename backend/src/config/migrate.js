@@ -1327,6 +1327,52 @@ const MIGRACIONES = [
      ('Amarilla Ramiro', '8304')
    ) AS v(nombre, matricula)
    WHERE NOT EXISTS (SELECT 1 FROM medicos m WHERE LOWER(m.nombre) = LOWER(v.nombre) AND COALESCE(m.matricula, '') = COALESCE(v.matricula, ''))`,
+  // --- Obras sociales / mutuales de la óptica. Solo inserta las que faltan
+  // (compara sin mayúsculas ni el "*" final, por si ya se cargó alguna a mano). Cobertura 0%: se ajusta en Configuración. ---
+  `INSERT INTO obras_sociales (nombre)
+   SELECT v.nombre FROM (VALUES
+     ('ACA SALUD *'),
+     ('AMUDOCH *'),
+     ('APE CHACO *'),
+     ('ASECH *'),
+     ('ASO M.C. DE JUB PEN Y RET CHACO *'),
+     ('ASOC. MUTUAL E. JUDICIALES CHACO *'),
+     ('ASOCIACIÓN EMPLEADOS DE FARMACIA *'),
+     ('CLUB PERSONAL TRIBUNAL DE CUENTA *'),
+     ('DASUTEN *'),
+     ('ECOM CHACO S.A *'),
+     ('GMsalud *'),
+     ('INSSSEP *'),
+     ('IOSFA *'),
+     ('JERÁRQUICO *'),
+     ('MUPESA *'),
+     ('MUTUAL PERSONAL DE RENTAS *'),
+     ('MUTUAL PERSONAL DEL INSSSEP *'),
+     ('O/S PODER JUDICIAL DE LA NACION *'),
+     ('OPTOVISION-DOCTHOS *'),
+     ('OPTOVISION-SWISS MEDICAL GROUP *'),
+     ('OPTOVISION-UOCRA *'),
+     ('OSDE *'),
+     ('PAMI 300007'),
+     ('PAMI 300042'),
+     ('PAMI 300043'),
+     ('PAMI 300044'),
+     ('PAMI 300074'),
+     ('PAMI 300075'),
+     ('POLICÍA FEDERAL OBRA SOCIAL *'),
+     ('PROFE Incluir Salud *'),
+     ('SANCOR SALUD *'),
+     ('SANTA CLARA SALUD *'),
+     ('SEC Bifocal'),
+     ('SEC Monofocal'),
+     ('SEC Multifocal'),
+     ('SEC Ocupacional'),
+     ('SIMED *'),
+     ('SIN OBRA SOCIAL *'),
+     ('SIND TRAB CORREO y TEL DE CHACO *'),
+     ('UPCN *')
+   ) AS v(nombre)
+   WHERE NOT EXISTS (SELECT 1 FROM obras_sociales o WHERE LOWER(TRIM(REPLACE(o.nombre, '*', ''))) = LOWER(TRIM(REPLACE(v.nombre, '*', ''))))`,
 ];
 
 // `ejecutar` permite reutilizar las mismas migraciones desde otro cliente

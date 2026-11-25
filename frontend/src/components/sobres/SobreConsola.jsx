@@ -24,6 +24,7 @@ import { crearSobre, actualizarSobre } from '../../api/sobres';
 import { transponer, calcularCerca } from '../../utils/receta';
 import SelectorArmazon from './SelectorArmazon';
 import SelectorMedico from '../medicos/SelectorMedico';
+import { buscarObraSocialPorNombre } from '../../utils/obrasSociales';
 import NuevoMedicoModal from '../medicos/NuevoMedicoModal';
 import SelectorCatalogoLab from './SelectorCatalogoLab';
 import SobreFinanzas from './SobreFinanzas';
@@ -215,13 +216,23 @@ export default function SobreConsola({
     setNuevoMedico(false);
   }
 
-  // Al elegir paciente, si tiene médico tratante y el sobre todavía no tiene médico, se precarga.
+  // Al elegir paciente se precargan, solo si el sobre todavía no los tiene, el médico
+  // tratante y la obra social de su ficha (la ficha guarda el nombre; se busca en la lista).
   function elegirPaciente(id) {
     const c = clientes.find((x) => x.id === id);
     setForm((f) => {
-      const precargar = !f.medico_id && c?.medico_id;
-      if (precargar) setAviso(`Médico precargado desde la ficha del paciente: ${c.medico_nombre || ''}.`);
-      return { ...f, cliente_id: id, medico_id: precargar ? c.medico_id : f.medico_id };
+      const precargarMedico = !f.medico_id && c?.medico_id;
+      const os = !f.obra_social_id ? buscarObraSocialPorNombre(obrasSociales, c?.obra_social) : null;
+      const avisos = [];
+      if (precargarMedico) avisos.push(`médico ${c.medico_nombre || ''}`);
+      if (os) avisos.push(`obra social ${os.nombre}`);
+      if (avisos.length) setAviso(`Precargado desde la ficha del paciente: ${avisos.join(' y ')}.`);
+      return {
+        ...f,
+        cliente_id: id,
+        medico_id: precargarMedico ? c.medico_id : f.medico_id,
+        obra_social_id: os ? os.id : f.obra_social_id,
+      };
     });
   }
 

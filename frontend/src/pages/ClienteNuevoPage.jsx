@@ -15,6 +15,7 @@ import InfoBtn from '../components/InfoBtn';
 import { listarMedicos } from '../api/medicos';
 import SelectorMedico from '../components/medicos/SelectorMedico';
 import NuevoMedicoModal from '../components/medicos/NuevoMedicoModal';
+import SelectorObraSocial from '../components/obrasSociales/SelectorObraSocial';
 
 // Definición de los 3 slots (orden visual Frontal -> 45° -> Perfil)
 const SLOTS = [
@@ -119,11 +120,8 @@ export default function ClienteNuevoPage() {
 
         <label className="field">
           <span>Obra social</span>
-          <input
-            type="text"
-            value={form.obra_social}
-            onChange={(e) => setCampo('obra_social', e.target.value)}
-          />
+          <SelectorObraSocial value={form.obra_social}
+            onChange={(v) => setCampo('obra_social', v)} />
         </label>
 
         <label className="field">

@@ -8,7 +8,7 @@
 > cambio. Hay un hook de Kiro (`.kiro/hooks/sync-arquitectura-doc.json`) que lo
 > recuerda automáticamente. Al final está el **Registro de cambios**.
 
-_Última actualización: 2026-10-24 (Médicos: lista completa A a Z)_
+_Última actualización: 2026-10-24 (Obras sociales: lista de la óptica en el sobre y en la ficha del cliente)_
 
 ---
 
@@ -564,6 +564,7 @@ Patrón común: **degradan a modo seguro si falta la credencial, nunca frenan la
   puede no existir todavía como turno (`turno_id` es opcional) y no se implementó `respuesta_cliente` ni
   `sms` (requieren webhook de Meta y otro proveedor). Verificado contra PostgreSQL real con Meta simulado
   (20 grupos de casos); **no** verificado contra Meta real (falta la cuenta, el token y la plantilla aprobada).
+- **2026-10-24** — Obras sociales. **BD** (`migrate.js`, aditiva): carga de las 40 obras sociales / mutuales de la óptica en `obras_sociales` (`INSERT ... WHERE NOT EXISTS`, compara sin mayúsculas ni el "*" final; cobertura 0%, se ajusta en Configuración). **Frontend:** `components/obrasSociales/SelectorObraSocial.jsx` reemplaza el texto libre de "Obra social" en `ClienteNuevoPage` y `tryon/EditarClienteModal` (sigue guardando el nombre en `usuarios.obra_social`; un texto viejo que no está en la lista se conserva como opción). `SobreConsola`: al elegir paciente, si el sobre no tiene obra social, se precarga la de la ficha (`utils/obrasSociales.js` busca por nombre normalizado). **Pruebas:** `backend/test/obrasSociales.test.mjs`.
 - **2026-10-24** — Médicos: lista completa A a Z. Entran 29 que faltaban (A a C y M.P. 2044 Asayag Nina, 6141 Alejandro Rosales, 8304 Amarilla Ramiro); el resto ya estaba y se saltea por nombre + matrícula. Se omitió "AaOTRO MEDICO" (comodín del sistema viejo; para un médico nuevo está el botón "+"). Migración aditiva `INSERT ... WHERE NOT EXISTS` en `migrate.js`.
 - **2026-10-24** — Médicos: carga de la lista consolidada (D a Z, 92 filas; las que ya estaban se saltean por nombre + matrícula, entran 44 nuevas). Se omitieron "PAOLA SECRETARIA", "REPETIDO, REUSAR" y "Maria Sec Estragó" (no son médicos). Migración aditiva `INSERT ... WHERE NOT EXISTS` en `migrate.js`.
 - **2026-10-24** — Médicos. **BD** (`migrate.js`, aditivas): `medicos.especialidad`, índice por `LOWER(nombre)`, carga de 48 médicos de la lista de la óptica (`INSERT ... WHERE NOT EXISTS` por nombre + matrícula; se omitieron "PAOLA SECRETARIA" y "REPETIDO, REUSAR" porque no son médicos) y `usuarios.medico_id` (médico tratante, FK con ON DELETE SET NULL). **Backend:** `POST /medicos` abierto a cualquier usuario y con aviso de duplicado (409); `usuariosController` lee/guarda `medico_id` (valida UUID; FK inexistente -> 400) y devuelve `medico_nombre`/`medico_matricula`. **Frontend:** `components/medicos/SelectorMedico.jsx` (combobox: filtra en vivo por nombre o M.P. sin distinguir acentos, teclado, muestra "M.P. 7966 Velardez Camila", botón verde "+", lista con z-index 60) y `NuevoMedicoModal.jsx` (Apellido, Nombre, M.P., Especialidad; se abre fuera del formulario, así no se pierde lo cargado). Se usan en `SobreConsola` (reemplaza el select y el alta solo-admin), `ClienteNuevoPage` y `ClienteDetallePage` (guarda al elegir). Al elegir paciente en el sobre, si tiene médico tratante y el sobre no tiene médico, se precarga con aviso. Probado contra PostgreSQL real y en Chrome.
