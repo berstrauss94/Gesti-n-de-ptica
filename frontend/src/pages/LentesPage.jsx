@@ -1,7 +1,7 @@
 // =====================================================================
 // Lentes y otros: catálogo de cristales, tratamientos, contactología,
 // accesorios y servicios de laboratorio, con precio de lista, rango de
-// graduación y días de demora. Se navega por categoría (menú de la derecha)
+// graduación y días de demora. Se navega por categoría (solapas debajo del buscador)
 // o se busca por texto en toda la lista. Solo admin importa la lista (CSV)
 // y ajusta precios en bloque.
 // =====================================================================
@@ -203,7 +203,7 @@ export default function LentesPage() {
           Lentes y otros
           <InfoBtn
             paraQue="Reúne los cristales, tratamientos, lentes de contacto, accesorios y servicios del laboratorio con su precio, rango de graduación y días de demora."
-            comoFunciona="Elegí una categoría en el menú de la derecha o buscá por nombre, grupo, marca o código; si sos admin cargá la lista desde un CSV y ajustá los precios por porcentaje."
+            comoFunciona="Elegí una categoría en las solapas de arriba o buscá por nombre, grupo, marca o código; si sos admin cargá la lista desde un CSV y ajustá los precios por porcentaje."
             conQueFin="Cotizar al cliente y armar el sobre sin errores: saber qué cristal soporta su receta, cuánto cuesta y cuándo llega."
           />
         </h1>
@@ -237,6 +237,26 @@ export default function LentesPage() {
           </>
         )}
       </form>
+
+      {/* Categorías como solapas, de izquierda a derecha, debajo del buscador */}
+      <nav className="lab-tabs" role="tablist" aria-label="Categorías">
+        {CATEGORIAS.map((c) => {
+          const activa = !busqueda && c === categoria;
+          return (
+            <button
+              key={c}
+              type="button"
+              role="tab"
+              aria-selected={activa}
+              className={activa ? 'lab-tab is-active' : 'lab-tab'}
+              onClick={() => elegirCategoria(c)}
+            >
+              <span>{c}</span>
+              {conteo[c] != null && <span className="lab-tab__n">{conteo[c]}</span>}
+            </button>
+          );
+        })}
+      </nav>
 
       {busqueda && (
         <p className="muted small" role="status">Buscando “{busqueda}” en todas las categorías.</p>
@@ -283,20 +303,6 @@ export default function LentesPage() {
           )}
         </div>
 
-        <aside className="lab-cats" aria-label="Categorías">
-          <div className="lab-cats__titulo">Categorías</div>
-          {CATEGORIAS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              className={!busqueda && c === categoria ? 'is-active' : ''}
-              onClick={() => elegirCategoria(c)}
-            >
-              <span>{c}</span>
-              {conteo[c] != null && <span>{conteo[c]}</span>}
-            </button>
-          ))}
-        </aside>
       </div>
 
       {imp && (
