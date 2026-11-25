@@ -1293,6 +1293,40 @@ const MIGRACIONES = [
      ('ZARAGOZA MARIA LAURA', NULL)
    ) AS v(nombre, matricula)
    WHERE NOT EXISTS (SELECT 1 FROM medicos m WHERE LOWER(m.nombre) = LOWER(v.nombre) AND COALESCE(m.matricula, '') = COALESCE(v.matricula, ''))`,
+  // --- Médicos: lista completa A a Z (faltaban A a C y tres con M.P.). Solo inserta los que faltan. ---
+  `INSERT INTO medicos (nombre, matricula)
+   SELECT v.nombre, v.matricula FROM (VALUES
+     ('ALMIRON FRANCISCO', NULL),
+     ('ALVEAR ANA MARIA', NULL),
+     ('AMARILLA FRANCO EMANUEL', NULL),
+     ('AMARILLA MIGUEL', NULL),
+     ('Ana Laura Schumacher', NULL),
+     ('ARCA CESAR', NULL),
+     ('ARGAEZ ROSA', NULL),
+     ('ARKWRIGTH AYELEN', NULL),
+     ('ARTAZA LISANDRO', NULL),
+     ('ATENCIA CECILIA', NULL),
+     ('AUCAR MARIA EMILIA', NULL),
+     ('Augusto Ramirez', NULL),
+     ('AZAYAG NINA', NULL),
+     ('BAREIRO ALICIA', NULL),
+     ('BRIZUELA FEDERICO', NULL),
+     ('CAJAL JOSE', NULL),
+     ('CANDIA KARINA', NULL),
+     ('CANO OMAR', NULL),
+     ('CARDOZO LILIANA', NULL),
+     ('CATARROZZI DANIEL', NULL),
+     ('COCA JUAN', NULL),
+     ('CONTI ESTEBAN', NULL),
+     ('CONTI SILVIA', NULL),
+     ('CORTEZ ANDRES', NULL),
+     ('CRUDELI ALEJANDRA', NULL),
+     ('DANIEL CATAROZZI', NULL),
+     ('Asayag Nina', '2044'),
+     ('Alejandro Rosales', '6141'),
+     ('Amarilla Ramiro', '8304')
+   ) AS v(nombre, matricula)
+   WHERE NOT EXISTS (SELECT 1 FROM medicos m WHERE LOWER(m.nombre) = LOWER(v.nombre) AND COALESCE(m.matricula, '') = COALESCE(v.matricula, ''))`,
 ];
 
 // `ejecutar` permite reutilizar las mismas migraciones desde otro cliente
