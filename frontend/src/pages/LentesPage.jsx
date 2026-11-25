@@ -258,7 +258,7 @@ export default function LentesPage() {
               )}
             </div>
           ) : (
-            <div className="lab-grid">
+            <div className={grupos.length === 1 ? 'lab-grid lab-grid--uno' : 'lab-grid'}>
               {grupos.map(([grupo, lista]) => (
                 <div key={grupo} className="lab-card">
                   <div className="lab-card__head"><span>{grupo}</span><span>{lista.length}</span></div>

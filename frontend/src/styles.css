@@ -1304,6 +1304,7 @@ body {
 .lab-layout { display: grid; grid-template-columns: minmax(0, 1fr) 230px; gap: 1rem; align-items: start; }
 .lab-grid { columns: 2; column-gap: 1rem; }
 .lab-grid > .lab-card { break-inside: avoid; margin-bottom: 1rem; }
+.lab-grid--uno { columns: 1; }
 .lab-card { background: #ffffff; border: 1px solid var(--gris-borde); border-radius: 8px; overflow: hidden; }
 .lab-card__head { background: var(--primary-accent); color: #ffffff; font-weight: 700; font-size: 0.85rem; padding: 0.45rem 0.75rem; display: flex; justify-content: space-between; gap: 0.5rem; }
 .lab-row { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--gris-borde); font-size: 0.85rem; background: #ffffff; }

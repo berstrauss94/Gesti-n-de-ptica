@@ -1083,6 +1083,18 @@ const MIGRACIONES = [
      (1231, '7 CONTACTOLOGIA', 'PROTESIS OCULARES', 'LENA', 'CASCARILLAS STD', 'Precio por Unidad', 15, 288000, FALSE, FALSE, 446)
    ON CONFLICT (id) DO NOTHING`,
   `SELECT setval(pg_get_serial_sequence('catalogo_laboratorio', 'id'), GREATEST((SELECT COALESCE(MAX(id), 1) FROM catalogo_laboratorio), 1))`,
+  // --- Carga inicial: multipropósitos (líquidos para lentes de contacto). Solo inserta lo que falta. ---
+  `INSERT INTO catalogo_laboratorio (id, categoria, subcategoria_grupo, marca_proveedor, descripcion, badge_graduacion_raw, dias_demora, precio_lista, es_servicio, es_insumo_mostrador, orden_lista)
+   VALUES (1538, '8 MULTIPROPOSITOS-GOTAS', 'Multipropósitos', 'LENA', 'OPTI FREE EXPRES 120 ML', NULL, NULL, 22950, FALSE, FALSE, 447),
+     (1539, '8 MULTIPROPOSITOS-GOTAS', 'Multipropósitos', 'LENA', 'OPTI FREE PURE MOIST 120 ML', NULL, NULL, 28160, FALSE, FALSE, 448),
+     (1540, '8 MULTIPROPOSITOS-GOTAS', 'Multipropósitos', 'LENA', 'RENU 120 ML', NULL, NULL, 18025, FALSE, FALSE, 449),
+     (1544, '8 MULTIPROPOSITOS-GOTAS', 'Multipropósitos', 'LENA', 'OPTI FREE PURE MOIST 355 ML', NULL, NULL, 39935, FALSE, FALSE, 450),
+     (1545, '8 MULTIPROPOSITOS-GOTAS', 'Multipropósitos', 'LENA', 'AOSEP X 360 ML', NULL, NULL, 49168, FALSE, FALSE, 451),
+     (1546, '8 MULTIPROPOSITOS-GOTAS', 'Multipropósitos', 'LENA', 'RENU 355 ML', NULL, NULL, 27625, FALSE, FALSE, 452),
+     (1547, '8 MULTIPROPOSITOS-GOTAS', 'Multipropósitos', 'LENA', 'AVISOR 100 ML', NULL, NULL, 24150, FALSE, FALSE, 453),
+     (1548, '8 MULTIPROPOSITOS-GOTAS', 'Multipropósitos', 'LENA', 'AVISOR 350 ML', NULL, NULL, 32288, FALSE, FALSE, 454)
+   ON CONFLICT (id) DO NOTHING`,
+  `SELECT setval(pg_get_serial_sequence('catalogo_laboratorio', 'id'), GREATEST((SELECT COALESCE(MAX(id), 1) FROM catalogo_laboratorio), 1))`,
 ];
 
 // `ejecutar` permite reutilizar las mismas migraciones desde otro cliente
