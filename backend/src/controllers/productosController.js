@@ -53,6 +53,7 @@ function numOrNull(v) {
 }
 
 // precio = costo * (1 + margen/100), redondeado a 2 decimales
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function calcularPrecio(costo, margen) {
   const c = Number(costo) || 0;
   const m = Number(margen) || 0;
@@ -64,9 +65,9 @@ async function listar(req, res) {
   const { q, categoria, codigo_barras, limit = 100, offset = 0 } = req.query;
   const lim = Math.min(parseInt(limit, 10) || 100, 500);
   const off = parseInt(offset, 10) || 0;
-  const cond = [];
+  // Los productos dados de baja (activo = FALSE) no se listan (TPV, Compras).
+  const cond = ['activo IS NOT FALSE'];
   const params = [];
-
   if (q) {
     params.push(`%${q}%`);
     cond.push(`(nombre ILIKE $${params.length} OR codigo ILIKE $${params.length} OR marca ILIKE $${params.length})`);
@@ -136,7 +137,7 @@ async function crear(req, res) {
     return res.status(201).json({ producto: r.rows[0] });
   } catch (err) {
     if (err.code === '23505') {
-      return res.status(409).json({ error: 'Ya existe un producto con ese código o código de barras' });
+      return res.status(409).json({ error: 'Ya existe un producto con ese código o código de barras (puede ser uno dado de baja)' });
     }
     if (err.code === '23514') {
       return res.status(400).json({ error: 'Categoría inválida' });
@@ -226,12 +227,35 @@ async function recalcularMasivo(req, res) {
 }
 
 // DELETE /api/productos/:id
+// Sin historial: se borra (y con él su stock y movimientos, por CASCADE).
+// Con historial (ventas, compras, traslados o sobres que lo referencian, error
+// 23503): no se puede borrar sin perder ese historial, así que se da de BAJA
+// (activo = FALSE). Un producto dado de baja no aparece en stock, TPV ni
+// selectores; las ventas, compras y sobres viejos lo siguen mostrando.
 async function eliminar(req, res) {
+  const id = String(req.params.id || '');
+  if (!UUID_RE.test(id)) return res.status(404).json({ error: 'Producto no encontrado' });
   try {
-    const r = await query('DELETE FROM productos WHERE id = $1 RETURNING id', [req.params.id]);
+    const r = await query('DELETE FROM productos WHERE id = $1 RETURNING id', [id]);
     if (r.rowCount === 0) return res.status(404).json({ error: 'Producto no encontrado' });
     return res.status(204).send();
   } catch (err) {
+    if (err.code === '23503') {
+      try {
+        const b = await query(
+          'UPDATE productos SET activo = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING id',
+          [id]
+        );
+        if (b.rowCount === 0) return res.status(404).json({ error: 'Producto no encontrado' });
+        return res.json({
+          archivado: true,
+          mensaje: 'El producto tiene ventas, compras, traslados o sobres registrados: se dio de baja y ya no aparece en el stock. El historial se conserva.',
+        });
+      } catch (err2) {
+        console.error('Error al dar de baja producto:', err2);
+        return res.status(500).json({ error: 'Error interno del servidor' });
+      }
+    }
     console.error('Error al eliminar producto:', err);
     return res.status(500).json({ error: 'Error interno del servidor' });
   }
@@ -251,8 +275,6 @@ async function eliminar(req, res) {
 // los proveedores activos; desde la planilla no se crean proveedores nuevos.
 // Cada fila corre en su propio SAVEPOINT: si una falla se descarta solo esa
 // fila y el resto de la importación sigue.
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 function mensajeErrorFila(e) {
   if (e.code === '23514') return 'Categoría inválida';
   if (e.code === '23505') return 'Código o código de barras duplicado';

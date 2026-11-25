@@ -35,8 +35,10 @@ export async function actualizarProducto(id, payload) {
   const { data } = await api.put(`/api/productos/${id}`, payload);
   return data.producto;
 }
+// Devuelve { archivado: true, mensaje } si el producto tenía historial y se dio de baja.
 export async function eliminarProducto(id) {
-  await api.delete(`/api/productos/${id}`);
+  const { data } = await api.delete(`/api/productos/${id}`);
+  return data || {};
 }
 export async function recalcularPrecios(payload) {
   const { data } = await api.post('/api/productos/recalcular-precios', payload);

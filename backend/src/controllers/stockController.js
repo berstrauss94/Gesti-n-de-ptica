@@ -34,8 +34,9 @@ async function listar(req, res) {
   const lim = Math.min(Math.max(parseInt(limit, 10) || 200, 1), MAX_FILAS);
   const off = Math.max(parseInt(offset, 10) || 0, 0);
 
-  // Filtros comunes (todo menos la búsqueda de texto).
-  const cond = [];
+  // Filtros comunes (todo menos la búsqueda de texto). Los productos dados de
+  // baja (activo = FALSE) no aparecen en el stock ni en los selectores.
+  const cond = ['p.activo IS NOT FALSE'];
   const params = [];
   const igual = (valor, columna) => {
     if (valor) { params.push(valor); cond.push(`${columna} = $${params.length}`); }

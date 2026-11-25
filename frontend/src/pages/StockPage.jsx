@@ -335,11 +335,13 @@ export default function StockPage() {
   }
 
   async function handleEliminarProducto(s) {
-    if (!window.confirm(`¿Eliminar el producto "${s.nombre}"? Esta acción no se puede deshacer.`)) return;
+    if (!window.confirm(`¿Eliminar el producto "${s.nombre}"? Si tiene ventas, compras, traslados o sobres, se da de baja y el historial se conserva.`)) return;
     setError(''); setOk('');
     try {
-      await eliminarProducto(s.producto_id);
-      setOk(`Producto "${s.nombre}" eliminado.`);
+      const r = await eliminarProducto(s.producto_id);
+      setOk(r.archivado
+        ? `"${s.nombre}" tiene historial: se dio de baja y ya no aparece en el stock. El historial se conserva.`
+        : `Producto "${s.nombre}" eliminado.`);
       refrescar();
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo eliminar el producto');

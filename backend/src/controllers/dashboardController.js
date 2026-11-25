@@ -43,8 +43,9 @@ async function resumen(req, res) {
     // Productos bajo mínimo (stock <= stock_minimo, con mínimo definido > 0)
     const bajoMinimo = await query(
       `SELECT COUNT(*)::int AS cantidad
-       FROM stock_sucursal
-       WHERE stock_minimo > 0 AND cantidad <= stock_minimo${sucursal_id ? ' AND sucursal_id = $1' : ''}`,
+       FROM stock_sucursal ss
+       JOIN productos p ON p.id = ss.producto_id
+       WHERE p.activo IS NOT FALSE AND ss.stock_minimo > 0 AND ss.cantidad <= ss.stock_minimo${sucursal_id ? ' AND ss.sucursal_id = $1' : ''}`,
       params
     );
 
