@@ -2,6 +2,7 @@
 // Dashboard: tablero de inicio con KPIs reales de la óptica.
 // Muestra ventas del día, cobrado, caja, stock bajo mínimo, turnos de hoy
 // y presupuestos abiertos. Filtrable por sucursal (o visión global).
+// Debajo de los indicadores, búsqueda rápida de clientes (BuscadorClientesInicio).
 // =====================================================================
 
 import { useEffect, useState, useCallback } from 'react';
@@ -9,6 +10,7 @@ import { useAuth } from '../context/AuthContext';
 import InfoBtn from '../components/InfoBtn';
 import { listarSucursales } from '../api/stock';
 import { resumenDashboard } from '../api/dashboard';
+import BuscadorClientesInicio from '../components/BuscadorClientesInicio';
 
 const money = (n) => `$ ${Number(n || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -62,7 +64,6 @@ export default function DashboardPage() {
       {cargando ? (
         <p className="muted">Cargando indicadores…</p>
       ) : data && (
-        <>
           <div className="kpi-grid">
             <div className="kpi-card">
               <span className="kpi-label">Ventas de hoy</span>
@@ -95,7 +96,10 @@ export default function DashboardPage() {
               <span className="kpi-sub muted small">saldo {money(data.presupuestos_abiertos.saldo)}</span>
             </div>
           </div>
-
+      )}
+      {/* La búsqueda no depende de los indicadores: se puede usar mientras cargan. */}
+      <BuscadorClientesInicio />
+      {!cargando && data && (
           <div className="card">
             <h2 className="section-title">Turnos de hoy por estado</h2>
             <div className="chips">
@@ -105,7 +109,6 @@ export default function DashboardPage() {
               <span className="badge">Cancelados: {data.turnos_hoy.cancelado}</span>
             </div>
           </div>
-        </>
       )}
     </div>
   );

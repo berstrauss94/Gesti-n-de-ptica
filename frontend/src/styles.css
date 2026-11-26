@@ -1449,3 +1449,17 @@ body {
 .asistente__valorar { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.4rem; }
 .asistente__form { display: flex; gap: 0.5rem; }
 .asistente__form input { flex: 1; background: #ffffff; border: 1px solid var(--gris-borde); border-radius: 8px; padding: 0.5rem 0.7rem; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08); }
+
+/* --- Inicio: búsqueda rápida de clientes --- */
+.inicio-busqueda { display: flex; flex-direction: column; gap: 0.75rem; }
+.inicio-busqueda__cabecera { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
+.inicio-busqueda__cabecera .section-title { margin: 0; }
+.inicio-busqueda .searchbar { margin: 0; }
+.inicio-busqueda__tabla { border: 1px solid var(--gris-borde); border-radius: var(--radio); overflow: hidden; }
+.inicio-busqueda__tabla .table { margin: 0; }
+.inicio-busqueda__fila { cursor: pointer; }
+.inicio-busqueda__fila:hover td,
+.inicio-busqueda__fila:focus-visible td { background: #fdf2f8; }
+.inicio-busqueda__fila:focus-visible { outline: 2px solid var(--azul); outline-offset: -2px; }
+.inicio-busqueda__acciones { white-space: nowrap; text-align: right; }
+.inicio-busqueda__acciones a + a { margin-left: 0.75rem; }
