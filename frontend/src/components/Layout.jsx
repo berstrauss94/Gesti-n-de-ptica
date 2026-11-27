@@ -8,7 +8,7 @@ import { useState } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import {
   Home, Users, Glasses, Store, Eye, Package, ShoppingCart, Truck, Settings,
-  CalendarClock, FileText, Percent, Sparkles, LogOut, Menu, X, Bell,
+  CalendarClock, FileText, Percent, Sparkles, LogOut, Menu, X, Bell, BarChart3,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useEsAdmin } from '../hooks/useEsAdmin';
@@ -28,6 +28,8 @@ const MENU = [
   { name: 'Turnos', path: '/turnos', icon: CalendarClock },
   { name: 'Recordatorios', path: '/recordatorios', icon: Bell },
   { name: 'Sobres', path: '/sobres', icon: FileText },
+  // Estadísticas de stock (costos, ganancias y flujo): solo admin
+  { name: 'Estadísticas', path: '/estadisticas', icon: BarChart3, adminOnly: true },
   // Comisiones (liquidación): solo admin
   { name: 'Comisiones', path: '/comisiones', icon: Percent, adminOnly: true },
   // Configuración (tokens, credenciales): solo admin

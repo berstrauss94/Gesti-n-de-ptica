@@ -1380,6 +1380,10 @@ const MIGRACIONES = [
   `CREATE TRIGGER update_sobres_updated_at
      BEFORE UPDATE ON sobres
      FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()`,
+  // --- Estadísticas de stock: índices para ventas entregadas por fecha y ventas por producto. ---
+  `CREATE INDEX IF NOT EXISTS idx_ventas_entregada_at ON ventas(entregada_at) WHERE estado = 'entregada'`,
+  `CREATE INDEX IF NOT EXISTS idx_venta_items_producto ON venta_items(producto_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_mov_producto_fecha ON movimientos_stock(producto_id, created_at)`,
 ];
 
 // `ejecutar` permite reutilizar las mismas migraciones desde otro cliente

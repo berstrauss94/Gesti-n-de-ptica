@@ -1463,3 +1463,28 @@ body {
 .inicio-busqueda__fila:focus-visible { outline: 2px solid var(--azul); outline-offset: -2px; }
 .inicio-busqueda__acciones { white-space: nowrap; text-align: right; }
 .inicio-busqueda__acciones a + a { margin-left: 0.75rem; }
+
+/* --- Estadísticas de stock --- */
+.est-periodo { margin: 0; }
+.est-recargando { opacity: 0.6; transition: opacity 0.6s cubic-bezier(0.22, 0.61, 0.36, 1); }
+.kpi-value--texto { font-size: 1.05rem; line-height: 1.25; overflow-wrap: anywhere; }
+.est-card-titulo { padding: 1rem 1.25rem 0.5rem; margin: 0; }
+.est-vacio { padding: 0 1.25rem 1rem; margin: 0; }
+.est-tabla-scroll { overflow-x: auto; }
+.est-columnas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+@media (max-width: 980px) { .est-columnas { grid-template-columns: 1fr; } }
+.est-columnas .table, .est-tabla-scroll .table { margin: 0; }
+.card .table .num, .table th.num { text-align: right; white-space: nowrap; }
+.est-sub, .est-producto__sub { display: block; font-weight: 400; }
+.est-pos { color: #15803d; }
+.est-neg { color: var(--rojo); }
+.est-badge--ok { background: #dcfce7; color: #166534; }
+.est-badge--neg { background: #fee2e2; color: #991b1b; }
+.est-barras { display: flex; align-items: flex-end; gap: 0.5rem; height: 220px; padding-top: 0.5rem; overflow-x: auto; }
+.est-barra { flex: 1 1 0; min-width: 44px; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 0.25rem; }
+.est-barra__columna { width: 70%; max-width: 56px; background: var(--azul); border-radius: 6px 6px 0 0; transition: height 0.7s cubic-bezier(0.22, 0.61, 0.36, 1); }
+.est-barra:hover .est-barra__columna { background: var(--azul-oscuro); }
+.est-barra__valor { font-size: 0.8rem; font-weight: 700; color: var(--texto); }
+.est-barra__mes { font-size: 0.72rem; color: var(--texto-suave); white-space: nowrap; }
+.est-notas summary { cursor: pointer; font-weight: 600; color: var(--texto-suave); }
+.est-notas ul { margin: 0.75rem 0 0; padding-left: 1.2rem; display: grid; gap: 0.35rem; }

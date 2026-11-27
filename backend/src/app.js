@@ -31,6 +31,7 @@ const medicosRoutes = require('./routes/medicosRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
 const laboratorioRoutes = require('./routes/laboratorioRoutes');
 const asistenteRoutes = require('./routes/asistenteRoutes');
+const estadisticasRoutes = require('./routes/estadisticasRoutes');
 
 const app = express();
 
@@ -72,6 +73,7 @@ app.use('/api', promocionesRoutes);
 app.use('/api', obrasSocialesRoutes);
 app.use('/api', sobresRoutes);
 app.use('/api', comisionesRoutes);
+app.use('/api', estadisticasRoutes);
 app.use('/api', mercadoRoutes);
 app.use('/api', medicosRoutes);
 app.use('/api', uploadRoutes);

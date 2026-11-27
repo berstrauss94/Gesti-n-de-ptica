@@ -24,6 +24,7 @@ import ComprasPage from './pages/ComprasPage';
 import TurnosPage from './pages/TurnosPage';
 import SobresPage from './pages/SobresPage';
 import ComisionesPage from './pages/ComisionesPage';
+import EstadisticasStockPage from './pages/EstadisticasStockPage';
 import ConfiguracionPage from './pages/ConfiguracionPage';
 
 export default function App() {
@@ -54,6 +55,7 @@ export default function App() {
           <Route path="/recordatorios" element={<RecordatoriosPage />} />
         <Route path="/sobres" element={<SobresPage />} />
         <Route path="/comisiones" element={<ComisionesPage />} />
+        <Route path="/estadisticas" element={<EstadisticasStockPage />} />
         <Route path="/configuracion" element={<ConfiguracionPage />} />
       </Route>
 
