@@ -15,24 +15,28 @@ import { useEsAdmin } from '../hooks/useEsAdmin';
 import AsistenteVirtualModal from './AsistenteVirtualModal';
 import logo from '../assets/logo.png';
 
+// Orden del menú lateral (definido por la óptica). Configuración no va acá:
+// está al pie, arriba de "Salir" (MENU_PIE).
 const MENU = [
   { name: 'Inicio', path: '/', icon: Home, end: true },
   { name: 'Clientes', path: '/clientes', icon: Users },
+  { name: 'Sobres', path: '/sobres', icon: FileText },
+  { name: 'Turnos', path: '/turnos', icon: CalendarClock },
+  { name: 'Recordatorios', path: '/recordatorios', icon: Bell },
   { name: 'Marcos', path: '/marcos', icon: Glasses },
-  { name: 'Mercado', path: '/mercado', icon: Store },
   { name: 'Lentes y otros', path: '/lentes', icon: Eye },
   { name: 'Prueba Virtual', path: '/try-on', icon: Sparkles },
   { name: 'Stock', path: '/stock', icon: Package },
+  { name: 'Compras / Proveedores', path: '/compras', icon: Truck },
   { name: 'TPV / Ventas', path: '/tpv', icon: ShoppingCart },
-  { name: 'Compras', path: '/compras', icon: Truck },
-  { name: 'Turnos', path: '/turnos', icon: CalendarClock },
-  { name: 'Recordatorios', path: '/recordatorios', icon: Bell },
-  { name: 'Sobres', path: '/sobres', icon: FileText },
+  { name: 'Mercado', path: '/mercado', icon: Store },
   // Estadísticas de stock (costos, ganancias y flujo): solo admin
   { name: 'Estadísticas', path: '/estadisticas', icon: BarChart3, adminOnly: true },
   // Comisiones (liquidación): solo admin
   { name: 'Comisiones', path: '/comisiones', icon: Percent, adminOnly: true },
-  // Configuración (tokens, credenciales): solo admin
+];
+// Pie del sidebar, arriba de "Salir". Configuración (tokens, credenciales): solo admin
+const MENU_PIE = [
   { name: 'Configuración', path: '/configuracion', icon: Settings, adminOnly: true },
 ];
 
@@ -46,7 +50,25 @@ export default function Layout() {
   const [abiertoMovil, setAbiertoMovil] = useState(false); // control táctil
 
   // Filtra las secciones solo-admin para los usuarios no-admin
-  const menuVisible = MENU.filter((item) => !item.adminOnly || esAdmin);
+  const visible = (item) => !item.adminOnly || esAdmin;
+  const menuVisible = MENU.filter(visible);
+  const pieVisible = MENU_PIE.filter(visible);
+  const enlace = (item, extra = '') => {
+    const Icon = item.icon;
+    return (
+      <NavLink
+        key={item.path}
+        to={item.path}
+        end={item.end}
+        onClick={() => setAbiertoMovil(false)}
+        className={({ isActive }) => `nav-item${extra}${isActive ? ' is-active' : ''}`}
+        title={item.name}
+      >
+        <Icon className="nav-item__icon" size={20} />
+        <span className="nav-item__label">{item.name}</span>
+      </NavLink>
+    );
+  };
 
   return (
     <div className="app-shell">
@@ -67,27 +89,17 @@ export default function Layout() {
             <span className="brand__name typing">{MARCA}</span>
           </div>
 
-          <nav className="nav-menu">
-            {menuVisible.map((item) => {
-              const Icon = item.icon;
-              return (
-                <NavLink
-                  key={item.path}
-                  to={item.path}
-                  end={item.end}
-                  onClick={() => setAbiertoMovil(false)}
-                  className={({ isActive }) => `nav-item ${isActive ? 'is-active' : ''}`}
-                  title={item.name}
-                >
-                  <Icon className="nav-item__icon" size={20} />
-                  <span className="nav-item__label">{item.name}</span>
-                </NavLink>
-              );
-            })}
+          <nav className="nav-menu" aria-label="Secciones">
+            {menuVisible.map((item) => enlace(item))}
           </nav>
         </div>
 
         <div className="sidebar__bottom">
+          {pieVisible.length > 0 && (
+            <nav className="nav-menu nav-menu--pie" aria-label="Configuración">
+              {pieVisible.map((item) => enlace(item, ' nav-item--pie'))}
+            </nav>
+          )}
           <div className="sidebar__user">
             <span className="sidebar__user-name">{usuario?.usuario}</span>
             <span className="sidebar__user-rol">{usuario?.rol}</span>

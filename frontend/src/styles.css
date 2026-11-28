@@ -231,6 +231,9 @@ body {
 .nav-menu .nav-item:nth-child(5) { animation-delay: 2.3s; }
 .nav-menu .nav-item:nth-child(6) { animation-delay: 2.5s; }
 .nav-menu .nav-item:nth-child(7) { animation-delay: 2.7s; }
+/* Configuración, al pie del sidebar: entra después de la cascada del menú. */
+.nav-menu--pie { margin: 0; }
+.nav-menu--pie .nav-item--pie { animation-delay: 2.9s; }
 
 /* El sidebar SIEMPRE queda angosto (estilo Gemini): solo íconos.
    Los nombres aparecen como tooltip flotante al apuntar cada ícono. */
