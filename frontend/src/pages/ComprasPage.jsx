@@ -54,7 +54,9 @@ export default function ComprasPage() {
   }, []);
 
   return (
-    <div className="stack">
+    <div className="stack seccion-con-fondo tema-oscuro">
+      {/* Tema oscuro: fondo con brillo fucsia (paso 3 de la secuencia de entrada) */}
+      <div className="seccion-fondo tema-oscuro__fondo" aria-hidden="true" />
       <div className="page-header">
         <h1>
           Compras / Proveedores

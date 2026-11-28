@@ -621,7 +621,7 @@ export default function StockPage() {
   const haySiguiente = (pagina + 1) * porPagina < total;
 
   return (
-    <div className="stack seccion-con-fondo">
+    <div className="stack seccion-con-fondo tema-oscuro">
       {/* Fondo propio de la sección Stock (aparece primero, suave) */}
       <div className="seccion-fondo" style={{ backgroundImage: `url(${fondoStock})` }} aria-hidden="true" />
       <div className="seccion-fondo-velo" aria-hidden="true" />

@@ -983,7 +983,9 @@ body {
   pointer-events: none;
 }
 /* El contenido de la sección por encima del fondo */
-.seccion-con-fondo > *:not(.seccion-fondo):not(.seccion-fondo-velo) {
+/* :not(.modal-overlay): un modal que es hijo directo de la página (Stock, Sobres)
+   tiene que seguir flotando (position: fixed), no quedar metido en la página. */
+.seccion-con-fondo > *:not(.seccion-fondo):not(.seccion-fondo-velo):not(.modal-overlay) {
   position: relative; z-index: 1;
 }
 
@@ -1511,16 +1513,17 @@ body {
   --lab-card: #13131a;
   --lab-card-alt: #191922;
   --lab-card-hover: #22222e;
-  --lab-fucsia: #e6007e;
+  --lab-fucsia: #d80075; /* #e6007e daba 4,47:1 con texto blanco (menos que AA) */
   --lab-fucsia-vivo: #ff2e93;
   --lab-texto: #ffffff;
   --lab-texto-suave: #a0a0b0;
   --lab-borde: #262636;
-  --lab-brillo: rgba(230, 0, 126, 0.35);
+  --lab-brillo: rgba(216, 0, 117, 0.35);
   --lab-curva: cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 /* Fondo: degradé oscuro con brillo fucsia arriba a la izquierda y azul abajo */
-.lab-oscuro__fondo {
+.lab-oscuro__fondo,
+.tema-oscuro__fondo {
   background:
     radial-gradient(1100px 520px at 12% -8%, rgba(230, 0, 126, 0.30), transparent 60%),
     radial-gradient(900px 600px at 100% 110%, rgba(40, 60, 160, 0.30), transparent 60%),
@@ -1612,3 +1615,158 @@ body {
   .lab-oscuro .lab-tabs__marcador.is-listo,
   .lab-oscuro .lab-card { transition: none; }
 }
+
+/* ===================================================================
+   Tema oscuro de alto contraste reutilizable (.tema-oscuro), el mismo modelo
+   visual de "Lentes y otros" (.lab-oscuro, que tiene además sus reglas propias).
+   Uso en una página: raíz "stack seccion-con-fondo tema-oscuro" y, como primer
+   hijo, <div className="seccion-fondo tema-oscuro__fondo" aria-hidden="true" />.
+   - Todas las reglas llevan :not(.modal *): los modales (que se dibujan dentro de
+     la página) quedan claros, como en "Lentes y otros".
+   - color-scheme: dark oscurece los controles nativos (listas, calendario, barras).
+   - Contraste sobre la tarjeta #13131a: texto #fff ~18:1, texto suave #a0a0b0 ~7:1,
+     enlaces #ff7ab8 ~7,7:1, botón fucsia #d80075 con texto blanco ~5:1.
+   - Fondo: paso 3 de la secuencia (fondoAppear de .seccion-fondo). Transiciones de
+     0.6s con la curva estándar; sin animaciones de entrada nuevas.
+   =================================================================== */
+.tema-oscuro {
+  --to-card: #13131a;
+  --to-card-alt: #191922;
+  --to-card-hover: #22222e;
+  --to-campo: #1b1b26;
+  --to-borde: #262636;
+  --to-borde-campo: #33334a;
+  --to-texto: #ffffff;
+  --to-texto-suave: #a0a0b0;
+  --to-enlace: #ff7ab8;
+  --to-fucsia: #d80075;
+  --to-fucsia-hover: #b00060;
+  --to-fucsia-vivo: #ff2e93;
+  --to-brillo: rgba(216, 0, 117, 0.35);
+  --to-curva: cubic-bezier(0.22, 0.61, 0.36, 1);
+  color: var(--to-texto);
+  color-scheme: dark;
+}
+.tema-oscuro .modal { color: var(--texto); color-scheme: light; }
+/* Stock conserva su foto, con un velo oscuro y el brillo fucsia encima */
+.tema-oscuro .seccion-fondo-velo {
+  background:
+    radial-gradient(1100px 520px at 12% -8%, rgba(216, 0, 117, 0.28), transparent 60%),
+    rgba(10, 10, 15, 0.86);
+}
+.tema-oscuro .page-header h1:not(.modal *),
+.tema-oscuro h2:not(.modal *),
+.tema-oscuro h3:not(.modal *),
+.tema-oscuro h4:not(.modal *),
+.tema-oscuro strong:not(.modal *),
+.tema-oscuro dt:not(.modal *),
+.tema-oscuro dd:not(.modal *),
+.tema-oscuro label:not(.modal *) { color: inherit; }
+.tema-oscuro .muted:not(.modal *),
+.tema-oscuro .section-title:not(.modal *),
+.tema-oscuro .field span:not(.modal *),
+.tema-oscuro .kpi-label:not(.modal *),
+.tema-oscuro .sobre-resumen dt:not(.modal *),
+.tema-oscuro .sobre-borrador-estado:not(.modal *),
+.tema-oscuro .marco-mini figcaption:not(.modal *),
+.tema-oscuro .medico-sel__vacio:not(.modal *),
+.tema-oscuro .medico-sel__opcion--ninguno:not(.modal *),
+.tema-oscuro .roadmap:not(.modal *),
+.tema-oscuro .slots-title:not(.modal *),
+.tema-oscuro .slot__placeholder:not(.modal *),
+.tema-oscuro .est-notas summary:not(.modal *) { color: var(--to-texto-suave); }
+.tema-oscuro .slot__preview:not(.modal *) { background: var(--to-campo); border-color: var(--to-borde-campo); }
+.tema-oscuro .sobre-subtitulo:not(.modal *),
+.tema-oscuro .sobre-subtitulo--accion h3:not(.modal *),
+.tema-oscuro .kpi-value:not(.modal *),
+.tema-oscuro .data-table th:not(.modal *),
+.tema-oscuro .data-table td:not(.modal *),
+.tema-oscuro .est-barra__valor:not(.modal *) { color: var(--to-texto); }
+.tema-oscuro a:not(.btn):not(.nav-item):not(.modal *),
+.tema-oscuro .col-action a:not(.modal *),
+.tema-oscuro .link-btn:not(.modal *),
+.tema-oscuro .back-link:not(.modal *) { color: var(--to-enlace); }
+.tema-oscuro a:not(.btn):not(.nav-item):hover:not(.modal *),
+.tema-oscuro .col-action a:hover:not(.modal *),
+.tema-oscuro .link-btn:hover:not(.modal *),
+.tema-oscuro .back-link:hover:not(.modal *) { color: #ffb3d6; }
+.tema-oscuro .card:not(.modal *),
+.tema-oscuro .tryon-side:not(.modal *),
+.tema-oscuro .category-card:not(.modal *),
+.tema-oscuro .marco-card:not(.modal *),
+.tema-oscuro .armazon-selector:not(.modal *),
+.tema-oscuro .lente-campo:not(.modal *),
+.tema-oscuro .fin-bloque:not(.modal *),
+.tema-oscuro .fin-pagos:not(.modal *),
+.tema-oscuro .fin-saldo:not(.modal *) { background: var(--to-card); color: var(--to-texto); border-color: var(--to-borde); }
+.tema-oscuro .card:not(.modal *) { border: 1px solid var(--to-borde); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45); }
+.tema-oscuro .card.no-pad:not(.modal *) { box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45); }
+.tema-oscuro .fin-resumen:not(.modal *),
+.tema-oscuro .readonly:not(.modal *) { background: var(--to-card-alt); color: var(--to-texto); border-color: var(--to-borde); }
+.tema-oscuro .kpi-card:not(.modal *) { background: var(--to-card); border-color: var(--to-borde); border-left-color: var(--to-fucsia); box-shadow: 0 8px 22px rgba(0, 0, 0, 0.4); transition: transform 0.6s var(--to-curva), box-shadow 0.6s var(--to-curva); }
+.tema-oscuro .kpi-card:hover:not(.modal *),
+.tema-oscuro .marco-card:hover:not(.modal *),
+.tema-oscuro .category-card:hover:not(.modal *) { transform: translateY(-3px); box-shadow: 0 12px 30px var(--to-brillo); }
+.tema-oscuro .marco-card:not(.modal *),
+.tema-oscuro .category-card:not(.modal *) { transition: transform 0.6s var(--to-curva), box-shadow 0.6s var(--to-curva); }
+.tema-oscuro .kpi-card--alerta:not(.modal *) { background: #24131a; border-left-color: #f87171; }
+.tema-oscuro .table th:not(.modal *),
+.tema-oscuro .table td:not(.modal *),
+.tema-oscuro .data-table th:not(.modal *),
+.tema-oscuro .data-table td:not(.modal *) { border-color: var(--to-borde); }
+.tema-oscuro .table th:not(.modal *) { color: var(--to-texto-suave); }
+.tema-oscuro .data-table th:not(.modal *) { background: var(--to-card-alt); }
+.tema-oscuro .table tbody tr:hover:not(.modal *),
+.tema-oscuro .data-table tbody tr:hover:not(.modal *) { background: var(--to-card-hover); }
+.tema-oscuro .fila-alerta:not(.modal *) { background: rgba(249, 115, 22, 0.14); }
+.tema-oscuro .fila-activa:not(.modal *) { background: rgba(216, 0, 117, 0.16); box-shadow: inset 3px 0 0 var(--to-fucsia-vivo); }
+.tema-oscuro input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]):not(.modal *),
+.tema-oscuro select:not(.modal *),
+.tema-oscuro textarea:not(.modal *) { background: var(--to-campo); color: var(--to-texto); border-color: var(--to-borde-campo); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45); }
+.tema-oscuro input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]):not(.modal *)::placeholder,
+.tema-oscuro select:not(.modal *)::placeholder,
+.tema-oscuro textarea:not(.modal *)::placeholder { color: var(--to-texto-suave); }
+.tema-oscuro input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]):focus:not(.modal *),
+.tema-oscuro select:focus:not(.modal *),
+.tema-oscuro textarea:focus:not(.modal *) { outline: none; border-color: var(--to-fucsia-vivo); box-shadow: 0 0 0 3px var(--to-brillo); }
+.tema-oscuro input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=color]):disabled:not(.modal *),
+.tema-oscuro select:disabled:not(.modal *),
+.tema-oscuro textarea:disabled:not(.modal *),
+.tema-oscuro .sobre-bloque:disabled input:not(.modal *),
+.tema-oscuro .sobre-bloque:disabled select:not(.modal *),
+.tema-oscuro .sobre-bloque:disabled textarea:not(.modal *) { background: #0f0f15; color: #c8c8d4; border-color: #22222e; }
+.tema-oscuro .medico-sel__control input:not(.modal *)::placeholder { color: var(--to-texto-suave); }
+.tema-oscuro .btn--ghost:not(.modal *) { background: #181824; color: var(--to-texto); border-color: var(--to-borde-campo); }
+.tema-oscuro .btn--ghost:hover:not(.modal *) { background: #24243a; border-color: var(--to-fucsia-vivo); }
+.tema-oscuro .btn--primary:not(.modal *) { background: var(--to-fucsia); color: #ffffff; box-shadow: 0 0 14px var(--to-brillo); }
+.tema-oscuro .btn--primary:hover:not(.modal *) { background: var(--to-fucsia-hover); }
+.tema-oscuro .btn-mini:not(.modal *) { background: #181824; color: var(--to-texto); border-color: var(--to-borde-campo); }
+.tema-oscuro .btn-mini:hover:not(.modal *) { background: #24243a; border-color: var(--to-fucsia-vivo); }
+.tema-oscuro .btn-mini:disabled:not(.modal *) { opacity: 0.45; }
+.tema-oscuro .sobre-accion--editar:not(.modal *),
+.tema-oscuro .sobre-accion--imprimir:not(.modal *) { border: 1px solid #4a4a5e; }
+.tema-oscuro .tabs:not(.modal *) { border-bottom-color: var(--to-borde); }
+.tema-oscuro .tab:not(.modal *) { color: var(--to-texto-suave); }
+.tema-oscuro .tab.is-active:not(.modal *) { color: var(--to-fucsia-vivo); border-bottom-color: var(--to-fucsia-vivo); }
+.tema-oscuro .badge:not(.modal *) { background: rgba(255, 255, 255, 0.08); border-color: #3a3a50; color: #e8e8f0; }
+.tema-oscuro .tag--rojo:not(.modal *) { background: rgba(248, 113, 113, 0.14); color: #fca5a5; }
+.tema-oscuro .alert--error:not(.modal *) { background: rgba(220, 38, 38, 0.14); color: #fecaca; border-color: rgba(248, 113, 113, 0.45); }
+.tema-oscuro .alert--ok:not(.modal *) { background: rgba(34, 197, 94, 0.12); color: #bbf7d0; border-color: rgba(74, 222, 128, 0.4); }
+.tema-oscuro .alert--info:not(.modal *) { background: rgba(59, 130, 246, 0.14); color: #bfdbfe; border-color: rgba(96, 165, 250, 0.45); }
+.tema-oscuro .ok-text:not(.modal *),
+.tema-oscuro .est-pos:not(.modal *) { color: #4ade80; }
+.tema-oscuro .est-neg:not(.modal *),
+.tema-oscuro .sobre-borrador-estado--falla:not(.modal *),
+.tema-oscuro .fin-linea--recargo span:not(.modal *) { color: #f87171; }
+.tema-oscuro .est-badge--ok:not(.modal *) { background: rgba(34, 197, 94, 0.16); color: #bbf7d0; }
+.tema-oscuro .est-badge--neg:not(.modal *) { background: rgba(248, 113, 113, 0.16); color: #fecaca; }
+.tema-oscuro .est-barra__mes:not(.modal *) { color: var(--to-texto-suave); }
+.tema-oscuro .medico-sel__lista:not(.modal *) { background: var(--to-card); border-color: var(--to-borde-campo); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55); }
+.tema-oscuro .medico-sel__opcion:not(.modal *) { color: var(--to-texto); }
+.tema-oscuro .medico-sel__opcion.is-resaltada:not(.modal *) { background: var(--to-fucsia); color: #ffffff; }
+.tema-oscuro .medico-sel__opcion.is-elegida:not(.is-resaltada):not(.modal *) { background: #2a2a3a; }
+.tema-oscuro .medico-sel__flecha:not(.modal *) { color: var(--to-texto-suave); }
+.tema-oscuro .venta-total:not(.modal *),
+.tema-oscuro .fin-linea--total:not(.modal *),
+.tema-oscuro .ia-box:not(.modal *),
+.tema-oscuro .modal__header:not(.modal *) { border-color: var(--to-borde); }

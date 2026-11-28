@@ -285,7 +285,9 @@ export default function TryOnPage() {
   const marcoUrl = urlVista(marcoSel, vistaActual);
 
   return (
-    <div className="stack tryon">
+    <div className="stack tryon seccion-con-fondo tema-oscuro">
+      {/* Tema oscuro: fondo con brillo fucsia (paso 3 de la secuencia de entrada) */}
+      <div className="seccion-fondo tema-oscuro__fondo" aria-hidden="true" />
       <div className="page-header">
         <h1>
           Prueba Virtual
