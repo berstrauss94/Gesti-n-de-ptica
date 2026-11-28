@@ -4,7 +4,7 @@
 //  - Táctil/móvil: botón ☰ para abrir/cerrar (no hay hover en touch).
 // =====================================================================
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import {
   Home, Users, Glasses, Store, Eye, Package, ShoppingCart, Truck, Settings,
@@ -46,6 +46,16 @@ export default function Layout() {
   const { usuario, logout } = useAuth();
   const esAdmin = useEsAdmin();
   const location = useLocation();
+  // Entrada de la sección: durante 3.3s (contenido 0.8s+0.7s + tarjetas escalonadas)
+  // las tarjetas del tema oscuro esperan a que termine de entrar el contenido.
+  // Una tarjeta que aparece después (ej. la consola del sobre) entra enseguida.
+  const [entrada, setEntrada] = useState({ ruta: null, activa: true });
+  useEffect(() => {
+    setEntrada({ ruta: location.pathname, activa: true });
+    const t = setTimeout(() => setEntrada({ ruta: location.pathname, activa: false }), 3300);
+    return () => clearTimeout(t);
+  }, [location.pathname]);
+  const entrando = entrada.ruta !== location.pathname || entrada.activa;
   const [asistenteAbierto, setAsistenteAbierto] = useState(false);
   const [abiertoMovil, setAbiertoMovil] = useState(false); // control táctil
 
@@ -112,7 +122,7 @@ export default function Layout() {
         </div>
       </aside>
 
-      <main className="content" key={location.pathname}>
+      <main className={entrando ? 'content content--entrando' : 'content'} key={location.pathname}>
         <Outlet />
       </main>
       <AsistenteVirtualModal abierto={asistenteAbierto} onAbrir={() => setAsistenteAbierto(true)} onCerrar={() => setAsistenteAbierto(false)} />

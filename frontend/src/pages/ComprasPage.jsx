@@ -6,7 +6,8 @@
 //  - Órdenes de laboratorio: trazabilidad B2B con estados.
 // =====================================================================
 
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { useMarcadorSolapa } from '../hooks/useMarcadorSolapa';
 import { listarSucursales, listarProductos } from '../api/stock';
 import { listarUsuarios } from '../api/usuarios';
 import {
@@ -27,6 +28,8 @@ const ORDEN_LABEL = {
 export default function ComprasPage() {
   const esAdmin = useEsAdmin();
   const [tab, setTab] = useState('compras');
+  const barraSolapas = useRef(null);
+  const marcador = useMarcadorSolapa(barraSolapas, '.tab.is-active', [tab]);
   const [sucursales, setSucursales] = useState([]);
   const [sucursalId, setSucursalId] = useState('');
   const [periodoCiti, setPeriodoCiti] = useState(() => new Date().toISOString().slice(0, 7)); // YYYY-MM
@@ -86,7 +89,8 @@ export default function ComprasPage() {
         </div>
       </div>
 
-      <div className="tabs">
+      <div className="tabs" role="tablist" ref={barraSolapas}>
+        <span className={marcador.clase} aria-hidden="true" style={marcador.style} />
         <button className={`tab ${tab === 'compras' ? 'is-active' : ''}`} onClick={() => setTab('compras')}>Compras</button>
         <button className={`tab ${tab === 'proveedores' ? 'is-active' : ''}`} onClick={() => setTab('proveedores')}>Proveedores</button>
         <button className={`tab ${tab === 'ordenes' ? 'is-active' : ''}`} onClick={() => setTab('ordenes')}>Órdenes de laboratorio</button>

@@ -5,7 +5,8 @@
 // o se busca por texto en toda la lista. Solo admin importa la lista (CSV)
 // y ajusta precios en bloque.
 // =====================================================================
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useMarcadorSolapa } from '../hooks/useMarcadorSolapa';
 import { listarCatalogoLab, contarCategoriasLab, importarCatalogoLab, ajustarPreciosLab } from '../api/laboratorio';
 import { normalizar } from '../utils/busquedaNatural';
 import InfoBtn from '../components/InfoBtn';
@@ -99,23 +100,7 @@ export default function LentesPage() {
   useEffect(() => { cargarConteo(); }, [cargarConteo]);
   // --- Tema oscuro: marcador que se desliza a la solapa activa ---
   const tabsRef = useRef(null);
-  const [marcador, setMarcador] = useState(null); // { x, y, w, h } | null
-  const [marcadorListo, setMarcadorListo] = useState(false);
-  useLayoutEffect(() => {
-    const nav = tabsRef.current;
-    if (!nav) return undefined;
-    function medir() {
-      const act = nav.querySelector('.lab-tab.is-active');
-      setMarcador(act ? { x: act.offsetLeft, y: act.offsetTop, w: act.offsetWidth, h: act.offsetHeight } : null);
-    }
-    medir();
-    // La primera medida se ubica sin animación; desde ahí, se desliza.
-    const t = setTimeout(() => setMarcadorListo(true), 50);
-    const obs = typeof ResizeObserver === 'function' ? new ResizeObserver(medir) : null;
-    obs?.observe(nav);
-    window.addEventListener('resize', medir);
-    return () => { clearTimeout(t); obs?.disconnect(); window.removeEventListener('resize', medir); };
-  }, [categoria, busqueda, conteo]);
+  const marcador = useMarcadorSolapa(tabsRef, '.lab-tab.is-active', [categoria, busqueda, conteo], 'lab-tabs__marcador');
   // Entrada escalonada: en la primera carga las tarjetas esperan a que termine
   // de entrar el contenido (paso 4 de la secuencia, 0.8s + 0.7s); al cambiar de
   // categoría arrancan enseguida.
@@ -263,13 +248,7 @@ export default function LentesPage() {
 
       {/* Categorías como solapas, de izquierda a derecha, debajo del buscador */}
       <nav className="lab-tabs" role="tablist" aria-label="Categorías" ref={tabsRef}>
-        <span
-          className={marcadorListo ? 'lab-tabs__marcador is-listo' : 'lab-tabs__marcador'}
-          aria-hidden="true"
-          style={marcador
-            ? { transform: `translate(${marcador.x}px, ${marcador.y}px)`, width: marcador.w, height: marcador.h, opacity: 1 }
-            : { opacity: 0 }}
-        />
+        <span className={marcador.clase} aria-hidden="true" style={marcador.style} />
         {CATEGORIAS.map((c) => {
           const activa = !busqueda && c === categoria;
           return (

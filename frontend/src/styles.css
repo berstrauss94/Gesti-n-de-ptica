@@ -1770,3 +1770,85 @@ body {
 .tema-oscuro .fin-linea--total:not(.modal *),
 .tema-oscuro .ia-box:not(.modal *),
 .tema-oscuro .modal__header:not(.modal *) { border-color: var(--to-borde); }
+
+/* ===================================================================
+   Estilo Vic en el tema oscuro (el mismo de "Lentes y otros"):
+   - Entrada escalonada de las tarjetas (labCardEntra, 0.6s, 80 ms entre hermanas).
+     Mientras entra la sección (.content--entrando, lo pone Layout 3.3s) esperan a
+     que termine el contenido (paso 4: 0.8s + 0.7s = 1.5s); una tarjeta que aparece
+     después (ej. la consola del sobre) entra enseguida. "backwards": al terminar
+     no queda ningún transform (no afecta sticky ni modales).
+   - Hover: borde fucsia y brillo; además sube 3px, salvo que se esté escribiendo
+     adentro (:focus-within) o tenga un modal abierto adentro (:has(.modal-overlay)),
+     porque un transform movería la ventana flotante.
+   - Banda fucsia arriba de cada tarjeta (como la cabecera de los grupos de Lentes)
+     y títulos de tarjeta en blanco.
+   - Solapas como píldoras con marcador que se desliza (hooks/useMarcadorSolapa).
+   - Transiciones de 0.5-0.6s con la curva estándar; respeta prefers-reduced-motion.
+   =================================================================== */
+.tema-oscuro :is(.card, .kpi-card, .marco-card, .tryon-side, .category-card):not(.modal *) {
+  animation: labCardEntra 0.6s var(--to-curva) calc(var(--vic-n, 0) * 0.08s) backwards;
+}
+.content--entrando .tema-oscuro :is(.card, .kpi-card, .marco-card, .tryon-side, .category-card):not(.modal *) {
+  animation-delay: calc(1.5s + var(--vic-n, 0) * 0.08s);
+}
+/* Índice contando solo las tarjetas hermanas (no el fondo, el encabezado ni los filtros):
+   la primera tarjeta entra justo al terminar el contenido, sin huecos. */
+.tema-oscuro :is(.card, .kpi-card, .marco-card, .tryon-side, .category-card):nth-child(2 of .card, .kpi-card, .marco-card, .tryon-side, .category-card) { --vic-n: 1; }
+.tema-oscuro :is(.card, .kpi-card, .marco-card, .tryon-side, .category-card):nth-child(3 of .card, .kpi-card, .marco-card, .tryon-side, .category-card) { --vic-n: 2; }
+.tema-oscuro :is(.card, .kpi-card, .marco-card, .tryon-side, .category-card):nth-child(4 of .card, .kpi-card, .marco-card, .tryon-side, .category-card) { --vic-n: 3; }
+.tema-oscuro :is(.card, .kpi-card, .marco-card, .tryon-side, .category-card):nth-child(5 of .card, .kpi-card, .marco-card, .tryon-side, .category-card) { --vic-n: 4; }
+.tema-oscuro :is(.card, .kpi-card, .marco-card, .tryon-side, .category-card):nth-child(6 of .card, .kpi-card, .marco-card, .tryon-side, .category-card) { --vic-n: 5; }
+.tema-oscuro :is(.card, .kpi-card, .marco-card, .tryon-side, .category-card):nth-child(7 of .card, .kpi-card, .marco-card, .tryon-side, .category-card) { --vic-n: 6; }
+.tema-oscuro :is(.card, .kpi-card, .marco-card, .tryon-side, .category-card):nth-child(8 of .card, .kpi-card, .marco-card, .tryon-side, .category-card) { --vic-n: 7; }
+.tema-oscuro :is(.card, .kpi-card, .marco-card, .tryon-side, .category-card):nth-child(9 of .card, .kpi-card, .marco-card, .tryon-side, .category-card) { --vic-n: 8; }
+.tema-oscuro :is(.card, .kpi-card, .marco-card, .tryon-side, .category-card):nth-child(10 of .card, .kpi-card, .marco-card, .tryon-side, .category-card) { --vic-n: 9; }
+.tema-oscuro :is(.card, .kpi-card, .marco-card, .tryon-side, .category-card):nth-child(11 of .card, .kpi-card, .marco-card, .tryon-side, .category-card) { --vic-n: 10; }
+.tema-oscuro :is(.card, .kpi-card, .marco-card, .tryon-side, .category-card):nth-child(12 of .card, .kpi-card, .marco-card, .tryon-side, .category-card) { --vic-n: 11; }
+.tema-oscuro :is(.card, .card.no-pad, .tryon-side, .marco-card, .category-card):not(.modal *) {
+  box-shadow: inset 0 3px 0 var(--to-fucsia), 0 10px 28px rgba(0, 0, 0, 0.45);
+  transition: transform 0.6s var(--to-curva), box-shadow 0.6s var(--to-curva), border-color 0.6s var(--to-curva);
+}
+.tema-oscuro :is(.card, .card.no-pad, .tryon-side, .marco-card, .category-card, .kpi-card):not(.modal *):hover {
+  border-color: var(--to-fucsia);
+  box-shadow: inset 0 3px 0 var(--to-fucsia-vivo), 0 12px 30px var(--to-brillo);
+}
+.tema-oscuro .kpi-card:not(.modal *):hover { border-left-color: var(--to-fucsia-vivo); }
+.tema-oscuro :is(.card, .card.no-pad, .tryon-side, .marco-card, .category-card, .kpi-card):not(.modal *):hover:not(:focus-within):not(:has(.modal-overlay)) {
+  transform: translateY(-3px);
+}
+.tema-oscuro :is(.card, .card.no-pad, .tryon-side, .marco-card, .category-card, .kpi-card):not(.modal *):hover:is(:focus-within, :has(.modal-overlay)) {
+  transform: none;
+}
+.tema-oscuro .section-title:not(.modal *) { color: var(--to-texto); font-weight: 700; letter-spacing: 0.2px; }
+.tema-oscuro :is(.btn, .btn-mini, .tab):not(.modal *) {
+  transition: background 0.6s var(--to-curva), border-color 0.6s var(--to-curva), box-shadow 0.6s var(--to-curva), color 0.6s var(--to-curva);
+}
+.tema-oscuro .table tbody tr:not(.modal *) { transition: background 0.5s var(--to-curva); }
+/* Solapas (Compras): píldoras con marcador deslizante */
+.tabs__marcador { display: none; }
+.tema-oscuro .tabs:not(.modal *) {
+  position: relative; flex-wrap: wrap; gap: 0.45rem;
+  padding-bottom: 0.75rem; border-bottom: 2px solid var(--to-fucsia);
+}
+.tema-oscuro .tabs__marcador {
+  display: block; position: absolute; top: 0; left: 0; z-index: 0;
+  border-radius: 8px; background: var(--to-fucsia); box-shadow: 0 0 14px var(--to-brillo);
+  pointer-events: none;
+}
+.tema-oscuro .tabs__marcador.is-listo {
+  transition: transform 0.6s var(--to-curva), width 0.6s var(--to-curva), height 0.6s var(--to-curva), opacity 0.6s var(--to-curva);
+}
+.tema-oscuro .tab:not(.modal *) {
+  position: relative; z-index: 1;
+  background: #181824; color: var(--to-texto); font-weight: 700; font-size: 0.85rem;
+  border: 1px solid var(--to-borde-campo); border-radius: 8px; padding: 0.5rem 0.95rem;
+}
+.tema-oscuro .tab:not(.modal *):hover { background: #24243a; border-color: var(--to-fucsia-vivo); }
+/* La activa es transparente: el color lo pone el marcador que se desliza debajo */
+.tema-oscuro .tab.is-active:not(.modal *) { background: transparent; color: #ffffff; border-color: var(--to-fucsia-vivo); }
+@media (prefers-reduced-motion: reduce) {
+  .tema-oscuro :is(.card, .kpi-card, .marco-card, .tryon-side, .category-card):not(.modal *) { animation: none; }
+  .tema-oscuro :is(.card, .card.no-pad, .tryon-side, .marco-card, .category-card, .kpi-card):not(.modal *):hover { transform: none; }
+  .tema-oscuro .tabs__marcador.is-listo { transition: none; }
+}
