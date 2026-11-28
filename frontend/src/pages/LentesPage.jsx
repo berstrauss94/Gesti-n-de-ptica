@@ -5,7 +5,7 @@
 // o se busca por texto en toda la lista. Solo admin importa la lista (CSV)
 // y ajusta precios en bloque.
 // =====================================================================
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { listarCatalogoLab, contarCategoriasLab, importarCatalogoLab, ajustarPreciosLab } from '../api/laboratorio';
 import { normalizar } from '../utils/busquedaNatural';
 import InfoBtn from '../components/InfoBtn';
@@ -97,6 +97,30 @@ export default function LentesPage() {
   }, []);
 
   useEffect(() => { cargarConteo(); }, [cargarConteo]);
+  // --- Tema oscuro: marcador que se desliza a la solapa activa ---
+  const tabsRef = useRef(null);
+  const [marcador, setMarcador] = useState(null); // { x, y, w, h } | null
+  const [marcadorListo, setMarcadorListo] = useState(false);
+  useLayoutEffect(() => {
+    const nav = tabsRef.current;
+    if (!nav) return undefined;
+    function medir() {
+      const act = nav.querySelector('.lab-tab.is-active');
+      setMarcador(act ? { x: act.offsetLeft, y: act.offsetTop, w: act.offsetWidth, h: act.offsetHeight } : null);
+    }
+    medir();
+    // La primera medida se ubica sin animación; desde ahí, se desliza.
+    const t = setTimeout(() => setMarcadorListo(true), 50);
+    const obs = typeof ResizeObserver === 'function' ? new ResizeObserver(medir) : null;
+    obs?.observe(nav);
+    window.addEventListener('resize', medir);
+    return () => { clearTimeout(t); obs?.disconnect(); window.removeEventListener('resize', medir); };
+  }, [categoria, busqueda, conteo]);
+  // Entrada escalonada: en la primera carga las tarjetas esperan a que termine
+  // de entrar el contenido (paso 4 de la secuencia, 0.8s + 0.7s); al cambiar de
+  // categoría arrancan enseguida.
+  const [primeraEntrada, setPrimeraEntrada] = useState(true);
+  useEffect(() => { const t = setTimeout(() => setPrimeraEntrada(false), 1500); return () => clearTimeout(t); }, []);
   useEffect(() => { cargar(categoria, busqueda); }, [categoria, busqueda, cargar]);
 
   function elegirCategoria(c) { setQ(''); setBusqueda(''); setCategoria(c); }
@@ -194,7 +218,9 @@ export default function LentesPage() {
   }
 
   return (
-    <div className="stack">
+    <div className="stack seccion-con-fondo lab-oscuro">
+      {/* Paso 3 de la secuencia: fondo oscuro con brillo fucsia (sin imagen) */}
+      <div className="seccion-fondo lab-oscuro__fondo" aria-hidden="true" />
       <div className="page-header">
         <h1>
           Lentes y otros
@@ -236,7 +262,14 @@ export default function LentesPage() {
       </form>
 
       {/* Categorías como solapas, de izquierda a derecha, debajo del buscador */}
-      <nav className="lab-tabs" role="tablist" aria-label="Categorías">
+      <nav className="lab-tabs" role="tablist" aria-label="Categorías" ref={tabsRef}>
+        <span
+          className={marcadorListo ? 'lab-tabs__marcador is-listo' : 'lab-tabs__marcador'}
+          aria-hidden="true"
+          style={marcador
+            ? { transform: `translate(${marcador.x}px, ${marcador.y}px)`, width: marcador.w, height: marcador.h, opacity: 1 }
+            : { opacity: 0 }}
+        />
         {CATEGORIAS.map((c) => {
           const activa = !busqueda && c === categoria;
           return (
@@ -275,9 +308,12 @@ export default function LentesPage() {
               )}
             </div>
           ) : (
-            <div className={grupos.length === 1 ? 'lab-grid lab-grid--uno' : 'lab-grid'}>
-              {grupos.map(([grupo, lista]) => (
-                <div key={grupo} className="lab-card">
+            <div
+              key={busqueda ? `q:${busqueda}` : categoria}
+              className={`${grupos.length === 1 ? 'lab-grid lab-grid--uno' : 'lab-grid'}${primeraEntrada ? ' lab-grid--primera' : ''}`}
+            >
+              {grupos.map(([grupo, lista], i) => (
+                <div key={grupo} className="lab-card lab-card--entra" style={{ '--i': Math.min(i, 12) }}>
                   <div className="lab-card__head"><span>{grupo}</span><span>{lista.length}</span></div>
                   {lista.map((it) => (
                     <div key={it.id} className="lab-row">

@@ -957,9 +957,13 @@ body {
    =================================================================== */
 .seccion-con-fondo { position: relative; }
 /* 3) El fondo aparece con la misma animación fluida del login (fade + zoom suave) */
+/* Ojo: .content conserva el transform de su animación de entrada (contentSlideIn
+   con "both"), y un ancestro con transform pasa a ser la referencia de position:
+   fixed. Por eso el fondo se ubica respecto de .content (que ya empieza después
+   del sidebar): left 0. Con left = ancho del sidebar quedaba una franja gris. */
 .seccion-fondo {
   position: fixed;
-  top: 0; left: var(--sidebar-colapsado); right: 0; bottom: 0;
+  top: 0; left: 0; right: 0; bottom: 0;
   background-size: cover; background-position: center;
   z-index: 0;
   opacity: 0;
@@ -968,7 +972,7 @@ body {
 }
 .seccion-fondo-velo {
   position: fixed;
-  top: 0; left: var(--sidebar-colapsado); right: 0; bottom: 0;
+  top: 0; left: 0; right: 0; bottom: 0;
   z-index: 0;
   background: rgba(245, 245, 247, 0.39);
   opacity: 0;
@@ -1488,3 +1492,120 @@ body {
 .est-barra__mes { font-size: 0.72rem; color: var(--texto-suave); white-space: nowrap; }
 .est-notas summary { cursor: pointer; font-weight: 600; color: var(--texto-suave); }
 .est-notas ul { margin: 0.75rem 0 0; padding-left: 1.2rem; display: grid; gap: 0.35rem; }
+
+/* ===================================================================
+   "Lentes y otros" — tema oscuro de alto contraste (solo esta página).
+   Todo va bajo .lab-oscuro y con ">" a los hijos directos de la página,
+   para no teñir los modales de importar / ajustar precios.
+   Contraste sobre la tarjeta #13131a: texto #fff ~18:1, precio #ff2e93 ~5,3:1,
+   texto suave #a0a0b0 ~7:1 (todos por encima de 4,5:1).
+   Animaciones (regla del proyecto: >= 0.5s, curva 0.22, 0.61, 0.36, 1):
+     paso 3 fondo (fondoAppear, 0.5s) -> paso 4 contenido (0.8s + 0.7s)
+     -> tarjetas escalonadas desde 1.5s (primera carga) o enseguida al cambiar de categoría.
+   =================================================================== */
+.lab-oscuro {
+  --lab-bg: #0a0a0f;
+  --lab-card: #13131a;
+  --lab-card-alt: #191922;
+  --lab-card-hover: #22222e;
+  --lab-fucsia: #e6007e;
+  --lab-fucsia-vivo: #ff2e93;
+  --lab-texto: #ffffff;
+  --lab-texto-suave: #a0a0b0;
+  --lab-borde: #262636;
+  --lab-brillo: rgba(230, 0, 126, 0.35);
+  --lab-curva: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+/* Fondo: degradé oscuro con brillo fucsia arriba a la izquierda y azul abajo */
+.lab-oscuro__fondo {
+  background:
+    radial-gradient(1100px 520px at 12% -8%, rgba(230, 0, 126, 0.30), transparent 60%),
+    radial-gradient(900px 600px at 100% 110%, rgba(40, 60, 160, 0.30), transparent 60%),
+    linear-gradient(160deg, #14070f 0%, #0a0a0f 45%, #0b0f1f 100%);
+}
+.lab-oscuro > .page-header h1 { color: var(--lab-texto); }
+.lab-oscuro > .muted,
+.lab-oscuro > p.small { color: var(--lab-texto-suave); }
+.lab-oscuro > .ok-text { color: #4ade80; }
+/* Buscador y botones */
+.lab-oscuro > .searchbar input[type=search] {
+  background: var(--lab-card); color: var(--lab-texto); border: 1px solid var(--lab-borde);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  transition: border-color 0.6s var(--lab-curva), box-shadow 0.6s var(--lab-curva);
+}
+.lab-oscuro > .searchbar input[type=search]::placeholder { color: var(--lab-texto-suave); }
+.lab-oscuro > .searchbar input[type=search]:focus {
+  outline: none; border-color: var(--lab-fucsia); box-shadow: 0 0 0 3px var(--lab-brillo);
+}
+.lab-oscuro > .searchbar .btn--ghost {
+  background: #181824; color: var(--lab-texto); border: 1px solid var(--lab-borde);
+  transition: background 0.6s var(--lab-curva), border-color 0.6s var(--lab-curva), box-shadow 0.6s var(--lab-curva);
+}
+.lab-oscuro > .searchbar .btn--ghost:hover { background: #24243a; border-color: var(--lab-fucsia); }
+.lab-oscuro > .searchbar .btn--primary {
+  background: var(--lab-fucsia); color: #fff; border: 1px solid var(--lab-fucsia-vivo);
+  box-shadow: 0 0 14px var(--lab-brillo);
+  transition: box-shadow 0.6s var(--lab-curva), background 0.6s var(--lab-curva);
+}
+.lab-oscuro > .searchbar .btn--primary:hover { background: var(--lab-fucsia-vivo); box-shadow: 0 0 22px rgba(255, 46, 147, 0.55); }
+/* Solapas de categoría como píldoras, con marcador que se desliza a la activa */
+.lab-tabs__marcador { display: none; }
+.lab-oscuro > .lab-tabs { position: relative; gap: 0.45rem; padding: 0 0 0.75rem; border-bottom: 2px solid var(--lab-fucsia); }
+.lab-oscuro .lab-tabs__marcador {
+  display: block; position: absolute; top: 0; left: 0; z-index: 0;
+  border-radius: 8px; background: var(--lab-fucsia);
+  box-shadow: 0 0 14px var(--lab-brillo);
+  pointer-events: none;
+}
+.lab-oscuro .lab-tabs__marcador.is-listo {
+  transition: transform 0.6s var(--lab-curva), width 0.6s var(--lab-curva), height 0.6s var(--lab-curva), opacity 0.6s var(--lab-curva);
+}
+.lab-oscuro .lab-tab {
+  position: relative; z-index: 1;
+  background: #181824; color: var(--lab-texto); border: 1px solid var(--lab-borde);
+  border-radius: 8px; box-shadow: none;
+  transition: background 0.6s var(--lab-curva), border-color 0.6s var(--lab-curva), color 0.6s var(--lab-curva);
+}
+.lab-oscuro .lab-tab:hover { background: #24243a; border-color: var(--lab-fucsia); }
+/* La activa es transparente: el color lo pone el marcador que se desliza debajo */
+.lab-oscuro .lab-tab.is-active { background: transparent; border-color: var(--lab-fucsia-vivo); color: #fff; }
+.lab-oscuro .lab-tab__n { background: rgba(0, 0, 0, 0.45); color: #fff; }
+.lab-oscuro .lab-tab.is-active .lab-tab__n { background: rgba(0, 0, 0, 0.35); color: #fff; }
+/* Tarjetas de grupo y filas */
+.lab-oscuro .lab-card {
+  background: var(--lab-card); border: 1px solid var(--lab-borde); border-radius: 10px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+  transition: transform 0.6s var(--lab-curva), box-shadow 0.6s var(--lab-curva), border-color 0.6s var(--lab-curva);
+}
+.lab-oscuro .lab-card:hover { transform: translateY(-3px); border-color: var(--lab-fucsia); box-shadow: 0 12px 30px var(--lab-brillo); }
+.lab-oscuro .lab-card__head { background: linear-gradient(90deg, var(--lab-fucsia), #b0005f); color: #fff; font-size: 0.88rem; letter-spacing: 0.2px; }
+.lab-oscuro .lab-row {
+  background: var(--lab-card); border-bottom: 1px solid var(--lab-borde); color: var(--lab-texto);
+  transition: background 0.5s var(--lab-curva);
+}
+.lab-oscuro .lab-card .lab-row:nth-child(even) { background: var(--lab-card-alt); }
+.lab-oscuro .lab-card .lab-row:hover,
+.lab-oscuro .lab-card .lab-row:nth-child(even):hover { background: var(--lab-card-hover); }
+.lab-oscuro .lab-row__desc { color: var(--lab-texto); font-weight: 600; }
+.lab-oscuro .lab-row__precio { color: var(--lab-fucsia-vivo); font-weight: 800; letter-spacing: 0.3px; }
+.lab-oscuro .lab-id { background: var(--lab-fucsia); color: #fff; box-shadow: 0 0 8px var(--lab-brillo); }
+.lab-oscuro .lab-marca { color: var(--lab-texto-suave); }
+.lab-oscuro .lab-row .muted { color: var(--lab-texto-suave); }
+.lab-oscuro .lab-layout .card.empty { background: var(--lab-card); color: var(--lab-texto); border: 1px solid var(--lab-borde); }
+.lab-oscuro .lab-layout .card.empty .muted { color: var(--lab-texto-suave); }
+/* Entrada escalonada de las tarjetas (paso 4, después del contenido) */
+/* "backwards": mantiene el estado inicial solo durante la espera y después suelta
+   el transform, así el hover de la tarjeta (translateY) funciona. */
+.lab-oscuro .lab-card--entra {
+  animation: labCardEntra 0.6s var(--lab-curva) calc(var(--i, 0) * 0.08s) backwards;
+}
+.lab-oscuro .lab-grid--primera .lab-card--entra { animation-delay: calc(1.5s + var(--i, 0) * 0.08s); }
+@keyframes labCardEntra {
+  from { opacity: 0; transform: translateY(14px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lab-oscuro .lab-card--entra { animation: none; }
+  .lab-oscuro .lab-tabs__marcador.is-listo,
+  .lab-oscuro .lab-card { transition: none; }
+}
